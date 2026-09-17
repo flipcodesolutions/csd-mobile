@@ -54,7 +54,11 @@ function MainApp() {
       case 'lead-detail':
         return 'Lead Details & Follow-Up';
       case 'dashboard':
-        return 'Dealership Dashboard';
+        if (currentUserRole === 'Sales Manager') return 'Sales Manager Dashboard';
+        if (currentUserRole === 'Sales Executive') return 'Sales Executive Desk';
+        if (currentUserRole === 'Receptionist') return 'Reception Concierge Desk';
+        if (currentUserRole === 'Accountant') return 'Finance & Invoicing Desk';
+        return 'Dealership Super Admin';
       case 'leads':
         return 'Customer Leads';
       case 'lead-status':
@@ -93,11 +97,7 @@ function MainApp() {
             setCurrentUserEmail(email);
             if (user?.role) setCurrentUserRole(user.role);
             setIsLoggedIn(true);
-            if (user?.role === 'Sales Executive') {
-              setActiveScreen('my-leads');
-            } else {
-              setActiveScreen('dashboard');
-            }
+            setActiveScreen('dashboard');
           }}
         />
       </View>
@@ -124,7 +124,7 @@ function MainApp() {
         onLogout={() => {
           authApi.logout();
           setIsLoggedIn(false);
-          setActiveScreen('my-leads');
+          setActiveScreen('dashboard');
         }}
         userEmail={currentUserEmail}
         userRole={currentUserRole}
@@ -147,7 +147,10 @@ function MainApp() {
           />
         )}
         {activeScreen === 'dashboard' && (
-          <DashboardScreen onNavigate={(screen) => setActiveScreen(screen)} />
+          <DashboardScreen
+            userRole={currentUserRole}
+            onNavigate={(screen) => setActiveScreen(screen)}
+          />
         )}
         {activeScreen === 'leads' && <LeadsScreen />}
         {activeScreen === 'lead-status' && <LeadStatusScreen />}

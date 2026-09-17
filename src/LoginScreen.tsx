@@ -122,32 +122,18 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
           {/* Quick Demo Preset Pills */}
           <View style={{ marginBottom: 12 }}>
             <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 6, fontWeight: '600' }}>
-              QUICK DEMO FILL:
+              QUICK DEMO FILL (5 ROLES):
             </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
               <TouchableOpacity
                 style={{
-                  flex: 1,
-                  backgroundColor: email === 'david.miller@carcrm.com' ? '#2563eb' : '#1e293b',
-                  paddingVertical: 7,
+                  backgroundColor: email === 'admin@example.com' ? colors.primary : '#EAECE4',
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
                   borderRadius: 6,
                   alignItems: 'center',
-                }}
-                onPress={() => {
-                  setEmail('david.miller@carcrm.com');
-                  setPassword('password');
-                  setErrorMessage('');
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>💼 Sales Exec</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: email === 'admin@example.com' ? '#2563eb' : '#1e293b',
-                  paddingVertical: 7,
-                  borderRadius: 6,
-                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: email === 'admin@example.com' ? colors.primaryHover : colors.border,
                 }}
                 onPress={() => {
                   setEmail('admin@example.com');
@@ -155,9 +141,85 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
                   setErrorMessage('');
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>👑 Super Admin</Text>
+                <Text style={{ color: email === 'admin@example.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>👑 Super Admin</Text>
               </TouchableOpacity>
-            </View>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: email === 'neha.sharma@carcrm.com' ? colors.primary : '#EAECE4',
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: email === 'neha.sharma@carcrm.com' ? colors.primaryHover : colors.border,
+                }}
+                onPress={() => {
+                  setEmail('neha.sharma@carcrm.com');
+                  setPassword('password');
+                  setErrorMessage('');
+                }}
+              >
+                <Text style={{ color: email === 'neha.sharma@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>👔 Manager</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: email === 'david.miller@carcrm.com' ? colors.primary : '#EAECE4',
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: email === 'david.miller@carcrm.com' ? colors.primaryHover : colors.border,
+                }}
+                onPress={() => {
+                  setEmail('david.miller@carcrm.com');
+                  setPassword('password');
+                  setErrorMessage('');
+                }}
+              >
+                <Text style={{ color: email === 'david.miller@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>💼 Sales Exec</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: email === 'pooja.iyer@carcrm.com' ? colors.primary : '#EAECE4',
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: email === 'pooja.iyer@carcrm.com' ? colors.primaryHover : colors.border,
+                }}
+                onPress={() => {
+                  setEmail('pooja.iyer@carcrm.com');
+                  setPassword('password');
+                  setErrorMessage('');
+                }}
+              >
+                <Text style={{ color: email === 'pooja.iyer@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>🛎️ Reception</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: email === 'amit.patel@carcrm.com' ? colors.primary : '#EAECE4',
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: email === 'amit.patel@carcrm.com' ? colors.primaryHover : colors.border,
+                }}
+                onPress={() => {
+                  setEmail('amit.patel@carcrm.com');
+                  setPassword('password');
+                  setErrorMessage('');
+                }}
+              >
+                <Text style={{ color: email === 'amit.patel@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>📊 Accountant</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
 
           {/* Email Input */}
@@ -295,7 +357,7 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: colors.textPrimary,
   },
   brandAccent: {
     color: colors.orange,
@@ -314,15 +376,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 4,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   cardSubtitle: {
@@ -331,7 +393,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorBox: {
-    backgroundColor: 'rgba(214, 69, 69, 0.2)',
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
     borderWidth: 1,
     borderColor: colors.danger,
     borderRadius: 8,
@@ -339,12 +401,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   errorText: {
-    color: '#ff9999',
+    color: colors.danger,
     fontSize: 12,
     fontWeight: '500',
   },
   successBox: {
-    backgroundColor: 'rgba(0, 131, 24, 0.2)',
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
     borderWidth: 1,
     borderColor: colors.green,
     borderRadius: 8,
@@ -352,7 +414,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   successText: {
-    color: '#88ff99',
+    color: colors.green,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -362,7 +424,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textLight,
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   passwordHeader: {
@@ -383,7 +445,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 44,
-    color: colors.textWhite,
+    color: colors.textPrimary,
     fontSize: 14,
   },
   rememberRow: {
@@ -422,7 +484,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitBtnText: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
     letterSpacing: 0.5,
@@ -447,6 +509,6 @@ const styles = StyleSheet.create({
   },
   footerSubText: {
     fontSize: 10,
-    color: '#555',
+    color: colors.textMuted,
   },
 });

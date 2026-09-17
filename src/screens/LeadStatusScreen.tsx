@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 40,
-    color: colors.textWhite,
+    color: colors.textPrimary,
     fontSize: 13,
   },
   filterRow: {
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   filterBtnTextActive: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   loadingWrap: {
@@ -422,6 +422,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: 14,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -443,7 +448,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: colors.textPrimary,
     flex: 1,
   },
   statusBadge: {
@@ -452,12 +457,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   badgeActive: {
-    backgroundColor: 'rgba(0, 131, 24, 0.2)',
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
     borderWidth: 1,
-    borderColor: colors.green,
+    borderColor: colors.success,
   },
   badgeInactive: {
-    backgroundColor: 'rgba(214, 69, 69, 0.2)',
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
     borderWidth: 1,
     borderColor: colors.danger,
   },
@@ -466,17 +471,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   badgeTextActive: {
-    color: '#88ff99',
+    color: colors.success,
   },
   badgeTextInactive: {
-    color: '#ff9999',
+    color: colors.danger,
   },
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: colors.inputBg,
+    borderTopColor: colors.border,
     paddingTop: 10,
   },
   editBtn: {
@@ -489,11 +494,11 @@ const styles = StyleSheet.create({
   },
   editBtnText: {
     fontSize: 12,
-    color: colors.textLight,
+    color: colors.textPrimary,
     fontWeight: '600',
   },
   deleteBtn: {
-    backgroundColor: 'rgba(214, 69, 69, 0.15)',
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
@@ -502,7 +507,7 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: {
     fontSize: 12,
-    color: '#ff9999',
+    color: colors.danger,
     fontWeight: '600',
   },
   fabBtn: {
@@ -518,7 +523,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabText: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -534,7 +539,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   emptyText: {
@@ -545,7 +550,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -562,7 +567,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: colors.textPrimary,
     marginBottom: 16,
   },
   inputGroup: {
@@ -571,7 +576,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textLight,
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   modalInput: {
@@ -581,7 +586,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 44,
-    color: colors.textWhite,
+    color: colors.textPrimary,
     fontSize: 14,
   },
   switchRow: {
@@ -600,6 +605,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cancelBtnText: {
     color: colors.textMuted,
@@ -620,7 +627,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveBtnText: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 13,
   },

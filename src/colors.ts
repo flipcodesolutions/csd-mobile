@@ -1,27 +1,46 @@
-// Simple Color Palette matching your Dark Luxury Theme
+// Corporate Color Palette matching Next.js Dealership Portal
 export const colors = {
   // Backgrounds
-  background: '#050910',
-  card: '#202224',
-  inputBg: '#151616',
+  background: '#F7F7F5',
+  card: '#FFFFFF',
+  inputBg: '#F7F7F5',
+  subCard: '#F7F7F5',
 
-  // Primary Theme (Olive Gold)
-  primary: '#3F4912',
-  primaryHover: '#4B5028',
+  // Header & Sidebar
+  headerBg: '#131C27',
+  headerTitle: '#DCE9A2',
+  sidebarBg: '#131C27',
+
+  // Primary Theme (Olive)
+  primary: '#58632A',
+  primaryHover: '#3F4912',
+  primaryDark: '#3F4912',
+  primaryLight: '#6B7735',
+
+  // Secondary Theme (Navy)
+  secondary: '#000080',
 
   // Accents
   orange: '#EE6800',
-  green: '#008318',
+  accentOrange: '#EE6800',
+  green: '#2E7D32',
+  blue: '#0284C7',
 
   // Borders
-  border: '#3D4A1C',
+  border: '#D9DDCC',
+  borderLight: '#EAECE4',
 
   // Text
+  textPrimary: '#1F2933',
+  textSecondary: '#6B7280',
+  textMuted: '#6B7280',
   textWhite: '#FFFFFF',
-  textLight: '#F1F5F9',
-  textMuted: '#94A3B8',
+  textLight: '#1F2933',
 
   // Status
-  danger: '#D64545',
-  warning: '#D99A00',
+  danger: '#DC2626',
+  warning: '#D97706',
+  success: '#16A34A',
+  info: '#0284C7',
 };
+

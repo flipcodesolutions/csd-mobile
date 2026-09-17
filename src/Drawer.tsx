@@ -60,16 +60,65 @@ export const Drawer: React.FC<DrawerProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const isSalesExecutive = userRole === 'Sales Executive';
+  const getRoleBadge = () => {
+    switch (userRole) {
+      case 'Sales Manager':
+        return { icon: '👔', color: '#f59e0b', section: 'MANAGER DESK & TEAM' };
+      case 'Sales Executive':
+        return { icon: '💼', color: '#10b981', section: 'SALES DESK & CATALOGUE' };
+      case 'Receptionist':
+        return { icon: '🛎️', color: '#8b5cf6', section: 'RECEPTION & WALK-INS' };
+      case 'Accountant':
+        return { icon: '📊', color: '#06b6d4', section: 'FINANCE & BILLING' };
+      case 'Super Admin':
+      default:
+        return { icon: '👑', color: colors.primary, section: 'MASTER DATA & NAVIGATION' };
+    }
+  };
 
-  const visibleMenuItems = isSalesExecutive
-    ? [
-        { id: 'my-leads' as ScreenName, label: 'My Assigned Leads', icon: '💼', badge: 'Active' },
-        { id: 'brand' as ScreenName, label: 'Brand Catalogue', icon: '🏷️' },
-        { id: 'model' as ScreenName, label: 'Model Catalogue', icon: '🚗' },
-        { id: 'variant' as ScreenName, label: 'Variant & Prices', icon: '⚡' },
-      ]
-    : MENU_ITEMS;
+  const roleMeta = getRoleBadge();
+
+  const getMenuItems = () => {
+    switch (userRole) {
+      case 'Sales Executive':
+        return [
+          { id: 'dashboard' as ScreenName, label: 'Sales Dashboard', icon: '📊' },
+          { id: 'my-leads' as ScreenName, label: 'My Assigned Leads', icon: '💼', badge: 'Active' },
+          { id: 'brand' as ScreenName, label: 'Brand Catalogue', icon: '🏷️' },
+          { id: 'model' as ScreenName, label: 'Model Catalogue', icon: '🚗' },
+          { id: 'variant' as ScreenName, label: 'Variant & Prices', icon: '⚡' },
+        ];
+      case 'Sales Manager':
+        return [
+          { id: 'dashboard' as ScreenName, label: 'Manager Dashboard', icon: '📊' },
+          { id: 'leads' as ScreenName, label: 'Team Pipeline Leads', icon: '🎯' },
+          { id: 'users' as ScreenName, label: 'Sales Reps Team', icon: '👥' },
+          { id: 'brand' as ScreenName, label: 'Brand Catalogue', icon: '🏷️' },
+          { id: 'model' as ScreenName, label: 'Model Master', icon: '🚗' },
+          { id: 'variant' as ScreenName, label: 'Variant & Prices', icon: '⚡' },
+        ];
+      case 'Receptionist':
+        return [
+          { id: 'dashboard' as ScreenName, label: 'Reception Concierge', icon: '🛎️' },
+          { id: 'leads' as ScreenName, label: 'Walk-Ins & Inquiries', icon: '🎯' },
+          { id: 'brand' as ScreenName, label: 'Showroom Brands', icon: '🏷️' },
+          { id: 'model' as ScreenName, label: 'Vehicle Models', icon: '🚗' },
+          { id: 'variant' as ScreenName, label: 'Variants Master', icon: '⚡' },
+        ];
+      case 'Accountant':
+        return [
+          { id: 'dashboard' as ScreenName, label: 'Accounts Dashboard', icon: '📊' },
+          { id: 'leads' as ScreenName, label: 'Deals & Bookings', icon: '🎯' },
+          { id: 'variant' as ScreenName, label: 'Variants & On-Road Tax', icon: '⚡' },
+          { id: 'model' as ScreenName, label: 'Model Master', icon: '🚗' },
+        ];
+      case 'Super Admin':
+      default:
+        return MENU_ITEMS;
+    }
+  };
+
+  const visibleMenuItems = getMenuItems();
 
   return (
     <Modal
@@ -99,7 +148,7 @@ export const Drawer: React.FC<DrawerProps> = ({
               <View style={styles.brandInfo}>
                 <Text style={styles.brandName}>Defence Autolink</Text>
                 <Text style={styles.brandTag}>
-                  {isSalesExecutive ? 'Sales Executive Desk' : 'CarCRM Enterprise'}
+                  {userRole} Workspace
                 </Text>
               </View>
             </View>
@@ -115,10 +164,10 @@ export const Drawer: React.FC<DrawerProps> = ({
             <View
               style={[
                 styles.userAvatar,
-                { backgroundColor: isSalesExecutive ? '#10b981' : colors.primary },
+                { backgroundColor: roleMeta.color },
               ]}
             >
-              <Text style={styles.userAvatarText}>{isSalesExecutive ? '💼' : '👑'}</Text>
+              <Text style={styles.userAvatarText}>{roleMeta.icon}</Text>
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{userRole || 'Super Administrator'}</Text>
@@ -130,7 +179,7 @@ export const Drawer: React.FC<DrawerProps> = ({
 
           {/* 3. Navigation Menu Items */}
           <Text style={styles.menuSectionHeader}>
-            {isSalesExecutive ? 'SALES DESK & CATALOGUE' : 'MASTER DATA & NAVIGATION'}
+            {roleMeta.section}
           </Text>
           <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
             {visibleMenuItems.map((item) => {
@@ -213,9 +262,9 @@ const styles = StyleSheet.create({
   drawerContainer: {
     width: DRAWER_WIDTH,
     height: '100%',
-    backgroundColor: colors.inputBg,
+    backgroundColor: colors.sidebarBg,
     borderRightWidth: 1,
-    borderRightColor: colors.border,
+    borderRightColor: 'rgba(217, 221, 204, 0.15)',
     paddingTop: 45,
     paddingBottom: 20,
     paddingHorizontal: 16,
@@ -227,7 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(217, 221, 204, 0.15)',
     marginBottom: 14,
   },
   brandRow: {
@@ -257,7 +306,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: colors.headerTitle,
   },
   brandTag: {
     fontSize: 10,
@@ -269,17 +318,17 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   closeText: {
-    color: colors.textMuted,
+    color: colors.headerTitle,
     fontSize: 16,
     fontWeight: 'bold',
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(217, 221, 204, 0.15)',
     padding: 10,
     gap: 10,
     marginBottom: 16,
@@ -301,16 +350,16 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: '#FFFFFF',
   },
   userEmail: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: '#94A3B8',
   },
   menuSectionHeader: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: colors.textMuted,
+    color: '#94A3B8',
     letterSpacing: 1,
     marginBottom: 8,
     paddingHorizontal: 4,
@@ -337,21 +386,21 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     fontSize: 13,
-    color: colors.textLight,
+    color: '#D1D5DB',
     fontWeight: '600',
     flex: 1,
   },
   menuLabelActive: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   badge: {
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   badgeActive: {
     backgroundColor: colors.orange,
@@ -359,16 +408,16 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: '#CBD5E1',
     fontWeight: 'bold',
   },
   badgeTextActive: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
   },
   drawerFooter: {
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: 'rgba(217, 221, 204, 0.15)',
     gap: 8,
   },
   logoutBtn: {
@@ -378,7 +427,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(214, 69, 69, 0.15)',
+    backgroundColor: 'rgba(220, 38, 38, 0.15)',
     borderWidth: 1,
     borderColor: colors.danger,
   },
@@ -387,12 +436,12 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 13,
-    color: '#ff8888',
+    color: '#ff9999',
     fontWeight: 'bold',
   },
   versionText: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: '#94A3B8',
     textAlign: 'center',
   },
 });

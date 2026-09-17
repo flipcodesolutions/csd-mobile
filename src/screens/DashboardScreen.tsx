@@ -20,11 +20,39 @@ import {
   variantApi,
 } from '../lib/apiServices';
 
+// 5 Role Views
+import { SuperAdminDashboardView } from './dashboards/SuperAdminDashboardView';
+import { SalesManagerDashboardView } from './dashboards/SalesManagerDashboardView';
+import { SalesExecutiveDashboardView } from './dashboards/SalesExecutiveDashboardView';
+import { ReceptionistDashboardView } from './dashboards/ReceptionistDashboardView';
+import { AccountantDashboardView } from './dashboards/AccountantDashboardView';
+
 interface DashboardProps {
   onNavigate: (screen: ScreenName) => void;
+  userRole?: string;
 }
 
-export const DashboardScreen: React.FC<DashboardProps> = ({ onNavigate }) => {
+const ROLES = [
+  { id: 'Super Admin', label: '👑 Super Admin' },
+  { id: 'Sales Manager', label: '👔 Manager' },
+  { id: 'Sales Executive', label: '💼 Sales Exec' },
+  { id: 'Receptionist', label: '🛎️ Reception' },
+  { id: 'Accountant', label: '📊 Accountant' },
+];
+
+export const DashboardScreen: React.FC<DashboardProps> = ({
+  onNavigate,
+  userRole = 'Super Admin',
+}) => {
+  const [selectedRole, setSelectedRole] = useState(userRole || 'Super Admin');
+
+  // Update selectedRole when userRole prop changes
+  useEffect(() => {
+    if (userRole) {
+      setSelectedRole(userRole);
+    }
+  }, [userRole]);
+
   const [stats, setStats] = useState({
     leads: 0,
     hotLeads: 0,
@@ -38,7 +66,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch real counts from backend API
+  // Fetch live counts from backend API
   const fetchDashboardStats = async (isPullRefresh = false) => {
     if (isPullRefresh) {
       setIsRefreshing(true);
@@ -110,165 +138,52 @@ export const DashboardScreen: React.FC<DashboardProps> = ({ onNavigate }) => {
         />
       }
     >
-      {/* 1. Welcome Banner */}
-      <View style={styles.welcomeCard}>
-        <View style={styles.welcomeTextWrap}>
-          <Text style={styles.welcomeGreeting}>SHOWROOM OPERATIONAL 🟢</Text>
-          <Text style={styles.welcomeTitle}>Defence Autolink CRM</Text>
-          <Text style={styles.welcomeSub}>
-            Multi-Brand Luxury Dealership Management
-          </Text>
-        </View>
+      {/* Role Switcher Toolbar */}
+      <View style={styles.roleBar}>
+        <Text style={styles.roleBarTitle}>ROLE DASHBOARD VIEW:</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rolePillScroll}>
+          {ROLES.map((r) => {
+            const isActive = selectedRole === r.id;
+            return (
+              <TouchableOpacity
+                key={r.id}
+                style={[styles.rolePill, isActive && styles.rolePillActive]}
+                onPress={() => setSelectedRole(r.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.rolePillText, isActive && styles.rolePillTextActive]}>
+                  {r.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* 2. Quick KPI Grid */}
-      <Text style={styles.sectionHeader}>LIVE API METRICS</Text>
-      {isLoading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="small" color={colors.orange} />
-          <Text style={styles.loadingText}>Fetching live counts from server...</Text>
-        </View>
-      ) : (
-        <View style={styles.kpiGrid}>
-          <TouchableOpacity
-            style={styles.kpiCard}
-            onPress={() => onNavigate('leads')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.kpiIcon}>🎯</Text>
-            <Text style={styles.kpiVal}>{stats.leads}</Text>
-            <Text style={styles.kpiLbl}>Customer Leads</Text>
-            <Text style={styles.kpiTrend}>Live Inquiries</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.kpiCard}
-            onPress={() => onNavigate('leads')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.kpiIcon}>🔥</Text>
-            <Text style={[styles.kpiVal, { color: colors.orange }]}>
-              {stats.hotLeads}
-            </Text>
-            <Text style={styles.kpiLbl}>Hot Priorities</Text>
-            <Text style={styles.kpiTrend}>Immediate attention</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.kpiCard}
-            onPress={() => onNavigate('model')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.kpiIcon}>🚗</Text>
-            <Text style={[styles.kpiVal, { color: colors.green }]}>
-              {stats.models}
-            </Text>
-            <Text style={styles.kpiLbl}>Registered Models</Text>
-            <Text style={styles.kpiTrend}>{stats.variants} Variants</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.kpiCard}
-            onPress={() => onNavigate('users')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.kpiIcon}>👥</Text>
-            <Text style={[styles.kpiVal, { color: '#3b82f6' }]}>
-              {stats.users}
-            </Text>
-            <Text style={styles.kpiLbl}>Staff Users</Text>
-            <Text style={styles.kpiTrend}>Active Team</Text>
-          </TouchableOpacity>
-        </View>
+      {/* Dynamic Role Dashboard Body */}
+      {selectedRole === 'Super Admin' && (
+        <SuperAdminDashboardView
+          stats={stats}
+          isLoading={isLoading}
+          onNavigate={onNavigate}
+        />
       )}
 
-      {/* 3. Master Data Quick Jump Grid */}
-      <Text style={styles.sectionHeader}>MASTER MODULES</Text>
-      <View style={styles.mastersGrid}>
-        <TouchableOpacity
-          style={styles.masterCard}
-          onPress={() => onNavigate('leads')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.masterIcon}>🎯</Text>
-          <Text style={styles.masterTitle}>Customer Leads</Text>
-          <Text style={styles.masterCount}>
-            {isLoading ? '...' : `${stats.leads} Leads`}
-          </Text>
-        </TouchableOpacity>
+      {selectedRole === 'Sales Manager' && (
+        <SalesManagerDashboardView onNavigate={onNavigate} />
+      )}
 
-        <TouchableOpacity
-          style={styles.masterCard}
-          onPress={() => onNavigate('lead-status')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.masterIcon}>📋</Text>
-          <Text style={styles.masterTitle}>Lead Status</Text>
-          <Text style={styles.masterCount}>
-            {isLoading ? '...' : `${stats.statuses} Statuses`}
-          </Text>
-        </TouchableOpacity>
+      {selectedRole === 'Sales Executive' && (
+        <SalesExecutiveDashboardView onNavigate={onNavigate} />
+      )}
 
-        <TouchableOpacity
-          style={styles.masterCard}
-          onPress={() => onNavigate('lead-source')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.masterIcon}>📢</Text>
-          <Text style={styles.masterTitle}>Lead Source</Text>
-          <Text style={styles.masterCount}>
-            {isLoading ? '...' : `${stats.sources} Sources`}
-          </Text>
-        </TouchableOpacity>
+      {selectedRole === 'Receptionist' && (
+        <ReceptionistDashboardView onNavigate={onNavigate} />
+      )}
 
-        <TouchableOpacity
-          style={styles.masterCard}
-          onPress={() => onNavigate('brand')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.masterIcon}>🏷️</Text>
-          <Text style={styles.masterTitle}>Brand Master</Text>
-          <Text style={styles.masterCount}>
-            {isLoading ? '...' : `${stats.brands} Brands`}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.masterCard}
-          onPress={() => onNavigate('model')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.masterIcon}>🚗</Text>
-          <Text style={styles.masterTitle}>Model Master</Text>
-          <Text style={styles.masterCount}>
-            {isLoading ? '...' : `${stats.models} Models`}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.masterCard}
-          onPress={() => onNavigate('variant')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.masterIcon}>⚡</Text>
-          <Text style={styles.masterTitle}>Variant Master</Text>
-          <Text style={styles.masterCount}>
-            {isLoading ? '...' : `${stats.variants} Variants`}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.masterCard}
-          onPress={() => onNavigate('users')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.masterIcon}>👥</Text>
-          <Text style={styles.masterTitle}>User Master</Text>
-          <Text style={styles.masterCount}>
-            {isLoading ? '...' : `${stats.users} Staff`}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {selectedRole === 'Accountant' && (
+        <AccountantDashboardView onNavigate={onNavigate} />
+      )}
     </ScrollView>
   );
 };
@@ -281,117 +196,44 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 40,
+    gap: 16,
   },
-  welcomeCard: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 18,
-    marginBottom: 20,
-  },
-  welcomeTextWrap: {
-    gap: 4,
-  },
-  welcomeGreeting: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: colors.green,
-    letterSpacing: 1,
-  },
-  welcomeTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textWhite,
-  },
-  welcomeSub: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: colors.textMuted,
-    letterSpacing: 1,
-    marginBottom: 10,
-    marginLeft: 2,
-  },
-  loadingBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 14,
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  loadingText: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 22,
-  },
-  kpiCard: {
-    flex: 1,
-    minWidth: '46%',
+  roleBar: {
     backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
-    gap: 4,
+    padding: 10,
+    gap: 8,
   },
-  kpiIcon: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  kpiVal: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textWhite,
-  },
-  kpiLbl: {
-    fontSize: 12,
-    color: colors.textLight,
-    fontWeight: '500',
-  },
-  kpiTrend: {
+  roleBarTitle: {
     fontSize: 10,
+    fontWeight: 'bold',
     color: colors.textMuted,
-    marginTop: 2,
+    letterSpacing: 0.8,
   },
-  mastersGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  rolePillScroll: {
+    gap: 6,
   },
-  masterCard: {
-    flex: 1,
-    minWidth: '46%',
-    backgroundColor: colors.card,
-    borderRadius: 12,
+  rolePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
-    alignItems: 'center',
-    gap: 4,
   },
-  masterIcon: {
-    fontSize: 26,
-    marginBottom: 2,
+  rolePillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryHover,
   },
-  masterTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: colors.textWhite,
-  },
-  masterCount: {
+  rolePillText: {
     fontSize: 11,
-    color: colors.orange,
+    color: colors.textMuted,
     fontWeight: '600',
+  },
+  rolePillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });

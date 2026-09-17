@@ -48,9 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
 const styles = StyleSheet.create({
   header: {
     height: 56,
-    backgroundColor: colors.card,
+    backgroundColor: colors.headerBg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(217, 221, 204, 0.2)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -66,21 +66,21 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 8,
-    backgroundColor: colors.inputBg,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(217, 221, 204, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuIcon: {
     fontSize: 20,
-    color: colors.textWhite,
+    color: colors.headerTitle,
     fontWeight: 'bold',
   },
   title: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: colors.textWhite,
+    color: colors.headerTitle,
     flex: 1,
   },
   addBtn: {
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addBtnText: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
   },
