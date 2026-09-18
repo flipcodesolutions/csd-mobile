@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 
 // Base API URL
-export const DEFAULT_API_URL = 'http://127.0.0.1:8000/api';
+export const DEFAULT_API_URL = 'https://cds.flipcodesolutions.com/api';
 
 // In-Memory Token Store for Mobile
 let authToken: string | null = null;
