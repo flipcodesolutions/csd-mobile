@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 // Base API URL
 export const DEFAULT_API_URL = 'https://cds.flipcodesolutions.com/api';
+export const DEFAULT_API_URL1 = 'https://cds.flipcodesolutions.com/api';
 
 // In-Memory Token Store for Mobile
 let authToken: string | null = null;
