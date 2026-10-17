@@ -73,3 +73,11 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+
+/md
+AGENTS.md
+web-reference-project.md
+GEMINI.md
+reference-guide.md
+design.md

@@ -8,7 +8,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { colors } from './colors';
+import { colors } from './core/theme/colors';
 
 interface Props {
   onFinish: () => void;

@@ -1,88 +1,70 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import { colors } from './src/colors';
-import { Drawer, ScreenName } from './src/Drawer';
-import { Header } from './src/Header';
-import { LoginScreen } from './src/LoginScreen';
+import { ThemeProvider, useTheme } from './src/core/theme/ThemeContext';
+import { AppNavigator } from './src/core/navigation/AppNavigator';
+import { LoginScreen } from './src/features/auth/LoginScreen';
 import { SplashScreen } from './src/SplashScreen';
-import { authApi } from './src/lib/apiServices';
+import { authApi } from './src/features/auth/authService';
 
-// Master Screens
-import { BrandScreen } from './src/screens/BrandScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
-import { LeadsScreen } from './src/screens/LeadsScreen';
-import { LeadSourceScreen } from './src/screens/LeadSourceScreen';
-import { LeadStatusScreen } from './src/screens/LeadStatusScreen';
-import { ModelScreen } from './src/screens/ModelScreen';
-import { UserMasterScreen } from './src/screens/UserMasterScreen';
-import { VariantScreen } from './src/screens/VariantScreen';
-
-// Sales Executive Dedicated Screens
-import { SalesExecutiveLeadsScreen } from './src/screens/SalesExecutiveLeadsScreen';
-import { SalesExecutiveLeadDetailScreen } from './src/screens/SalesExecutiveLeadDetailScreen';
-
+// App root
 function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" />
-      <MainApp />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider initialTheme="light">
+          <BottomSheetModalProvider>
+            <MainApp />
+          </BottomSheetModalProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 function MainApp() {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+  console.log('>>> DEVICE_INSETS:', JSON.stringify(insets));
 
   // App Navigation States
   const [isSplashDone, setIsSplashDone] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeScreen, setActiveScreen] = useState<ScreenName>('my-leads');
-  const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState('david.miller@carcrm.com');
   const [currentUserRole, setCurrentUserRole] = useState('Sales Executive');
 
-  // Title Mapping for Header
-  const getScreenTitle = (screen: ScreenName): string => {
-    switch (screen) {
-      case 'my-leads':
-        return 'My Assigned Leads';
-      case 'lead-detail':
-        return 'Lead Details & Follow-Up';
-      case 'dashboard':
-        if (currentUserRole === 'Sales Manager') return 'Sales Manager Dashboard';
-        if (currentUserRole === 'Sales Executive') return 'Sales Executive Desk';
-        if (currentUserRole === 'Receptionist') return 'Reception Concierge Desk';
-        if (currentUserRole === 'Accountant') return 'Finance & Invoicing Desk';
-        return 'Dealership Super Admin';
-      case 'leads':
-        return 'Customer Leads';
-      case 'lead-status':
-        return 'Lead Status Master';
-      case 'lead-source':
-        return 'Lead Source Master';
-      case 'brand':
-        return 'Brand Master';
-      case 'model':
-        return 'Model Master';
-      case 'variant':
-        return 'Variant Master';
-      case 'users':
-        return 'User Master';
-      default:
-        return 'CarCRM Portal';
-    }
-  };
+  // Auto-restore session from persistent storage
+  useEffect(() => {
+    let isMounted = true;
+    authApi.restoreSession().then((session) => {
+      if (isMounted && session && session.token) {
+        setIsLoggedIn(true);
+        if (session.user?.email) setCurrentUserEmail(session.user.email);
+        if (session.user?.role) setCurrentUserRole(session.user.role);
+      }
+    }).catch((err) => {
+      console.log('Session restore error (fallback to login):', err);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // 1. Initial Splash Screen
   if (!isSplashDone) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <SplashScreen onFinish={() => setIsSplashDone(true)} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={{ height: insets.top, backgroundColor: colors.background }} />
+        <View style={{ flex: 1 }}>
+          <SplashScreen onFinish={() => setIsSplashDone(true)} />
+        </View>
+        <View style={{ height: insets.bottom, backgroundColor: colors.background }} />
       </View>
     );
   }
@@ -90,76 +72,48 @@ function MainApp() {
   // 2. Login Screen
   if (!isLoggedIn) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <LoginScreen
-          onBackToSplash={() => setIsSplashDone(false)}
-          onLoginSuccess={(email, user) => {
-            setCurrentUserEmail(email);
-            if (user?.role) setCurrentUserRole(user.role);
-            setIsLoggedIn(true);
-            setActiveScreen('dashboard');
-          }}
-        />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={{ height: insets.top, backgroundColor: colors.background }} />
+        <View style={{ flex: 1 }}>
+          <LoginScreen
+            onBackToSplash={() => setIsSplashDone(false)}
+            onLoginSuccess={(email, user) => {
+              setCurrentUserEmail(email);
+              if (user?.role) setCurrentUserRole(user.role);
+              setIsLoggedIn(true);
+            }}
+          />
+        </View>
+        <View style={{ height: insets.bottom, backgroundColor: colors.background }} />
       </View>
     );
   }
 
-  // 3. Authenticated App with Side Drawer & Screens
+  // 3. Authenticated App with React Navigation Drawer & Native Stack
+  const topBarColor = isDark ? '#080D1A' : '#FFFFFF';
+  const bottomBarColor = isDark ? '#080D1A' : '#FAF8FF';
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      {/* Top Header */}
-      <Header
-        title={getScreenTitle(activeScreen)}
-        onOpenDrawer={() => setIsDrawerOpen(true)}
-      />
+    <View style={[styles.container, { backgroundColor: topBarColor }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      {/* Top Status Bar Inset Spacer - Seamlessly matches brand header */}
+      <View style={{ height: insets.top, backgroundColor: topBarColor }} />
 
-      {/* Side Navigation Drawer */}
-      <Drawer
-        isOpen={isDrawerOpen}
-        activeScreen={activeScreen}
-        onSelectScreen={(screen) => {
-          setActiveScreen(screen);
-        }}
-        onClose={() => setIsDrawerOpen(false)}
-        onLogout={() => {
-          authApi.logout();
-          setIsLoggedIn(false);
-          setActiveScreen('dashboard');
-        }}
-        userEmail={currentUserEmail}
-        userRole={currentUserRole}
-      />
-
-      {/* Screen View Router */}
-      <View style={styles.screenContainer}>
-        {activeScreen === 'my-leads' && (
-          <SalesExecutiveLeadsScreen
-            onSelectLead={(leadId) => {
-              setSelectedLeadId(leadId);
-              setActiveScreen('lead-detail');
-            }}
-          />
-        )}
-        {activeScreen === 'lead-detail' && selectedLeadId !== null && (
-          <SalesExecutiveLeadDetailScreen
-            leadId={selectedLeadId}
-            onBack={() => setActiveScreen('my-leads')}
-          />
-        )}
-        {activeScreen === 'dashboard' && (
-          <DashboardScreen
-            userRole={currentUserRole}
-            onNavigate={(screen) => setActiveScreen(screen)}
-          />
-        )}
-        {activeScreen === 'leads' && <LeadsScreen />}
-        {activeScreen === 'lead-status' && <LeadStatusScreen />}
-        {activeScreen === 'lead-source' && <LeadSourceScreen />}
-        {activeScreen === 'brand' && <BrandScreen />}
-        {activeScreen === 'model' && <ModelScreen />}
-        {activeScreen === 'variant' && <VariantScreen />}
-        {activeScreen === 'users' && <UserMasterScreen />}
+      {/* Main App Navigator View */}
+      <View style={{ flex: 1, backgroundColor: bottomBarColor }}>
+        <AppNavigator
+          userRole={currentUserRole}
+          userEmail={currentUserEmail}
+          onLogout={() => {
+            authApi.logout();
+            setIsLoggedIn(false);
+          }}
+        />
       </View>
+
+      {/* Bottom System Navigation Bar Inset Spacer - Protects buttons & cards */}
+      <View style={{ height: insets.bottom, backgroundColor: bottomBarColor }} />
     </View>
   );
 }
@@ -167,7 +121,6 @@ function MainApp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   screenContainer: {
     flex: 1,
