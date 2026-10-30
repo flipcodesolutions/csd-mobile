@@ -24,6 +24,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../core/utils/haptics';
+import { exportCsvToFile } from '../../core/utils/csvExporter';
+import { FabSpeedDial } from '../../shared';
 import { leadApi } from '../leads/leadService';
 import { CustomerLead } from '../leads/types';
 import { Prospect360Modal } from '../leads/components/Prospect360Modal';
@@ -223,13 +225,22 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    Alert.alert(
-      'Export Follow-Ups CSV',
-      `Exporting ${items.length} follow-up records with contact history, outcomes, scheduled dates, and discount notes to follow_ups_${new Date().toISOString().split('T')[0]}.csv`,
-      [{ text: 'Download CSV', onPress: () => triggerHaptic('selection') }]
-    );
+    const rows = items.map((item) => [
+      item.id,
+      item.customer_name || 'N/A',
+      item.phone || 'N/A',
+      item.type || 'N/A',
+      item.next_follow_up_date || item.follow_up_date || 'N/A',
+      item.notes || 'N/A',
+      item.status || 'Active',
+    ]);
+    await exportCsvToFile({
+      filename: `follow_ups_${new Date().toISOString().split('T')[0]}`,
+      headers: ['ID', 'Customer Name', 'Phone', 'Stage', 'Next Follow-up', 'Notes', 'Status'],
+      rows,
+    });
   };
 
   const tabs: { id: FollowUpTab; label: string; count: number }[] = [
@@ -246,66 +257,6 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         { backgroundColor: isDark ? '#080D1A' : '#F7F7F5' },
       ]}
     >
-      {/* 1. Header Toolbar */}
-      <View
-        style={[
-          styles.headerBar,
-          {
-            backgroundColor: isDark ? '#101726' : '#FFFFFF',
-            borderBottomColor: isDark ? '#1E293B' : '#E2E8F0',
-          },
-        ]}
-      >
-        <View>
-          <Text
-            style={[
-              styles.screenTitle,
-              { color: isDark ? '#FFFFFF' : '#0F172A' },
-            ]}
-          >
-            Follow-Up & Call Desk
-          </Text>
-          <Text
-            style={[
-              styles.screenSubtitle,
-              { color: isDark ? '#94A3B8' : '#64748B' },
-            ]}
-          >
-            Unified Telecalling Queue & Interaction Notes
-          </Text>
-        </View>
-
-        <View style={styles.headerActions}>
-          {/* Export CSV Button */}
-          <TouchableOpacity
-            style={[
-              styles.iconBtn,
-              {
-                backgroundColor: isDark ? '#162030' : '#F1F5F9',
-                borderColor: isDark ? '#1E293B' : '#CBD5E1',
-              },
-            ]}
-            onPress={handleExportCSV}
-            activeOpacity={0.7}
-          >
-            <Download size={14} color={colors.textPrimary} strokeWidth={2.2} />
-          </TouchableOpacity>
-
-          {/* Log Call Button */}
-          <TouchableOpacity
-            style={[
-              styles.logNewBtn,
-              { backgroundColor: colors.primary },
-            ]}
-            onPress={handleOpenLogNew}
-            activeOpacity={0.8}
-          >
-            <Plus size={14} color="#FFFFFF" strokeWidth={2.5} />
-            <Text style={styles.logNewBtnText}>Log Call</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <FlatList
         data={items}
         keyExtractor={(item) => `followup-${item.id}`}
@@ -328,7 +279,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
           />
         }
         contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom + 24, 40),
+          paddingBottom: Math.max(insets.bottom + 90, 110),
         }}
         ListHeaderComponent={
           <>
@@ -644,6 +595,18 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
             'Convert to Deal',
             'To convert this lead into an official deal dossier, open the Leads Pipeline workbench.'
           );
+        }}
+      />
+
+      {/* Material 3 Expressive FAB Menu */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Log Call',
+          onPress: handleOpenLogNew,
+        }}
+        secondaryAction={{
+          label: 'Download CSV',
+          onPress: handleExportCSV,
         }}
       />
     </View>

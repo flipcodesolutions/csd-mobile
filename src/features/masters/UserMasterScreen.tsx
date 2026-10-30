@@ -5,6 +5,7 @@ import {
   FlatList,
   Modal,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -12,7 +13,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Edit2, Trash2 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../core/theme/colors';
+import { triggerHaptic } from '../../core/utils/haptics';
+import { exportCsvToFile } from '../../core/utils/csvExporter';
+import { FabSpeedDial } from '../../shared';
 import { userApi } from './masterService';
 
 export interface UserMaster {
@@ -33,6 +39,7 @@ const ROLES = [
 ];
 
 export const UserMasterScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const [users, setUsers] = useState<UserMaster[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
@@ -195,20 +202,42 @@ export const UserMasterScreen: React.FC = () => {
     return matchSearch && matchRole;
   });
 
+  // Export CSV Action
+  const handleExportCSV = async () => {
+    triggerHaptic('impactLight');
+    const rows = filteredList.map((u) => [
+      u.id,
+      u.name,
+      u.email,
+      u.phone || '',
+      u.role,
+      u.status,
+    ]);
+    await exportCsvToFile({
+      filename: `staff_users_${new Date().toISOString().split('T')[0]}`,
+      headers: ['ID', 'Full Name', 'Email', 'Phone', 'Role', 'Status'],
+      rows,
+    });
+  };
+
   return (
     <View style={styles.container}>
       {/* 1. Search Bar & Role Filter Scroll */}
       <View style={styles.topBar}>
         <TextInput
           style={styles.searchInput}
-          placeholder="🔍 Search staff name, email, or role..."
+          placeholder="Search staff name, email, or role..."
           placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
         />
 
-        <View style={styles.filterRow}>
-          {['All', 'Super Admin', 'Sales Manager', 'Sales Executive'].map((r) => (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          {['All', 'Super Admin', 'Sales Manager', 'Sales Executive', 'Receptionist', 'Accountant'].map((r) => (
             <TouchableOpacity
               key={r}
               style={[styles.filterBtn, roleFilter === r && styles.filterBtnActive]}
@@ -224,7 +253,7 @@ export const UserMasterScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       {/* 2. Loading State */}
@@ -238,7 +267,10 @@ export const UserMasterScreen: React.FC = () => {
         <FlatList
           data={filteredList}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom + 90, 110) },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -248,7 +280,7 @@ export const UserMasterScreen: React.FC = () => {
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <View style={styles.cardHeader}>
+              <View style={styles.cardInner}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
                     {item.name.slice(0, 1).toUpperCase()}
@@ -257,7 +289,18 @@ export const UserMasterScreen: React.FC = () => {
 
                 <View style={styles.userInfo}>
                   <View style={styles.nameBadgeRow}>
-                    <Text style={styles.userName}>{item.name}</Text>
+                    <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+                      {item.name}
+                    </Text>
+                    <View
+                      style={[
+                        styles.statusDot,
+                        { backgroundColor: item.status === 'Active' ? '#10B981' : '#94A3B8' },
+                      ]}
+                    />
+                  </View>
+
+                  <View style={styles.metaRow}>
                     <View
                       style={[
                         styles.roleBadge,
@@ -267,47 +310,30 @@ export const UserMasterScreen: React.FC = () => {
                     >
                       <Text style={styles.roleText}>{item.role}</Text>
                     </View>
+                    <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">
+                      {item.email}
+                    </Text>
                   </View>
-                  <Text style={styles.userEmail}>✉️ {item.email}</Text>
-                  <Text style={styles.userPhone}>📞 {item.phone}</Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.statusBadge,
-                    item.status === 'Active'
-                      ? styles.badgeActive
-                      : styles.badgeInactive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      item.status === 'Active'
-                        ? styles.badgeTextActive
-                        : styles.badgeTextInactive,
-                    ]}
+                {/* Inline Actions */}
+                <View style={styles.actionBtns}>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => handleOpenEdit(item)}
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                   >
-                    {item.status}
-                  </Text>
+                    <Edit2 size={13} color={colors.textPrimary} strokeWidth={2.2} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.iconBtn, styles.deleteBtn]}
+                    onPress={() => handleDelete(item)}
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                  >
+                    <Trash2 size={13} color="#EF4444" strokeWidth={2.2} />
+                  </TouchableOpacity>
                 </View>
-              </View>
-
-              {/* Actions */}
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => handleOpenEdit(item)}
-                >
-                  <Text style={styles.editBtnText}>✏️ Edit</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(item)}
-                >
-                  <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
-                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -323,14 +349,17 @@ export const UserMasterScreen: React.FC = () => {
         />
       )}
 
-      {/* 4. Floating Add Button */}
-      <TouchableOpacity
-        style={styles.fabBtn}
-        onPress={handleOpenAdd}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.fabText}>+ Add Staff User</Text>
-      </TouchableOpacity>
+      {/* Floating Speed Dial Action Button */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Add User',
+          onPress: handleOpenAdd,
+        }}
+        secondaryAction={{
+          label: 'Download CSV',
+          onPress: handleExportCSV,
+        }}
+      />
 
       {/* 5. Add / Edit Modal */}
       <Modal
@@ -489,9 +518,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 13,
   },
-  filterRow: {
-    flexDirection: 'row',
+  filterScroll: {
     gap: 6,
+    paddingTop: 6,
   },
   filterBtn: {
     paddingVertical: 5,
@@ -531,27 +560,27 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
-    marginBottom: 12,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  cardHeader: {
+  cardInner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 10,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 8,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -559,31 +588,45 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   userInfo: {
     flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
     gap: 3,
   },
   nameBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     flexWrap: 'wrap',
+    gap: 6,
   },
   userName: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.textPrimary,
+    flexShrink: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   roleBadge: {
     backgroundColor: '#F0F2E8',
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
     borderRadius: 4,
   },
   roleAdmin: {
@@ -595,76 +638,33 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary,
   },
   roleText: {
-    fontSize: 10,
+    fontSize: 9.5,
     color: colors.primary,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   userEmail: {
     fontSize: 11,
     color: colors.textMuted,
+    flexShrink: 1,
   },
-  userPhone: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  statusBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  badgeActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  badgeInactive: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  badgeTextActive: {
-    color: colors.success,
-  },
-  badgeTextInactive: {
-    color: colors.danger,
-  },
-  cardActions: {
+  actionBtns: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 10,
+    alignItems: 'center',
+    gap: 6,
   },
-  editBtn: {
-    backgroundColor: colors.inputBg,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+  iconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  editBtnText: {
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontWeight: '600',
+    backgroundColor: colors.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   deleteBtn: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  deleteBtnText: {
-    fontSize: 12,
-    color: colors.danger,
-    fontWeight: '600',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   fabBtn: {
     position: 'absolute',

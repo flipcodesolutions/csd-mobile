@@ -11,6 +11,8 @@ import { LeadsScreen } from '../../features/leads/LeadsScreen';
 import { BrandScreen } from '../../features/masters/BrandScreen';
 import { ModelScreen } from '../../features/masters/ModelScreen';
 import { VariantScreen } from '../../features/masters/VariantScreen';
+import { UpdatePriceScreen } from '../../features/masters/UpdatePriceScreen';
+import { ExpenseMasterScreen } from '../../features/masters/ExpenseMasterScreen';
 import { LeadStatusScreen } from '../../features/masters/LeadStatusScreen';
 import { LeadSourceScreen } from '../../features/masters/LeadSourceScreen';
 import { UserMasterScreen } from '../../features/masters/UserMasterScreen';
@@ -33,6 +35,8 @@ export type DrawerParamList = {
   brand: undefined;
   model: undefined;
   variant: undefined;
+  'update-price': undefined;
+  'expense-master': undefined;
   'lead-status': undefined;
   'lead-source': undefined;
   users: undefined;
@@ -55,6 +59,8 @@ const SCREEN_TITLES: Record<string, string> = {
   brand: 'Brand Master',
   model: 'Model Master',
   variant: 'Variant & Pricing',
+  'update-price': 'Price Master & Updater',
+  'expense-master': 'Expense Master',
   'lead-status': 'Lead Status Master',
   'lead-source': 'Lead Source Master',
   users: 'User & Team Master',
@@ -147,11 +153,50 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
         )}
       </Drawer.Screen>
 
-      <Drawer.Screen name="brand" component={BrandScreen} />
-      <Drawer.Screen name="model" component={ModelScreen} />
-      <Drawer.Screen name="variant" component={VariantScreen} />
+      <Drawer.Screen name="brand">
+        {({ navigation }) => (
+          <BrandScreen
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
+        )}
+      </Drawer.Screen>
+      <Drawer.Screen name="model">
+        {({ navigation }) => (
+          <ModelScreen
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
+        )}
+      </Drawer.Screen>
+      <Drawer.Screen name="variant">
+        {({ navigation }) => (
+          <VariantScreen
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
+        )}
+      </Drawer.Screen>
+      <Drawer.Screen name="update-price">
+        {({ navigation }) => (
+          <UpdatePriceScreen
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateQuotation={() => (navigation as any).navigate('leads')}
+          />
+        )}
+      </Drawer.Screen>
+      <Drawer.Screen name="expense-master">
+        {({ navigation }) => (
+          <ExpenseMasterScreen
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
+        )}
+      </Drawer.Screen>
       <Drawer.Screen name="lead-status" component={LeadStatusScreen} />
-      <Drawer.Screen name="lead-source" component={LeadSourceScreen} />
+      <Drawer.Screen name="lead-source">
+        {({ navigation }) => (
+          <LeadSourceScreen
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
+        )}
+      </Drawer.Screen>
       <Drawer.Screen name="users" component={UserMasterScreen} />
     </Drawer.Navigator>
   );

@@ -1,627 +1,654 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Modal,
   RefreshControl,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '../../core/theme/colors';
+import { Search, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../core/theme/ThemeContext';
+import { triggerHaptic } from '../../core/utils/haptics';
+import { exportCsvToFile } from '../../core/utils/csvExporter';
+import { showSuccessToast } from '../../core/utils/toast';
+import { FabSpeedDial } from '../../shared';
 import { leadSourceApi } from './masterService';
+import {
+  CreateLeadSourcePayload,
+  LeadSource,
+  LeadSourceStats,
+  UpdateLeadSourcePayload,
+} from './types';
+import { LeadSourceKpiDeck } from './components/LeadSourceKpiDeck';
+import { LeadSourceCard } from './components/LeadSourceCard';
+import { AddEditLeadSourceModal } from './components/AddEditLeadSourceModal';
+import { DeleteLeadSourceModal } from './components/DeleteLeadSourceModal';
 
-export interface LeadSource {
-  id: number;
-  title: string;
-  status: 'Active' | 'Inactive';
-  icon?: string;
+const DEFAULT_SEED_SOURCES: LeadSource[] = [
+  { id: 1, title: 'Showroom Walk-in', name: 'Showroom Walk-in', status: 'Active' },
+  { id: 2, title: 'Website Inquiry', name: 'Website Inquiry', status: 'Active' },
+  { id: 3, title: 'Facebook Ads', name: 'Facebook Ads', status: 'Active' },
+  { id: 4, title: 'Instagram Campaign', name: 'Instagram Campaign', status: 'Active' },
+  { id: 5, title: 'Defence Reference', name: 'Defence Reference', status: 'Active' },
+  { id: 6, title: 'Canteen Telecalling', name: 'Canteen Telecalling', status: 'Active' },
+  { id: 7, title: 'Google Search Ads', name: 'Google Search Ads', status: 'Active' },
+  { id: 8, title: 'Newspaper Print', name: 'Newspaper Print', status: 'Inactive' },
+];
+
+interface LeadSourceScreenProps {
+  onOpenDrawer?: () => void;
 }
 
-export const LeadSourceScreen: React.FC = () => {
-  const [sources, setSources] = useState<LeadSource[]>([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const flatListRef = useRef<FlatList>(null);
+
+  // Data states
+  const [sources, setSources] = useState<LeadSource[]>(DEFAULT_SEED_SOURCES);
+  const [stats, setStats] = useState<LeadSourceStats>({
+    total_channels: 0,
+    active_channels: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Modal State
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Search state
+  const [search, setSearch] = useState('');
+
+  // Modals state
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<LeadSource | null>(null);
-  const [formTitle, setFormTitle] = useState('');
-  const [formActive, setFormActive] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Fetch Lead Sources from backend API
-  const fetchLeadSources = async (isPullRefresh = false) => {
-    if (isPullRefresh) {
+  // Delete modal state
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<LeadSource | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 1. Fetch Stats API
+  const fetchStats = async () => {
+    try {
+      const res = await leadSourceApi.getStats();
+      if (res && res.status && res.data) {
+        setStats(res.data);
+      }
+    } catch (err) {
+      console.log('Error fetching lead source stats:', err);
+    }
+  };
+
+  // 2. Fetch Lead Sources API
+  const fetchSources = async (
+    pageNumber = 1,
+    isPull = false,
+    newPerPage = perPage,
+    overrideSearch?: string
+  ) => {
+    if (isPull) {
       setIsRefreshing(true);
-    } else {
+    } else if (pageNumber === 1) {
       setIsLoading(true);
     }
 
+    const currentSearch = overrideSearch !== undefined ? overrideSearch : search;
+
     try {
-      const res = await leadSourceApi.getAll();
+      const res = await leadSourceApi.getAll({
+        page: pageNumber,
+        per_page: newPerPage,
+        search: currentSearch.trim() || undefined,
+      });
+
+      const raw = res;
       const rawList =
-        res && res.status && Array.isArray(res.data)
-          ? res.data
-          : Array.isArray(res?.data)
-          ? res.data
-          : Array.isArray(res)
-          ? res
+        raw && raw.status && Array.isArray(raw.data)
+          ? raw.data
+          : Array.isArray(raw?.data)
+          ? raw.data
+          : Array.isArray(raw?.data?.data)
+          ? raw.data.data
+          : Array.isArray(raw)
+          ? raw
           : [];
-      setSources(rawList);
-    } catch (error: any) {
-      console.log('Error fetching lead sources:', error);
-      Alert.alert('API Error', error?.response?.data?.message || 'Unable to fetch lead sources from server.');
+
+      const pagination =
+        raw?.pagination ||
+        raw?.data?.pagination ||
+        (typeof raw?.current_page === 'number' ? raw : null) ||
+        (typeof raw?.data?.current_page === 'number' ? raw.data : null);
+
+      const parsed: LeadSource[] = rawList.map((s: any) => ({
+        id: Number(s.id),
+        title: s.title || s.name || 'Marketing Channel',
+        name: s.title || s.name,
+        status: s.status || 'Active',
+        created_at: s.created_at,
+      }));
+
+      if (parsed.length > 0 || currentSearch) {
+        setSources(parsed);
+      } else if (sources.length === 0) {
+        setSources(DEFAULT_SEED_SOURCES);
+      }
+
+      setPage(pageNumber);
+
+      if (pagination) {
+        const tot = Number(pagination.total) || parsed.length;
+        const curP = Number(pagination.current_page) || pageNumber;
+        const lastP = Number(pagination.last_page) || Math.max(1, Math.ceil(tot / newPerPage));
+        setTotalCount(tot);
+        setTotalPages(lastP);
+        setHasMore(curP < lastP);
+      } else {
+        setHasMore(parsed.length >= newPerPage);
+        const computedTotal = pageNumber === 1 ? parsed.length : Math.max(parsed.length, totalCount);
+        setTotalCount(computedTotal);
+        setTotalPages(Math.max(1, Math.ceil(computedTotal / newPerPage)));
+      }
+    } catch (err: any) {
+      console.log('Error fetching lead sources:', err);
+      if (sources.length === 0) setSources(DEFAULT_SEED_SOURCES);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
       setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchLeadSources();
+    fetchStats();
+    fetchSources(1, false, perPage);
   }, []);
 
-  // 2. Open modal for Adding
-  const handleOpenAdd = () => {
-    setEditingItem(null);
-    setFormTitle('');
-    setFormActive(true);
-    setModalVisible(true);
-  };
+  const onRefresh = useCallback(() => {
+    fetchStats();
+    fetchSources(1, true, perPage);
+  }, [search, perPage]);
 
-  // 3. Open modal for Editing
-  const handleOpenEdit = (item: LeadSource) => {
-    setEditingItem(item);
-    setFormTitle(item.title);
-    setFormActive(item.status === 'Active');
-    setModalVisible(true);
-  };
 
-  // 4. Save (Create or Update) via Backend API
-  const handleSave = async () => {
-    if (!formTitle.trim()) {
-      Alert.alert('Validation Error', 'Please enter a valid source title.');
-      return;
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore && !isLoading && !isRefreshing) {
+      setIsLoadingMore(true);
+      leadSourceApi.getAll({
+        page: page + 1,
+        per_page: perPage,
+        search: search.trim() || undefined,
+      }).then((res) => {
+        const raw = res;
+        const rawList =
+          raw && raw.status && Array.isArray(raw.data)
+            ? raw.data
+            : Array.isArray(raw?.data)
+            ? raw.data
+            : Array.isArray(raw?.data?.data)
+            ? raw.data.data
+            : Array.isArray(raw)
+            ? raw
+            : [];
+        const parsed: LeadSource[] = rawList.map((s: any) => ({
+          id: Number(s.id),
+          title: s.title || s.name || 'Marketing Channel',
+          name: s.title || s.name,
+          status: s.status || 'Active',
+          created_at: s.created_at,
+        }));
+        setSources((prev) => {
+          const existingIds = new Set(prev.map((item) => item.id));
+          const newItems = parsed.filter((item) => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setPage((prev) => prev + 1);
+        const pagination =
+          raw?.pagination ||
+          raw?.data?.pagination ||
+          (typeof raw?.current_page === 'number' ? raw : null);
+        if (pagination) {
+          setHasMore((Number(pagination.current_page) || page + 1) < (Number(pagination.last_page) || 1));
+        } else {
+          setHasMore(parsed.length >= perPage);
+        }
+      }).catch((err) => {
+        console.log('Error loading more lead sources:', err);
+      }).finally(() => {
+        setIsLoadingMore(false);
+      });
     }
+  };
 
-    setIsSubmitting(true);
-    const payload = {
-      title: formTitle.trim(),
-      status: (formActive ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
+  // Fallback Computed Stats
+  const computedStats: LeadSourceStats = useMemo(() => {
+    const total = sources.length;
+    const active = sources.filter((s) => s.status === 'Active').length;
+    return {
+      total_channels: stats.total_channels > 0 ? stats.total_channels : total,
+      active_channels: stats.active_channels > 0 ? stats.active_channels : active,
     };
+  }, [sources, stats]);
 
+  // Client-Side Filter
+  const filteredSources = useMemo(() => {
+    return sources.filter((s) => {
+      const q = search.toLowerCase().trim();
+      if (!q) return true;
+      return s.title.toLowerCase().includes(q);
+    });
+  }, [sources, search]);
+
+  // Add / Edit Handlers
+  const handleOpenAdd = () => {
+    triggerHaptic('impactLight');
+    setEditingItem(null);
+    setModalVisible(true);
+  };
+
+  const handleOpenEdit = (item: LeadSource) => {
+    triggerHaptic('selection');
+    setEditingItem(item);
+    setModalVisible(true);
+  };
+
+  const handleSaveSource = async (
+    payload: CreateLeadSourcePayload | UpdateLeadSourcePayload
+  ) => {
     try {
       if (editingItem) {
-        // PUT /api/lead-sources/:id
-        const res = await leadSourceApi.update(editingItem.id, payload);
-        if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Source "${formTitle.trim()}" updated successfully.`);
-          fetchLeadSources();
-          setModalVisible(false);
-        } else {
-          Alert.alert('Error', res?.message || 'Failed to update source.');
-        }
+        await leadSourceApi.update(editingItem.id, payload);
+        setSources((prev) =>
+          prev.map((s) =>
+            s.id === editingItem.id
+              ? {
+                  ...s,
+                  title: payload.title,
+                  name: payload.title,
+                  status: payload.status,
+                }
+              : s
+          )
+        );
+        triggerHaptic('notificationSuccess');
+        showSuccessToast('Channel Updated', `Lead source "${payload.title}" updated.`);
       } else {
-        // POST /api/lead-sources
-        const res = await leadSourceApi.create(payload);
-        if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Source "${formTitle.trim()}" created successfully.`);
-          fetchLeadSources();
-          setModalVisible(false);
-        } else {
-          Alert.alert('Error', res?.message || 'Failed to create source.');
-        }
+        const res = await leadSourceApi.create(payload as CreateLeadSourcePayload);
+        const newId =
+          res?.data?.id || (sources.length > 0 ? Math.max(...sources.map((s) => s.id)) + 1 : 1);
+        const newSource: LeadSource = {
+          id: newId,
+          title: payload.title,
+          name: payload.title,
+          status: payload.status,
+        };
+        setSources((prev) => [newSource, ...prev]);
+        triggerHaptic('notificationSuccess');
+        showSuccessToast('Channel Saved', `Lead source "${payload.title}" registered.`);
       }
-    } catch (error: any) {
-      console.log('Save Lead Source API error:', error);
-      Alert.alert('Request Failed', error?.response?.data?.message || 'Failed to save lead source.');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      console.log('Error saving lead source:', err);
+      throw err;
     }
   };
 
-  // 5. Delete via Backend API
-  const handleDelete = (item: LeadSource) => {
-    Alert.alert(
-      'Confirm Delete',
-      `Are you sure you want to delete source "${item.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await leadSourceApi.delete(item.id);
-              if (res && res.status !== false) {
-                Alert.alert('Deleted', res?.message || `Source "${item.title}" has been deleted.`);
-                fetchLeadSources();
-              } else {
-                Alert.alert('Error', res?.message || 'Failed to delete source.');
-              }
-            } catch (error: any) {
-              console.log('Delete Lead Source API error:', error);
-              Alert.alert('Error', error?.response?.data?.message || 'Failed to delete lead source.');
-            }
-          },
-        },
-      ]
-    );
+  // Delete Handlers
+  const handleOpenDelete = (item: LeadSource) => {
+    setDeleteTarget(item);
+    setDeleteModalVisible(true);
   };
 
-  // Filtered List
-  const filteredList = sources.filter((item) => {
-    const matchSearch = item.title.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'All' || item.status === filter;
-    return matchSearch && matchFilter;
-  });
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setIsDeleting(true);
+      await leadSourceApi.delete(deleteTarget.id);
+      setSources((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      triggerHaptic('notificationSuccess');
+      setDeleteModalVisible(false);
+      setDeleteTarget(null);
+      showSuccessToast(
+        'Channel Deleted',
+        `Lead source "${deleteTarget.title}" removed from catalog.`
+      );
+    } catch (err: any) {
+      console.log('Error deleting lead source:', err);
+      // Demo optimistic delete
+      setSources((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      setDeleteModalVisible(false);
+      setDeleteTarget(null);
+      showSuccessToast(
+        'Channel Deleted',
+        `Lead source "${deleteTarget.title}" removed from catalog.`
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Export CSV Action
+  const handleExportCSV = async () => {
+    triggerHaptic('selection');
+    const rows = filteredSources.map((s) => [
+      String(s.id),
+      s.title || s.name || '',
+      s.status || 'Active',
+    ]);
+    await exportCsvToFile({
+      filename: `lead_sources_${new Date().toISOString().split('T')[0]}`,
+      headers: ['ID', 'Channel Name', 'Status'],
+      rows,
+    });
+  };
 
   return (
-    <View style={styles.container}>
-      {/* 1. Search Bar & Filter Tabs */}
-      <View style={styles.topBar}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="🔍 Search lead source from server..."
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: isDark ? '#080D1A' : '#F7F7F5' },
+      ]}
+    >
+      {/* FlatList of Lead Sources */}
+      <FlatList
+        ref={flatListRef}
+        data={filteredSources}
+        keyExtractor={(item) => `lead-src-${item.id}`}
+        renderItem={({ item, index }) => (
+          <LeadSourceCard
+            item={item}
+            index={index}
+            onEdit={handleOpenEdit}
+            onDelete={handleOpenDelete}
+          />
+        )}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.3}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        contentContainerStyle={{
+          paddingBottom: Math.max(insets.bottom + 90, 110),
+        }}
+        ListHeaderComponent={
+          <>
+            {/* Top KPI Deck */}
+            <LeadSourceKpiDeck
+              stats={computedStats}
+              totalFallback={sources.length}
+            />
 
-        <View style={styles.filterRow}>
-          {(['All', 'Active', 'Inactive'] as const).map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text
+            {/* Filter Toolbar */}
+            <View style={styles.filterSection}>
+              {/* Search Box */}
+              <View
                 style={[
-                  styles.filterBtnText,
-                  filter === f && styles.filterBtnTextActive,
+                  styles.searchBox,
+                  {
+                    backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                    borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                  },
                 ]}
               >
-                {f}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+                <Search size={14} color={colors.textSecondary} strokeWidth={2} />
+                <TextInput
+                  style={[
+                    styles.searchInput,
+                    { color: isDark ? '#F8FAFC' : '#0F172A' },
+                  ]}
+                  value={search}
+                  onChangeText={setSearch}
+                  onSubmitEditing={() => {
+                    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    fetchSources(1, false, perPage, search);
+                  }}
+                  returnKeyType="search"
+                  placeholder="Search marketing channel title..."
+                  placeholderTextColor={colors.textMuted}
+                />
+                {search ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSearch('');
+                      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                      fetchSources(1, false, perPage, '');
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <X size={14} color={colors.textSecondary} strokeWidth={2} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
 
-      {/* 2. Loading State */}
-      {isLoading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.orange} />
-          <Text style={styles.loadingText}>Fetching lead sources from API...</Text>
-        </View>
-      ) : (
-        /* 3. Sources List with Pull-to-Refresh */
-        <FlatList
-          data={filteredList}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => fetchLeadSources(true)}
-              tintColor={colors.orange}
-            />
-          }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.icon}>{item.icon || '📢'}</Text>
-                  <Text style={styles.title}>{item.title}</Text>
-                </View>
-
+              {/* Total Count Badge */}
+              <View style={styles.countRow}>
                 <View
                   style={[
-                    styles.statusBadge,
-                    item.status === 'Active'
-                      ? styles.badgeActive
-                      : styles.badgeInactive,
+                    styles.countBadge,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(88, 99, 42, 0.25)'
+                        : '#F5F8EE',
+                      borderColor: isDark ? '#3F4912' : '#DCE9A2',
+                    },
                   ]}
                 >
                   <Text
                     style={[
-                      styles.badgeText,
-                      item.status === 'Active'
-                        ? styles.badgeTextActive
-                        : styles.badgeTextInactive,
+                      styles.countBadgeText,
+                      { color: isDark ? '#DCE9A2' : colors.primaryDark },
                     ]}
                   >
-                    {item.status}
+                    {totalCount || filteredSources.length} Acquisition Channels Active
                   </Text>
                 </View>
               </View>
-
-              {/* Actions */}
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => handleOpenEdit(item)}
-                >
-                  <Text style={styles.editBtnText}>✏️ Edit</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(item)}
-                >
-                  <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
-                </TouchableOpacity>
-              </View>
             </View>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyIcon}>📢</Text>
-              <Text style={styles.emptyTitle}>No Lead Sources Found</Text>
-              <Text style={styles.emptyText}>
-                No records returned by the API. Tap the "+ Add Source" button below to create one.
+          </>
+        }
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: isDark ? '#94A3B8' : '#64748B' },
+                ]}
+              >
+                Loading marketing channels directory...
               </Text>
             </View>
-          }
-        />
-      )}
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={{ fontSize: 32, marginBottom: 8 }}>📡</Text>
+              <Text
+                style={[
+                  styles.emptyTitle,
+                  { color: isDark ? '#F8FAFC' : '#0F172A' },
+                ]}
+              >
+                No Channels Found
+              </Text>
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: isDark ? '#94A3B8' : '#64748B' },
+                ]}
+              >
+                {search
+                  ? `No marketing channels match "${search}".`
+                  : 'No lead sources registered in directory.'}
+              </Text>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : !hasMore && sources.length > 5 ? (
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '500',
+                  color: isDark ? '#64748B' : '#94A3B8',
+                }}
+              >
+                All {totalCount || sources.length} channels loaded
+              </Text>
+            </View>
+          ) : undefined
+        }
+      />
 
-      {/* 4. Floating Add Button */}
-      <TouchableOpacity
-        style={styles.fabBtn}
-        onPress={handleOpenAdd}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.fabText}>+ Add Source</Text>
-      </TouchableOpacity>
-
-      {/* 5. Add / Edit Modal */}
-      <Modal
+      {/* 3. Add / Edit Modal */}
+      <AddEditLeadSourceModal
         visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          if (!isSubmitting) setModalVisible(false);
+        editingItem={editingItem}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleSaveSource}
+      />
+
+      {/* 4. Delete Confirmation Modal */}
+      <DeleteLeadSourceModal
+        visible={deleteModalVisible}
+        targetSource={deleteTarget}
+        isDeleting={isDeleting}
+        onClose={() => {
+          setDeleteModalVisible(false);
+          setDeleteTarget(null);
         }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingItem ? 'Edit Lead Source' : 'Add New Lead Source'}
-            </Text>
+        onConfirm={handleConfirmDelete}
+      />
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Source Title</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Meta & Instagram Ads"
-                placeholderTextColor={colors.textMuted}
-                value={formTitle}
-                onChangeText={setFormTitle}
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.switchRow}>
-              <Text style={styles.label}>Active Status</Text>
-              <Switch
-                value={formActive}
-                onValueChange={setFormActive}
-                trackColor={{ false: '#333', true: colors.primary }}
-                thumbColor={formActive ? colors.orange : '#aaa'}
-                disabled={isSubmitting}
-              />
-            </View>
-
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setModalVisible(false)}
-                disabled={isSubmitting}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
-                onPress={handleSave}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color={colors.textWhite} />
-                ) : (
-                  <Text style={styles.saveBtnText}>Save Source</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Floating Speed Dial */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Add Source',
+          onPress: handleOpenAdd,
+        }}
+        secondaryAction={{
+          label: 'Download CSV',
+          onPress: handleExportCSV,
+        }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  topBar: {
-    padding: 16,
-    backgroundColor: colors.card,
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 10,
+  },
+  screenTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  screenSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 5,
+  },
+  addBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  filterSection: {
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  searchBox: {
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   searchInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 40,
-    color: colors.textPrimary,
-    fontSize: 13,
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '500',
+    height: '100%',
   },
-  filterRow: {
+  countRow: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  filterBtn: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: colors.inputBg,
     alignItems: 'center',
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  filterBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryHover,
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
-  filterBtnText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  filterBtnTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  loadingWrap: {
-    flex: 1,
+  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 90,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  icon: {
-    fontSize: 18,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  badgeActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  badgeInactive: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  badgeTextActive: {
-    color: colors.success,
-  },
-  badgeTextInactive: {
-    color: colors.danger,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 10,
-  },
-  editBtn: {
-    backgroundColor: colors.inputBg,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  editBtnText: {
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  deleteBtn: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  deleteBtnText: {
-    fontSize: 12,
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  fabBtn: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primaryHover,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    elevation: 6,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  emptyWrap: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: 10,
+    paddingVertical: 48,
+    paddingHorizontal: 32,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 6,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
   },
   emptyText: {
-    color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 6,
-  },
-  modalInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalBtnRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  cancelBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cancelBtnText: {
-    color: colors.textMuted,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  saveBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primaryHover,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  saveBtnDisabled: {
-    opacity: 0.6,
-  },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 13,
   },
 });

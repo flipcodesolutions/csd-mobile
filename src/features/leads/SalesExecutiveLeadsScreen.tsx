@@ -11,7 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../core/theme/colors';
+import { triggerHaptic } from '../../core/utils/haptics';
+import { exportCsvToFile } from '../../core/utils/csvExporter';
+import { FabSpeedDial } from '../../shared';
 import { salesExecutiveApi } from './leadService';
 
 interface Props {
@@ -30,6 +34,7 @@ const STATUS_FILTERS = [
 ];
 
 export const SalesExecutiveLeadsScreen: React.FC<Props> = ({ onSelectLead }) => {
+  const insets = useSafeAreaInsets();
   const [leads, setLeads] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -255,7 +260,10 @@ export const SalesExecutiveLeadsScreen: React.FC<Props> = ({ onSelectLead }) => 
           data={leads}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderLeadCard}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom + 90, 110) },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -277,6 +285,37 @@ export const SalesExecutiveLeadsScreen: React.FC<Props> = ({ onSelectLead }) => 
           }
         />
       )}
+
+      {/* Material 3 Expressive FAB Menu */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Refresh Queue',
+          onPress: () => {
+            triggerHaptic('impactLight');
+            fetchLeads(true);
+          },
+        }}
+        secondaryAction={{
+          label: 'Download CSV',
+          onPress: async () => {
+            triggerHaptic('impactLight');
+            const rows = leads.map((l) => [
+              l.id,
+              l.customer_name || l.name || 'N/A',
+              l.phone || 'N/A',
+              l.status || 'New',
+              l.priority || 'Warm',
+              l.brand || 'N/A',
+              l.model || 'N/A',
+            ]);
+            await exportCsvToFile({
+              filename: `assigned_leads_${new Date().toISOString().split('T')[0]}`,
+              headers: ['Lead ID', 'Customer Name', 'Phone', 'Status', 'Priority', 'Brand', 'Model'],
+              rows,
+            });
+          },
+        }}
+      />
     </View>
   );
 };

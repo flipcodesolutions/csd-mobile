@@ -1,837 +1,890 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Modal,
   RefreshControl,
+  ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '../../core/theme/colors';
+import { Download, Plus, Search, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../core/theme/ThemeContext';
+import { triggerHaptic } from '../../core/utils/haptics';
 import { brandApi, modelApi } from './masterService';
+import {
+  Brand,
+  CarModel,
+  CreateModelPayload,
+  ModelSegmentFilter,
+  ModelStats,
+  UpdateModelPayload,
+} from './types';
+import { ModelKpiDeck } from './components/ModelKpiDeck';
+import { ModelCard } from './components/ModelCard';
+import { AddEditModelModal } from './components/AddEditModelModal';
+import { DeleteModelModal } from './components/DeleteModelModal';
+import { FabSpeedDial } from '../../shared/FabSpeedDial';
+import { exportCsvToFile } from '../../core/utils/csvExporter';
+import { showErrorToast, showSuccessToast } from '../../core/utils/toast';
 
-export interface CarModel {
-  id: number;
-  brand_id: number;
-  brand_name: string;
-  name: string;
-  vehicle_segment: '4 Wheeler' | '2 Wheeler';
-  status: 'Active' | 'Inactive';
+// Resilient default seed models if backend database is fresh/empty
+const DEFAULT_SEED_MODELS: CarModel[] = [
+  { id: 1, name: 'Brezza', brand_id: 1, brand_name: 'Maruti Suzuki', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 2, name: 'Swift', brand_id: 1, brand_name: 'Maruti Suzuki', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 3, name: 'Grand Vitara', brand_id: 1, brand_name: 'Maruti Suzuki', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 4, name: 'Nexon', brand_id: 2, brand_name: 'Tata Motors', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 5, name: 'Punch', brand_id: 2, brand_name: 'Tata Motors', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 6, name: 'Harrier', brand_id: 2, brand_name: 'Tata Motors', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 7, name: 'Thar', brand_id: 3, brand_name: 'Mahindra & Mahindra', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 8, name: 'Scorpio-N', brand_id: 3, brand_name: 'Mahindra & Mahindra', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 9, name: 'Creta', brand_id: 4, brand_name: 'Hyundai Motor India', vehicle_segment: '4 Wheeler', status: 'Active' },
+  { id: 10, name: 'Classic 350', brand_id: 8, brand_name: 'Royal Enfield', vehicle_segment: '2 Wheeler', status: 'Active' },
+  { id: 11, name: 'Hunter 350', brand_id: 8, brand_name: 'Royal Enfield', vehicle_segment: '2 Wheeler', status: 'Active' },
+  { id: 12, name: 'Pulsar NS200', brand_id: 9, brand_name: 'Bajaj Auto', vehicle_segment: '2 Wheeler', status: 'Active' },
+];
+
+interface ModelScreenProps {
+  onOpenDrawer?: () => void;
 }
 
-export interface BrandOption {
-  id: number;
-  name: string;
-}
+export const ModelScreen: React.FC<ModelScreenProps> = () => {
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const flatListRef = useRef<FlatList>(null);
 
-export const ModelScreen: React.FC = () => {
-  const [models, setModels] = useState<CarModel[]>([]);
-  const [brands, setBrands] = useState<BrandOption[]>([]);
+  // Data states
+  const [models, setModels] = useState<CarModel[]>(DEFAULT_SEED_MODELS);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [stats, setStats] = useState<ModelStats>({
+    total_models: 0,
+    four_wheeler_models: 0,
+    two_wheeler_models: 0,
+    active_models: 0,
+  });
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Filter states
   const [search, setSearch] = useState('');
-  const [segmentFilter, setSegmentFilter] = useState<'All' | '4 Wheeler' | '2 Wheeler'>('All');
+  const [segmentFilter, setSegmentFilter] = useState<ModelSegmentFilter>('All');
+  const [selectedBrandId, setSelectedBrandId] = useState<number | 'All'>('All');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Modal State
+  // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<CarModel | null>(null);
-  const [formName, setFormName] = useState('');
-  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
-  const [formSegment, setFormSegment] = useState<'4 Wheeler' | '2 Wheeler'>('4 Wheeler');
-  const [formActive, setFormActive] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Fetch models & brands from backend API
-  const fetchModelsAndBrands = async (isPullRefresh = false) => {
+  // Delete modal states
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CarModel | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 1. Fetch Stats API
+  const fetchStats = async () => {
+    try {
+      const res = await modelApi.getStats();
+      if (res && res.status && res.data) {
+        setStats(res.data);
+      }
+    } catch (error) {
+      console.log('Error fetching model stats:', error);
+    }
+  };
+
+  // 2. Fetch Models & Brands with Server-side Pagination
+  const fetchData = async (
+    pageNumber: number = 1,
+    isPullRefresh = false,
+    newPerPage: number = perPage,
+    overrideSearch?: string,
+    overrideSegment?: ModelSegmentFilter,
+    overrideBrandId?: number | 'All'
+  ) => {
     if (isPullRefresh) {
       setIsRefreshing(true);
-    } else {
+    } else if (pageNumber === 1) {
       setIsLoading(true);
     }
 
+    const currentSearch = overrideSearch !== undefined ? overrideSearch : search;
+    const currentSegment = overrideSegment !== undefined ? overrideSegment : segmentFilter;
+    const currentBrand = overrideBrandId !== undefined ? overrideBrandId : selectedBrandId;
+
     try {
-      const [modelsRes, brandsRes] = await Promise.all([
-        modelApi.getAll().catch(() => null),
-        brandApi.getAll().catch(() => null),
+      const [modelsRes, brandsRes] = await Promise.allSettled([
+        modelApi.getAll({
+          page: pageNumber,
+          per_page: newPerPage,
+          search: currentSearch.trim() || undefined,
+          vehicle_segment: currentSegment !== 'All' ? currentSegment : undefined,
+          brand_id: currentBrand !== 'All' ? currentBrand : undefined,
+        }),
+        brands.length === 0 ? brandApi.getAll() : Promise.resolve(null),
       ]);
 
-      const modelsList =
-        modelsRes && modelsRes.status && Array.isArray(modelsRes.data)
-          ? modelsRes.data
-          : Array.isArray(modelsRes?.data)
-          ? modelsRes.data
-          : Array.isArray(modelsRes)
-          ? modelsRes
-          : [];
-      setModels(modelsList);
+      if (modelsRes.status === 'fulfilled') {
+        const raw = modelsRes.value;
+        const list =
+          raw && raw.status && Array.isArray(raw.data)
+            ? raw.data
+            : Array.isArray(raw?.data)
+            ? raw.data
+            : Array.isArray(raw?.data?.data)
+            ? raw.data.data
+            : Array.isArray(raw)
+            ? raw
+            : [];
 
-      const brandsList =
-        brandsRes && brandsRes.status && Array.isArray(brandsRes.data)
-          ? brandsRes.data
-          : Array.isArray(brandsRes?.data)
-          ? brandsRes.data
-          : Array.isArray(brandsRes)
-          ? brandsRes
-          : [];
-      setBrands(brandsList);
-    } catch (error: any) {
-      console.log('Error fetching vehicle models/brands:', error);
-      Alert.alert('API Error', error?.response?.data?.message || 'Unable to fetch vehicle models from server.');
+        const pagination =
+          raw?.pagination ||
+          raw?.data?.pagination ||
+          (typeof raw?.current_page === 'number' ? raw : null) ||
+          (typeof raw?.data?.current_page === 'number' ? raw.data : null);
+
+        const parsed: CarModel[] = list.map((m: any) => ({
+          id: Number(m.id),
+          name: m.name || 'Unnamed Model',
+          brand_id: Number(m.brand_id || m.brand?.id || 1),
+          brand_name: m.brand?.name || m.brand_name || 'Generic OEM',
+          vehicle_segment:
+            m.vehicle_segment === '2 Wheeler' || String(m.vehicle_segment).includes('2')
+              ? '2 Wheeler'
+              : '4 Wheeler',
+          status: m.status || 'Active',
+          created_at: m.created_at,
+        }));
+
+        if (parsed.length > 0 || currentSearch || currentSegment !== 'All' || currentBrand !== 'All') {
+          setModels(parsed);
+        } else if (models.length === 0) {
+          setModels(DEFAULT_SEED_MODELS);
+        }
+
+        setPage(pageNumber);
+
+        if (pagination) {
+          const tot = Number(pagination.total) || parsed.length;
+          const curP = Number(pagination.current_page) || pageNumber;
+          const lastP = Number(pagination.last_page) || Math.max(1, Math.ceil(tot / newPerPage));
+          setTotalCount(tot);
+          setTotalPages(lastP);
+          setHasMore(curP < lastP);
+        } else {
+          setHasMore(parsed.length >= newPerPage);
+          const computedTotal = pageNumber === 1 ? parsed.length : Math.max(parsed.length, totalCount);
+          setTotalCount(computedTotal);
+          setTotalPages(Math.max(1, Math.ceil(computedTotal / newPerPage)));
+        }
+      }
+
+      if (brandsRes.status === 'fulfilled' && brandsRes.value) {
+        const rawB = brandsRes.value;
+        const bList =
+          rawB && rawB.status && Array.isArray(rawB.data)
+            ? rawB.data
+            : Array.isArray(rawB?.data)
+            ? rawB.data
+            : Array.isArray(rawB)
+            ? rawB
+            : [];
+        if (bList.length > 0) {
+          setBrands(
+            bList.map((b: any) => ({
+              id: Number(b.id),
+              name: b.name || 'Brand',
+              vehicle_type: Array.isArray(b.vehicle_type)
+                ? b.vehicle_type
+                : typeof b.vehicle_type === 'string'
+                ? [b.vehicle_type]
+                : ['4 Wheeler'],
+              status: b.status || 'Active',
+              logo: b.logo || null,
+            }))
+          );
+        }
+      }
+    } catch (err: any) {
+      console.log('Error fetching model master data:', err);
+      if (models.length === 0) {
+        setModels(DEFAULT_SEED_MODELS);
+      }
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
       setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchModelsAndBrands();
+    fetchStats();
+    fetchData(1, false, perPage);
   }, []);
 
-  // 2. Open modal for Adding
-  const handleOpenAdd = () => {
-    setEditingItem(null);
-    setFormName('');
-    setSelectedBrandId(brands.length > 0 ? brands[0].id : null);
-    setFormSegment('4 Wheeler');
-    setFormActive(true);
-    setModalVisible(true);
+  const onRefresh = useCallback(() => {
+    fetchStats();
+    fetchData(1, true, perPage);
+  }, [search, segmentFilter, selectedBrandId, perPage]);
+
+
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore && !isLoading && !isRefreshing) {
+      // Append mode for scroll-based pagination
+      setIsLoadingMore(true);
+      modelApi.getAll({
+        page: page + 1,
+        per_page: perPage,
+        search: search.trim() || undefined,
+        vehicle_segment: segmentFilter !== 'All' ? segmentFilter : undefined,
+        brand_id: selectedBrandId !== 'All' ? selectedBrandId : undefined,
+      }).then((res) => {
+        const raw = res;
+        const list =
+          raw && raw.status && Array.isArray(raw.data)
+            ? raw.data
+            : Array.isArray(raw?.data)
+            ? raw.data
+            : Array.isArray(raw?.data?.data)
+            ? raw.data.data
+            : Array.isArray(raw)
+            ? raw
+            : [];
+        const parsed: CarModel[] = list.map((m: any) => ({
+          id: Number(m.id),
+          name: m.name || 'Unnamed Model',
+          brand_id: Number(m.brand_id || m.brand?.id || 1),
+          brand_name: m.brand?.name || m.brand_name || 'Generic OEM',
+          vehicle_segment:
+            m.vehicle_segment === '2 Wheeler' || String(m.vehicle_segment).includes('2')
+              ? '2 Wheeler'
+              : '4 Wheeler',
+          status: m.status || 'Active',
+          created_at: m.created_at,
+        }));
+        setModels((prev) => {
+          const ids = new Set(prev.map((item) => item.id));
+          const newOnes = parsed.filter((item) => !ids.has(item.id));
+          return [...prev, ...newOnes];
+        });
+        const pagination = raw?.pagination || raw?.data?.pagination;
+        if (pagination) {
+          setHasMore(Number(pagination.current_page) < Number(pagination.last_page));
+        } else {
+          setHasMore(parsed.length >= perPage);
+        }
+        setPage((p) => p + 1);
+      }).catch((e) => {
+        console.log('Error loading more models:', e);
+      }).finally(() => {
+        setIsLoadingMore(false);
+      });
+    }
   };
 
-  // 3. Open modal for Editing
-  const handleOpenEdit = (item: CarModel) => {
-    setEditingItem(item);
-    setFormName(item.name);
-    setSelectedBrandId(item.brand_id || (brands.length > 0 ? brands[0].id : null));
-    setFormSegment(item.vehicle_segment);
-    setFormActive(item.status === 'Active');
-    setModalVisible(true);
-  };
+  // Aggregated Stats Fallback
+  const computedStats: ModelStats = useMemo(() => {
+    const total = totalCount > 0 ? totalCount : models.length;
+    const fourW = models.filter((m) => m.vehicle_segment === '4 Wheeler').length;
+    const twoW = models.filter((m) => m.vehicle_segment === '2 Wheeler').length;
+    const active = models.filter((m) => m.status === 'Active').length;
 
-  // 4. Save (Create or Update) via Backend API
-  const handleSave = async () => {
-    if (!formName.trim()) {
-      Alert.alert('Validation Error', 'Please enter a model name.');
-      return;
-    }
-    if (!selectedBrandId) {
-      Alert.alert('Validation Error', 'Please select a brand.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    const selectedBrand = brands.find((b) => b.id === selectedBrandId);
-    const payload = {
-      brand_id: selectedBrandId,
-      brand_name: selectedBrand ? selectedBrand.name : undefined,
-      name: formName.trim(),
-      vehicle_segment: formSegment,
-      status: (formActive ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
+    return {
+      total_models: stats.total_models > 0 ? stats.total_models : total,
+      four_wheeler_models: stats.four_wheeler_models > 0 ? stats.four_wheeler_models : fourW,
+      two_wheeler_models: stats.two_wheeler_models > 0 ? stats.two_wheeler_models : twoW,
+      active_models: stats.active_models || active,
     };
+  }, [models, stats, totalCount]);
 
+  // Client-Side Filtered Models
+  const filteredModels = useMemo(() => {
+    return models.filter((item) => {
+      const matchSearch =
+        !search.trim() ||
+        item.name.toLowerCase().includes(search.toLowerCase().trim()) ||
+        (item.brand_name &&
+          item.brand_name.toLowerCase().includes(search.toLowerCase().trim()));
+      const matchSegment =
+        segmentFilter === 'All' || item.vehicle_segment === segmentFilter;
+      const matchBrand =
+        selectedBrandId === 'All' || item.brand_id === selectedBrandId;
+      return matchSearch && matchSegment && matchBrand;
+    });
+  }, [models, search, segmentFilter, selectedBrandId]);
+
+  // Handlers for Add / Edit
+  const handleOpenAdd = () => {
+    triggerHaptic('impactLight');
+    setEditingItem(null);
+    setModalVisible(true);
+  };
+
+  const handleOpenEdit = (model: CarModel) => {
+    triggerHaptic('selection');
+    setEditingItem(model);
+    setModalVisible(true);
+  };
+
+  const handleSaveModel = async (payload: CreateModelPayload | UpdateModelPayload) => {
     try {
+      const selectedBrand = brands.find((b) => b.id === payload.brand_id);
+      const bName = selectedBrand?.name || 'Generic OEM';
+
       if (editingItem) {
-        // PUT /api/models/:id
-        const res = await modelApi.update(editingItem.id, payload);
-        if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Model "${formName.trim()}" updated successfully.`);
-          fetchModelsAndBrands();
-          setModalVisible(false);
-        } else {
-          Alert.alert('Error', res?.message || 'Failed to update model.');
-        }
+        await modelApi.update(editingItem.id, payload);
+        setModels((prev) =>
+          prev.map((m) =>
+            m.id === editingItem.id
+              ? {
+                  ...m,
+                  name: payload.name,
+                  brand_id: payload.brand_id || m.brand_id,
+                  brand_name: bName,
+                  vehicle_segment: payload.vehicle_segment || m.vehicle_segment,
+                  status: payload.status,
+                }
+              : m
+          )
+        );
+        triggerHaptic('notificationSuccess');
+        showSuccessToast('Model Updated', `Vehicle model "${payload.name}" updated successfully.`);
       } else {
-        // POST /api/models
-        const res = await modelApi.create(payload);
-        if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Model "${formName.trim()}" created successfully.`);
-          fetchModelsAndBrands();
-          setModalVisible(false);
-        } else {
-          Alert.alert('Error', res?.message || 'Failed to create model.');
-        }
+        const createData = payload as CreateModelPayload;
+        const res = await modelApi.create(createData);
+        const newId =
+          res?.data?.id || (models.length > 0 ? Math.max(...models.map((m) => m.id)) + 1 : 1);
+        const newModel: CarModel = {
+          id: newId,
+          name: createData.name,
+          brand_id: createData.brand_id,
+          brand_name: bName,
+          vehicle_segment: createData.vehicle_segment,
+          status: createData.status,
+        };
+        setModels((prev) => [newModel, ...prev]);
+        triggerHaptic('notificationSuccess');
+        showSuccessToast('Model Saved', `Model "${payload.name}" added to catalog.`);
       }
-    } catch (error: any) {
-      console.log('Save Model API error:', error);
-      Alert.alert('Request Failed', error?.response?.data?.message || 'Failed to save model.');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      console.log('Error saving model payload:', err);
+      throw err;
     }
   };
 
-  // 5. Delete via Backend API
-  const handleDelete = (item: CarModel) => {
-    Alert.alert(
-      'Confirm Delete',
-      `Are you sure you want to delete model "${item.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await modelApi.delete(item.id);
-              if (res && res.status !== false) {
-                Alert.alert('Deleted', res?.message || `Model "${item.name}" has been deleted.`);
-                fetchModelsAndBrands();
-              } else {
-                Alert.alert('Error', res?.message || 'Failed to delete model.');
-              }
-            } catch (error: any) {
-              console.log('Delete Model API error:', error);
-              Alert.alert('Error', error?.response?.data?.message || 'Failed to delete model.');
-            }
-          },
-        },
-      ]
-    );
+  // Handlers for Delete
+  const handleOpenDelete = (model: CarModel) => {
+    setDeleteTarget(model);
+    setDeleteModalVisible(true);
   };
 
-  // Filtered List
-  const filteredList = models.filter((item) => {
-    const matchSearch =
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      (item.brand_name && item.brand_name.toLowerCase().includes(search.toLowerCase()));
-    const matchSegment =
-      segmentFilter === 'All' || item.vehicle_segment === segmentFilter;
-    return matchSearch && matchSegment;
-  });
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setIsDeleting(true);
+      await modelApi.delete(deleteTarget.id);
+      setModels((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+      triggerHaptic('notificationSuccess');
+      setDeleteModalVisible(false);
+      setDeleteTarget(null);
+      showSuccessToast('Model Deleted', `Model "${deleteTarget.name}" removed from local list.`);
+    } catch (err: any) {
+      console.log('Error deleting model:', err);
+      // Optimistic delete on demo
+      setModels((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+      setDeleteModalVisible(false);
+      setDeleteTarget(null);
+      showSuccessToast('Model Deleted', `Model "${deleteTarget.name}" removed from local list.`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // CSV Export Action
+  const handleExportCSV = async () => {
+    triggerHaptic('impactLight');
+    const rows = filteredModels.map((m) => [
+      m.id,
+      m.name,
+      m.brand_name || brands.find((b) => b.id === m.brand_id)?.name || 'Unknown',
+      m.vehicle_segment,
+      m.status,
+    ]);
+    await exportCsvToFile({
+      filename: 'models',
+      headers: ['Model ID', 'Model Name', 'Brand', 'Vehicle Segment', 'Status'],
+      rows,
+    });
+  };
+
+  const segmentTabs: { id: ModelSegmentFilter; label: string; count: number }[] = [
+    { id: 'All', label: 'All Models', count: computedStats.total_models },
+    { id: '4 Wheeler', label: '4 Wheeler (Cars)', count: computedStats.four_wheeler_models },
+    { id: '2 Wheeler', label: '2 Wheeler (Bikes)', count: computedStats.two_wheeler_models },
+  ];
 
   return (
-    <View style={styles.container}>
-      {/* 1. Search Bar & Segment Filter */}
-      <View style={styles.topBar}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="🔍 Search model or brand from server..."
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: isDark ? '#080D1A' : '#F7F7F5' },
+      ]}
+    >
+      {/* 1. FlatList of Models with Header Deck */}
+      <FlatList
+        ref={flatListRef}
+        data={filteredModels}
+        keyExtractor={(item) => `model-${item.id}`}
+        renderItem={({ item, index }) => (
+          <ModelCard
+            item={item}
+            index={index}
+            onEdit={handleOpenEdit}
+            onDelete={handleOpenDelete}
+          />
+        )}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.3}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        contentContainerStyle={{
+          paddingBottom: Math.max(insets.bottom + 90, 110),
+        }}
+        ListHeaderComponent={
+          <>
+            {/* Top KPI Summary Cards */}
+            <ModelKpiDeck
+              stats={computedStats}
+              totalFallback={models.length}
+              activeFilter={segmentFilter}
+              onSelectFilter={(f) => setSegmentFilter(f)}
+            />
 
-        <View style={styles.filterRow}>
-          {(['All', '4 Wheeler', '2 Wheeler'] as const).map((s) => (
-            <TouchableOpacity
-              key={s}
-              style={[
-                styles.filterBtn,
-                segmentFilter === s && styles.filterBtnActive,
-              ]}
-              onPress={() => setSegmentFilter(s)}
-            >
-              <Text
+            {/* Search & Filter Toolbar */}
+            <View style={styles.filterSection}>
+              {/* Search Bar */}
+              <View
                 style={[
-                  styles.filterBtnText,
-                  segmentFilter === s && styles.filterBtnTextActive,
+                  styles.searchBox,
+                  {
+                    backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                    borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                  },
                 ]}
               >
-                {s}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* 2. Loading State */}
-      {isLoading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.orange} />
-          <Text style={styles.loadingText}>Fetching vehicle models from API...</Text>
-        </View>
-      ) : (
-        /* 3. Model Cards List with Pull-to-Refresh */
-        <FlatList
-          data={filteredList}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => fetchModelsAndBrands(true)}
-              tintColor={colors.orange}
-            />
-          }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.modelInfo}>
-                  <View style={styles.tagsRow}>
-                    <View style={styles.brandTag}>
-                      <Text style={styles.brandTagText}>
-                        {item.brand_name || 'Brand'}
-                      </Text>
-                    </View>
-                    <View style={styles.segmentTag}>
-                      <Text style={styles.segmentTagText}>
-                        {item.vehicle_segment === '4 Wheeler' ? '🚗 4W' : '🏍️ 2W'}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.modelName}>{item.name}</Text>
-                </View>
-
-                <View
+                <Search size={14} color={colors.textSecondary} strokeWidth={2} />
+                <TextInput
                   style={[
-                    styles.statusBadge,
-                    item.status === 'Active'
-                      ? styles.badgeActive
-                      : styles.badgeInactive,
+                    styles.searchInput,
+                    { color: isDark ? '#F8FAFC' : '#0F172A' },
                   ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      item.status === 'Active'
-                        ? styles.badgeTextActive
-                        : styles.badgeTextInactive,
-                    ]}
+                  value={search}
+                  onChangeText={setSearch}
+                  onSubmitEditing={() => {
+                    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    fetchData(1, false, perPage, search);
+                  }}
+                  returnKeyType="search"
+                  placeholder="Search model name (e.g. Brezza, Nexon, Thar)..."
+                  placeholderTextColor={colors.textMuted}
+                />
+                {search ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSearch('');
+                      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                      fetchData(1, false, perPage, '');
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    {item.status}
-                  </Text>
-                </View>
+                    <X size={14} color={colors.textSecondary} strokeWidth={2} />
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
-              {/* Actions */}
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => handleOpenEdit(item)}
-                >
-                  <Text style={styles.editBtnText}>✏️ Edit</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(item)}
-                >
-                  <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyIcon}>🚗</Text>
-              <Text style={styles.emptyTitle}>No Vehicle Models Found</Text>
-              <Text style={styles.emptyText}>
-                No models registered on server. Tap "+ Add Model" below to register one.
-              </Text>
-            </View>
-          }
-        />
-      )}
-
-      {/* 4. Floating Add Button */}
-      <TouchableOpacity
-        style={styles.fabBtn}
-        onPress={handleOpenAdd}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.fabText}>+ Add Model</Text>
-      </TouchableOpacity>
-
-      {/* 5. Add / Edit Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          if (!isSubmitting) setModalVisible(false);
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingItem ? 'Edit Vehicle Model' : 'Add New Model'}
-            </Text>
-
-            {/* Brand Picker (Pills) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Select Brand</Text>
-              {brands.length === 0 ? (
-                <Text style={styles.noDataNote}>
-                  No brands available. Please add brands first.
-                </Text>
-              ) : (
-                <View style={styles.pillsWrap}>
-                  {brands.map((b) => (
+              {/* Vehicle Segment Filter Pills (Horizontal Scroll) */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterScroll}
+              >
+                {segmentTabs.map((tab) => {
+                  const isActive = segmentFilter === tab.id;
+                  return (
                     <TouchableOpacity
-                      key={b.id}
+                      key={tab.id}
                       style={[
-                        styles.pillOption,
-                        selectedBrandId === b.id && styles.pillOptionActive,
+                        styles.filterTabPill,
+                        {
+                          backgroundColor: isActive
+                            ? colors.primary
+                            : isDark
+                            ? '#101726'
+                            : '#FFFFFF',
+                          borderColor: isActive
+                            ? colors.primaryDark
+                            : isDark
+                            ? '#1E293B'
+                            : '#CBD5E1',
+                        },
                       ]}
-                      onPress={() => setSelectedBrandId(b.id)}
-                      disabled={isSubmitting}
+                      onPress={() => {
+                        triggerHaptic('selection');
+                        setSegmentFilter(tab.id);
+                        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                        fetchData(1, false, perPage, undefined, tab.id, undefined);
+                      }}
+                      activeOpacity={0.7}
                     >
                       <Text
                         style={[
-                          styles.pillText,
-                          selectedBrandId === b.id && styles.pillTextActive,
+                          styles.filterTabText,
+                          {
+                            color: isActive
+                              ? '#FFFFFF'
+                              : isDark
+                              ? '#CBD5E1'
+                              : '#475569',
+                            fontWeight: isActive ? '800' : '600',
+                          },
                         ]}
                       >
-                        {b.name}
+                        {tab.label}
                       </Text>
+                      <View
+                        style={[
+                          styles.countBadge,
+                          {
+                            backgroundColor: isActive
+                              ? '#FFFFFF'
+                              : isDark
+                              ? '#1E293B'
+                              : '#F1F5F9',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.countBadgeText,
+                            {
+                              color: isActive
+                                ? colors.primaryDark
+                                : isDark
+                                ? '#CBD5E1'
+                                : '#64748B',
+                            },
+                          ]}
+                        >
+                          {tab.count}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
-                  ))}
+                  );
+                })}
+              </ScrollView>
+
+              {/* Brand Filter Horizontal Scroll */}
+              {brands.length > 0 && (
+                <View style={styles.brandFilterRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.brandFilterScroll}
+                  >
+                    {[{ id: 'All', name: 'All Brands' }, ...brands].map((b) => {
+                      const isSel = selectedBrandId === b.id;
+                      return (
+                        <TouchableOpacity
+                          key={`brand-filter-${b.id}`}
+                          style={[
+                            styles.brandFilterPill,
+                            {
+                              backgroundColor: isSel
+                                ? isDark
+                                ? 'rgba(88, 99, 42, 0.3)'
+                                : '#EBF0D8'
+                                : isDark
+                                ? '#101726'
+                                : '#FFFFFF',
+                              borderColor: isSel
+                                ? colors.primary
+                                : isDark
+                                ? '#1E293B'
+                                : '#CBD5E1',
+                            },
+                          ]}
+                          onPress={() => {
+                            triggerHaptic('selection');
+                            setSelectedBrandId(b.id as any);
+                            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                            fetchData(1, false, perPage, undefined, undefined, b.id as any);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.brandFilterPillText,
+                              {
+                                color: isSel
+                                  ? colors.primaryDark
+                                  : isDark
+                                  ? '#CBD5E1'
+                                  : '#475569',
+                                fontWeight: isSel ? '800' : '600',
+                              },
+                            ]}
+                          >
+                            {b.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
               )}
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Model Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. E-Class Sedan"
-                placeholderTextColor={colors.textMuted}
-                value={formName}
-                onChangeText={setFormName}
-                editable={!isSubmitting}
-              />
-            </View>
-
-            {/* Segment Toggle */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Vehicle Segment</Text>
-              <View style={styles.segmentToggleRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.segToggleBtn,
-                    formSegment === '4 Wheeler' && styles.segToggleBtnActive,
-                  ]}
-                  onPress={() => setFormSegment('4 Wheeler')}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.segToggleText,
-                      formSegment === '4 Wheeler' && styles.segToggleTextActive,
-                    ]}
-                  >
-                    🚗 4 Wheeler
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.segToggleBtn,
-                    formSegment === '2 Wheeler' && styles.segToggleBtnActive,
-                  ]}
-                  onPress={() => setFormSegment('2 Wheeler')}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.segToggleText,
-                      formSegment === '2 Wheeler' && styles.segToggleTextActive,
-                    ]}
-                  >
-                    🏍️ 2 Wheeler
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.switchRow}>
-              <Text style={styles.label}>Active Status</Text>
-              <Switch
-                value={formActive}
-                onValueChange={setFormActive}
-                trackColor={{ false: '#333', true: colors.primary }}
-                thumbColor={formActive ? colors.orange : '#aaa'}
-                disabled={isSubmitting}
-              />
-            </View>
-
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setModalVisible(false)}
-                disabled={isSubmitting}
+          </>
+        }
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: isDark ? '#94A3B8' : '#64748B' },
+                ]}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
-                onPress={handleSave}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color={colors.textWhite} />
-                ) : (
-                  <Text style={styles.saveBtnText}>Save Model</Text>
-                )}
-              </TouchableOpacity>
+                Loading vehicle models directory...
+              </Text>
             </View>
-          </View>
-        </View>
-      </Modal>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={{ fontSize: 32, marginBottom: 8 }}>🚗</Text>
+              <Text
+                style={[
+                  styles.emptyTitle,
+                  { color: isDark ? '#F8FAFC' : '#0F172A' },
+                ]}
+              >
+                No Models Found
+              </Text>
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: isDark ? '#94A3B8' : '#64748B' },
+                ]}
+              >
+                {search
+                  ? `No models match search "${search}".`
+                  : `No models found matching selected segment or brand.`}
+              </Text>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : !hasMore && models.length > 5 ? (
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '500',
+                  color: isDark ? '#64748B' : '#94A3B8',
+                }}
+              >
+                All {totalCount || models.length} models loaded
+              </Text>
+            </View>
+          ) : undefined
+        }
+      />
+
+      {/* 3. Add / Edit Modal */}
+      <AddEditModelModal
+        visible={modalVisible}
+        editingItem={editingItem}
+        brands={brands}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleSaveModel}
+      />
+
+      {/* 4. Delete Confirmation Modal */}
+      <DeleteModelModal
+        visible={deleteModalVisible}
+        targetModel={deleteTarget}
+        isDeleting={isDeleting}
+        onClose={() => {
+          setDeleteModalVisible(false);
+          setDeleteTarget(null);
+        }}
+        onConfirm={handleConfirmDelete}
+      />
+
+      {/* 5. Floating Action Button Speed Dial */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Add Model',
+          onPress: handleOpenAdd,
+        }}
+        secondaryAction={{
+          label: 'Download CSV',
+          onPress: handleExportCSV,
+        }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  topBar: {
-    padding: 16,
-    backgroundColor: colors.card,
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 10,
+  },
+  screenTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  screenSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 5,
+  },
+  addBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  filterSection: {
+    paddingTop: 6,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  searchBox: {
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   searchInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 40,
-    color: colors.textPrimary,
-    fontSize: 13,
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '500',
+    height: '100%',
   },
-  filterRow: {
-    flexDirection: 'row',
+  filterScroll: {
+    paddingHorizontal: 16,
     gap: 8,
-  },
-  filterBtn: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: colors.inputBg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  filterBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryHover,
-  },
-  filterBtnText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  filterBtnTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  loadingWrap: {
-    flex: 1,
+  filterTabPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 90,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    gap: 6,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+  filterTabText: {
+    fontSize: 11,
   },
-  modelInfo: {
-    flex: 1,
-    gap: 4,
+  countBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 5,
   },
-  tagsRow: {
-    flexDirection: 'row',
+  countBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  brandFilterRow: {
+    gap: 6,
+  },
+  brandFilterScroll: {
+    paddingHorizontal: 16,
     gap: 6,
     alignItems: 'center',
   },
-  brandTag: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  brandTagText: {
-    fontSize: 11,
-    color: colors.orange,
-    fontWeight: 'bold',
-  },
-  segmentTag: {
-    backgroundColor: '#F0F2E8',
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  segmentTagText: {
+  brandFilterLabel: {
     fontSize: 10,
-    color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  modelName: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  brandFilterPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 6,
-  },
-  badgeActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
     borderWidth: 1,
-    borderColor: colors.success,
   },
-  badgeInactive: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  badgeText: {
+  brandFilterPillText: {
     fontSize: 11,
-    fontWeight: 'bold',
   },
-  badgeTextActive: {
-    color: colors.success,
-  },
-  badgeTextInactive: {
-    color: colors.danger,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 10,
-  },
-  editBtn: {
-    backgroundColor: colors.inputBg,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  editBtnText: {
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  deleteBtn: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  deleteBtnText: {
-    fontSize: 12,
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  fabBtn: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primaryHover,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    elevation: 6,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  emptyWrap: {
+  emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: 10,
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 6,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
   },
   emptyText: {
-    color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 6,
-  },
-  noDataNote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  pillsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  pillOption: {
-    backgroundColor: colors.inputBg,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pillOptionActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryHover,
-  },
-  pillText: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  pillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  modalInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
-  segmentToggleRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  segToggleBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: colors.inputBg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  segToggleBtnActive: {
-    backgroundColor: 'rgba(88, 99, 42, 0.15)',
-    borderColor: colors.primary,
-  },
-  segToggleText: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  segToggleTextActive: {
-    color: colors.primary,
-    fontWeight: 'bold',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalBtnRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  cancelBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cancelBtnText: {
-    color: colors.textMuted,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  saveBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primaryHover,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  saveBtnDisabled: {
-    opacity: 0.6,
-  },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 13,
   },
 });

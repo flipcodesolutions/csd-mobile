@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../core/theme/colors';
+import { triggerHaptic } from '../../core/utils/haptics';
+import { FabSpeedDial } from '../../shared';
 import { ScreenName } from '../../core/navigation/Drawer';
 import { leadApi } from '../leads/leadService';
 import {
@@ -44,6 +47,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
   onNavigate,
   userRole = 'Super Admin',
 }) => {
+  const insets = useSafeAreaInsets();
   const [selectedRole, setSelectedRole] = useState(userRole || 'Super Admin');
 
   // Update selectedRole when userRole prop changes
@@ -127,64 +131,87 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
   }, []);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => fetchDashboardStats(true)}
-          tintColor={colors.orange}
-        />
-      }
-    >
-      {/* Role Switcher Toolbar */}
-      <View style={styles.roleBar}>
-        <Text style={styles.roleBarTitle}>ROLE DASHBOARD VIEW:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rolePillScroll}>
-          {ROLES.map((r) => {
-            const isActive = selectedRole === r.id;
-            return (
-              <TouchableOpacity
-                key={r.id}
-                style={[styles.rolePill, isActive && styles.rolePillActive]}
-                onPress={() => setSelectedRole(r.id)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.rolePillText, isActive && styles.rolePillTextActive]}>
-                  {r.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom + 90, 110) },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => fetchDashboardStats(true)}
+            tintColor={colors.orange}
+          />
+        }
+      >
+        {/* Role Switcher Toolbar */}
+        <View style={styles.roleBar}>
+          <Text style={styles.roleBarTitle}>ROLE DASHBOARD VIEW:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rolePillScroll}>
+            {ROLES.map((r) => {
+              const isActive = selectedRole === r.id;
+              return (
+                <TouchableOpacity
+                  key={r.id}
+                  style={[styles.rolePill, isActive && styles.rolePillActive]}
+                  onPress={() => setSelectedRole(r.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.rolePillText, isActive && styles.rolePillTextActive]}>
+                    {r.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-      {/* Dynamic Role Dashboard Body */}
-      {selectedRole === 'Super Admin' && (
-        <SuperAdminDashboardView
-          stats={stats}
-          isLoading={isLoading}
-          onNavigate={onNavigate}
-        />
-      )}
+        {/* Dynamic Role Dashboard Body */}
+        {selectedRole === 'Super Admin' && (
+          <SuperAdminDashboardView
+            stats={stats}
+            isLoading={isLoading}
+            onNavigate={onNavigate}
+          />
+        )}
 
-      {selectedRole === 'Sales Manager' && (
-        <SalesManagerDashboardView onNavigate={onNavigate} />
-      )}
+        {selectedRole === 'Sales Manager' && (
+          <SalesManagerDashboardView onNavigate={onNavigate} />
+        )}
 
-      {selectedRole === 'Sales Executive' && (
-        <SalesExecutiveDashboardView onNavigate={onNavigate} />
-      )}
+        {selectedRole === 'Sales Executive' && (
+          <SalesExecutiveDashboardView onNavigate={onNavigate} />
+        )}
 
-      {selectedRole === 'Receptionist' && (
-        <ReceptionistDashboardView onNavigate={onNavigate} />
-      )}
+        {selectedRole === 'Receptionist' && (
+          <ReceptionistDashboardView onNavigate={onNavigate} />
+        )}
 
-      {selectedRole === 'Accountant' && (
-        <AccountantDashboardView onNavigate={onNavigate} />
-      )}
-    </ScrollView>
+        {selectedRole === 'Accountant' && (
+          <AccountantDashboardView onNavigate={onNavigate} />
+        )}
+      </ScrollView>
+
+      {/* Material 3 Expressive FAB Menu */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Customer Leads',
+          onPress: () => {
+            triggerHaptic('impactLight');
+            onNavigate('leads');
+          },
+        }}
+        secondaryAction={{
+          label: 'Follow-Up Queue',
+          onPress: () => {
+            triggerHaptic('impactLight');
+            onNavigate('follow-ups');
+          },
+        }}
+      />
+    </View>
   );
 };
 

@@ -13,6 +13,7 @@ import {
 import {
   Building2,
   Car,
+  IndianRupee,
   Kanban,
   LayoutDashboard,
   ListFilter,
@@ -20,6 +21,7 @@ import {
   Moon,
   PhoneForwarded,
   Radio,
+  Receipt,
   Sun,
   UserCheck,
   Users,
@@ -40,6 +42,8 @@ export type ScreenName =
   | 'brand'
   | 'model'
   | 'variant'
+  | 'update-price'
+  | 'expense-master'
   | 'users';
 
 interface CustomDrawerContentProps extends DrawerContentComponentProps {
@@ -61,6 +65,8 @@ const MENU_ICONS: Record<
   brand: Building2,
   model: Car,
   variant: Zap,
+  'update-price': IndianRupee,
+  'expense-master': Receipt,
   users: Users,
 };
 
@@ -69,11 +75,13 @@ const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'my-leads', label: 'My Assigned Leads' },
   { id: 'leads', label: 'Leads Pipeline' },
   { id: 'follow-ups', label: 'Follow-Up Call Desk', badge: 'Live' },
-  { id: 'lead-status', label: 'Lead Status Master' },
-  { id: 'lead-source', label: 'Lead Source Master' },
   { id: 'brand', label: 'Brand Master' },
   { id: 'model', label: 'Model Master' },
   { id: 'variant', label: 'Variant Master' },
+  { id: 'update-price', label: 'Price Master & Updater' },
+  { id: 'expense-master', label: 'Expense Master' },
+  { id: 'lead-status', label: 'Lead Status Master' },
+  { id: 'lead-source', label: 'Lead Source Master' },
   { id: 'users', label: 'User Master' },
 ];
 
@@ -118,6 +126,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Catalogue' },
           { id: 'variant' as ScreenName, label: 'Variant & Prices' },
+          { id: 'update-price' as ScreenName, label: 'Price Master' },
         ];
       case 'Sales Manager':
         return [
@@ -127,6 +136,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Master' },
           { id: 'variant' as ScreenName, label: 'Variant & Prices' },
+          { id: 'update-price' as ScreenName, label: 'Price Master' },
         ];
       case 'Receptionist':
         return [
@@ -142,6 +152,8 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           { id: 'leads' as ScreenName, label: 'Deals & Bookings' },
           { id: 'variant' as ScreenName, label: 'Variants & On-Road Tax' },
           { id: 'model' as ScreenName, label: 'Model Master' },
+          { id: 'update-price' as ScreenName, label: 'Ex-Showroom & CSD Prices' },
+          { id: 'expense-master' as ScreenName, label: 'Expense Master' },
         ];
       case 'Super Admin':
       default:

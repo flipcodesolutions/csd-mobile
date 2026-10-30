@@ -5,6 +5,7 @@ import {
   FlatList,
   Modal,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -12,7 +13,24 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '../../core/theme/colors';
+import {
+  CheckCircle2,
+  Edit2,
+  Search,
+  Tag,
+  Trash2,
+  X,
+} from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../core/theme/ThemeContext';
+import { triggerHaptic } from '../../core/utils/haptics';
+import { exportCsvToFile } from '../../core/utils/csvExporter';
+import {
+  showErrorToast,
+  showSuccessToast,
+  showWarningToast,
+} from '../../core/utils/toast';
+import { FabSpeedDial } from '../../shared';
 import { leadStatusApi } from './masterService';
 
 export interface LeadStatus {
@@ -23,6 +41,9 @@ export interface LeadStatus {
 }
 
 export const LeadStatusScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+
   const [statuses, setStatuses] = useState<LeadStatus[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
@@ -70,6 +91,7 @@ export const LeadStatusScreen: React.FC = () => {
 
   // 2. Open modal for Adding
   const handleOpenAdd = () => {
+    triggerHaptic('impactLight');
     setEditingItem(null);
     setFormName('');
     setFormActive(true);
@@ -78,6 +100,7 @@ export const LeadStatusScreen: React.FC = () => {
 
   // 3. Open modal for Editing
   const handleOpenEdit = (item: LeadStatus) => {
+    triggerHaptic('impactLight');
     setEditingItem(item);
     setFormName(item.name);
     setFormActive(item.status === 'Active');
@@ -87,6 +110,7 @@ export const LeadStatusScreen: React.FC = () => {
   // 4. Save (Create or Update) via Backend API
   const handleSave = async () => {
     if (!formName.trim()) {
+      triggerHaptic('notificationError');
       Alert.alert('Validation Error', 'Please enter a valid status name.');
       return;
     }
@@ -99,20 +123,18 @@ export const LeadStatusScreen: React.FC = () => {
 
     try {
       if (editingItem) {
-        // PUT /api/lead-statuses/:id
         const res = await leadStatusApi.update(editingItem.id, payload);
         if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Status "${formName.trim()}" updated successfully.`);
+          triggerHaptic('notificationSuccess');
           fetchLeadStatuses();
           setModalVisible(false);
         } else {
           Alert.alert('Error', res?.message || 'Failed to update status.');
         }
       } else {
-        // POST /api/lead-statuses
         const res = await leadStatusApi.create(payload);
         if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Status "${formName.trim()}" created successfully.`);
+          triggerHaptic('notificationSuccess');
           fetchLeadStatuses();
           setModalVisible(false);
         } else {
@@ -129,9 +151,10 @@ export const LeadStatusScreen: React.FC = () => {
 
   // 5. Delete via Backend API
   const handleDelete = (item: LeadStatus) => {
+    triggerHaptic('notificationWarning');
     Alert.alert(
       'Confirm Delete',
-      `Are you sure you want to delete "${item.name}"?`,
+      `Are you sure you want to delete status "${item.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -141,7 +164,7 @@ export const LeadStatusScreen: React.FC = () => {
             try {
               const res = await leadStatusApi.delete(item.id);
               if (res && res.status !== false) {
-                Alert.alert('Deleted', res?.message || `Status "${item.name}" has been deleted.`);
+                triggerHaptic('notificationSuccess');
                 fetchLeadStatuses();
               } else {
                 Alert.alert('Error', res?.message || 'Failed to delete status.');
@@ -163,192 +186,442 @@ export const LeadStatusScreen: React.FC = () => {
     return matchSearch && matchFilter;
   });
 
-  return (
-    <View style={styles.container}>
-      {/* 1. Search Bar & Filter Tabs */}
-      <View style={styles.topBar}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="🔍 Search lead status from server..."
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
+  const activeCount = statuses.filter((s) => s.status === 'Active').length;
+  const inactiveCount = statuses.filter((s) => s.status === 'Inactive').length;
 
-        <View style={styles.filterRow}>
-          {(['All', 'Active', 'Inactive'] as const).map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text
-                style={[
-                  styles.filterBtnText,
-                  filter === f && styles.filterBtnTextActive,
-                ]}
-              >
-                {f}
-              </Text>
+  // Export CSV Action
+  const handleExportCSV = async () => {
+    triggerHaptic('impactLight');
+    const rows = filteredList.map((item) => [
+      item.id,
+      item.name,
+      item.status,
+    ]);
+    await exportCsvToFile({
+      filename: `lead_statuses_${new Date().toISOString().split('T')[0]}`,
+      headers: ['ID', 'Status Name', 'Status State'],
+      rows,
+    });
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* 1. Header Filters Toolbar */}
+      <View
+        style={[
+          styles.headerContainer,
+          {
+            backgroundColor: isDark ? '#101726' : '#FFFFFF',
+            borderBottomColor: colors.border,
+            paddingTop: 10,
+          },
+        ]}
+      >
+        {/* Search Bar */}
+        <View
+          style={[
+            styles.searchBar,
+            {
+              backgroundColor: isDark ? '#162030' : '#F8FAFC',
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Search size={15} color={colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.textPrimary }]}
+            placeholder="Search lead statuses..."
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <X size={14} color={colors.textSecondary} />
             </TouchableOpacity>
-          ))}
+          )}
         </View>
+
+        {/* Horizontal Filter Scroll */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              filter === 'All' && [
+                styles.filterPillActive,
+                { backgroundColor: colors.primary, borderColor: colors.primary },
+              ],
+            ]}
+            onPress={() => {
+              triggerHaptic('selection');
+              setFilter('All');
+            }}
+          >
+            <Text
+              style={[
+                styles.filterPillText,
+                filter === 'All' && styles.filterPillTextActive,
+              ]}
+            >
+              All ({statuses.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              filter === 'Active' && [
+                styles.filterPillActive,
+                { backgroundColor: colors.primary, borderColor: colors.primary },
+              ],
+            ]}
+            onPress={() => {
+              triggerHaptic('selection');
+              setFilter('Active');
+            }}
+          >
+            <Text
+              style={[
+                styles.filterPillText,
+                filter === 'Active' && styles.filterPillTextActive,
+              ]}
+            >
+              Active ({activeCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              filter === 'Inactive' && [
+                styles.filterPillActive,
+                { backgroundColor: colors.primary, borderColor: colors.primary },
+              ],
+            ]}
+            onPress={() => {
+              triggerHaptic('selection');
+              setFilter('Inactive');
+            }}
+          >
+            <Text
+              style={[
+                styles.filterPillText,
+                filter === 'Inactive' && styles.filterPillTextActive,
+              ]}
+            >
+              Inactive ({inactiveCount})
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
-      {/* 2. Loading State */}
+      {/* 2. List Body */}
       {isLoading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.orange} />
-          <Text style={styles.loadingText}>Fetching lead statuses from API...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Loading lead statuses...
+          </Text>
         </View>
       ) : (
-        /* 3. Statuses List with Pull-to-Refresh */
         <FlatList
           data={filteredList}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom + 90, 110) },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={() => fetchLeadStatuses(true)}
-              tintColor={colors.orange}
+              tintColor={colors.primary}
             />
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.nameRow}>
-                  <View
-                    style={[
-                      styles.dot,
-                      { backgroundColor: item.color || colors.orange },
-                    ]}
-                  />
-                  <Text style={styles.title}>{item.name}</Text>
-                </View>
-
+            <View
+              style={[
+                styles.recordCard,
+                {
+                  backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              {/* Dot Icon Wrap */}
+              <View
+                style={[
+                  styles.iconWrap,
+                  {
+                    backgroundColor: item.color
+                       ? `${item.color}15`
+                      : isDark
+                      ? '#162030'
+                      : '#F1F5F9',
+                  },
+                ]}
+              >
                 <View
                   style={[
-                    styles.statusBadge,
-                    item.status === 'Active'
-                      ? styles.badgeActive
-                      : styles.badgeInactive,
+                    styles.statusColorDot,
+                    { backgroundColor: item.color || colors.primary },
                   ]}
-                >
+                />
+              </View>
+
+              {/* Status Info */}
+              <View style={styles.cardCenter}>
+                <View style={styles.nameRow}>
                   <Text
+                    style={[styles.cardTitle, { color: colors.textPrimary }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.name}
+                  </Text>
+                  <View
                     style={[
-                      styles.badgeText,
-                      item.status === 'Active'
-                        ? styles.badgeTextActive
-                        : styles.badgeTextInactive,
+                      styles.statusBadge,
+                      {
+                        backgroundColor:
+                          item.status === 'Active'
+                            ? 'rgba(22, 163, 74, 0.12)'
+                            : 'rgba(220, 38, 38, 0.12)',
+                        borderColor:
+                          item.status === 'Active'
+                            ? colors.success
+                            : colors.danger,
+                      },
                     ]}
                   >
-                    {item.status}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        {
+                          color:
+                            item.status === 'Active'
+                              ? colors.success
+                              : colors.danger,
+                        },
+                      ]}
+                    >
+                      {item.status}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
-              {/* Actions */}
-              <View style={styles.cardActions}>
+              {/* Inline Action Buttons */}
+              <View style={styles.actionRow}>
                 <TouchableOpacity
-                  style={styles.editBtn}
+                  style={[
+                    styles.actionBtn,
+                    {
+                      backgroundColor: isDark ? '#162030' : '#F8FAFC',
+                      borderColor: colors.border,
+                    },
+                  ]}
                   onPress={() => handleOpenEdit(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.editBtnText}>✏️ Edit</Text>
+                  <Edit2 size={13} color={colors.textSecondary} strokeWidth={2} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.deleteBtn}
+                  style={[
+                    styles.actionBtn,
+                    styles.deleteActionBtn,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(239, 68, 68, 0.15)'
+                        : '#FEF2F2',
+                    },
+                  ]}
                   onPress={() => handleDelete(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
+                  <Trash2 size={13} color="#DC2626" strokeWidth={2} />
                 </TouchableOpacity>
               </View>
             </View>
           )}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={styles.emptyTitle}>No Lead Statuses Found</Text>
-              <Text style={styles.emptyText}>
-                No records returned by the API. Tap the "+ Add Status" button below to create one.
+              <Tag size={36} color={colors.textMuted} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                No Lead Statuses Found
+              </Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                {search
+                  ? `No statuses match "${search}". Try adjusting your filters.`
+                  : 'Tap the "+ Add Status" button to create your first status.'}
               </Text>
             </View>
           }
         />
       )}
 
-      {/* 4. Floating Add Button */}
-      <TouchableOpacity
-        style={styles.fabBtn}
-        onPress={handleOpenAdd}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.fabText}>+ Add Status</Text>
-      </TouchableOpacity>
-
-      {/* 5. Add / Edit Modal */}
+      {/* 3. Add / Edit Modal */}
       <Modal
         visible={modalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => {
           if (!isSubmitting) setModalVisible(false);
         }}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingItem ? 'Edit Lead Status' : 'Add New Lead Status'}
-            </Text>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              if (!isSubmitting) setModalVisible(false);
+            }}
+          />
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            {/* Header */}
+            <View
+              style={[
+                styles.modalHeader,
+                { borderBottomColor: isDark ? '#1E293B' : '#F1F5F9' },
+              ]}
+            >
+              <View>
+                <Text
+                  style={[styles.modalTitle, { color: colors.textPrimary }]}
+                >
+                  {editingItem ? 'Edit Status' : 'Add Status'}
+                </Text>
+                <Text
+                  style={[styles.modalSub, { color: colors.textSecondary }]}
+                >
+                  CRM workflow stage definition
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                disabled={isSubmitting}
+                style={[
+                  styles.closeBtn,
+                  {
+                    backgroundColor: isDark ? '#162030' : '#F1F5F9',
+                    borderColor: colors.border,
+                  },
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={15} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Status Name</Text>
+            {/* Input */}
+            <View style={styles.modalBody}>
+              <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>
+                STATUS NAME <Text style={{ color: colors.danger }}>*</Text>
+              </Text>
               <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Test Drive Scheduled"
+                style={[
+                  styles.modalInput,
+                  {
+                    backgroundColor: isDark ? '#162030' : '#F8FAFC',
+                    borderColor: colors.border,
+                    color: colors.textPrimary,
+                  },
+                ]}
+                placeholder="e.g. Test Drive Scheduled, Documents Verified"
                 placeholderTextColor={colors.textMuted}
                 value={formName}
                 onChangeText={setFormName}
                 editable={!isSubmitting}
               />
+
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={[styles.switchLabel, { color: colors.textPrimary }]}>
+                    Active Status
+                  </Text>
+                  <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
+                    Display in lead progression dropdowns
+                  </Text>
+                </View>
+                <Switch
+                  value={formActive}
+                  onValueChange={setFormActive}
+                  trackColor={{ false: '#64748B', true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                  disabled={isSubmitting}
+                />
+              </View>
             </View>
 
-            <View style={styles.switchRow}>
-              <Text style={styles.label}>Active Status</Text>
-              <Switch
-                value={formActive}
-                onValueChange={setFormActive}
-                trackColor={{ false: '#333', true: colors.primary }}
-                thumbColor={formActive ? colors.orange : '#aaa'}
-                disabled={isSubmitting}
-              />
-            </View>
-
-            <View style={styles.modalBtnRow}>
+            {/* Action Buttons */}
+            <View
+              style={[
+                styles.modalBtnRow,
+                { borderTopColor: isDark ? '#1E293B' : '#F1F5F9' },
+              ]}
+            >
               <TouchableOpacity
-                style={styles.cancelBtn}
+                style={[
+                  styles.cancelBtn,
+                  {
+                    backgroundColor: isDark ? '#162030' : '#F1F5F9',
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => setModalVisible(false)}
                 disabled={isSubmitting}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
+                style={[
+                  styles.saveBtn,
+                  { backgroundColor: colors.primary },
+                  isSubmitting && { opacity: 0.6 },
+                ]}
                 onPress={handleSave}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator size="small" color={colors.textWhite} />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Save Status</Text>
+                  <Text style={styles.saveBtnText}>
+                    {editingItem ? 'Save Changes' : 'Create Status'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      {/* Floating Action Button */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Add Status',
+          onPress: handleOpenAdd,
+        }}
+        secondaryAction={{
+          label: 'Download CSV',
+          onPress: handleExportCSV,
+        }}
+      />
     </View>
   );
 };
@@ -356,279 +629,287 @@ export const LeadStatusScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  topBar: {
-    padding: 16,
-    backgroundColor: colors.card,
+  headerContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 10,
-  },
-  searchInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
     paddingHorizontal: 12,
-    height: 40,
-    color: colors.textPrimary,
-    fontSize: 13,
-  },
-  filterRow: {
-    flexDirection: 'row',
+    paddingBottom: 8,
     gap: 8,
   },
-  filterBtn: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: colors.inputBg,
+  topToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 4,
+  },
+  titleContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  screenTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  screenSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  filterBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryHover,
+  primaryAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    height: 34,
+    borderRadius: 8,
   },
-  filterBtnText: {
+  primaryAddBtnText: {
+    color: '#FFFFFF',
     fontSize: 12,
-    color: colors.textMuted,
     fontWeight: '600',
   },
-  filterBtnTextActive: {
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 38,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 0,
+  },
+  filterScroll: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: 'transparent',
+  },
+  filterPillActive: {},
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  filterPillTextActive: {
     color: '#FFFFFF',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   loadingWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
   },
   loadingText: {
-    color: colors.textMuted,
     fontSize: 13,
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 90,
+    padding: 12,
+    gap: 6,
   },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
+  recordCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 10,
-    flex: 1,
   },
-  dot: {
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusColorDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
   },
-  title: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
+  cardCenter: {
     flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  badgeActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  badgeInactive: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.danger,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    borderWidth: 0.8,
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '600',
   },
-  badgeTextActive: {
-    color: colors.success,
-  },
-  badgeTextInactive: {
-    color: colors.danger,
-  },
-  cardActions: {
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 10,
+    alignItems: 'center',
+    gap: 6,
   },
-  editBtn: {
-    backgroundColor: colors.inputBg,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  actionBtn: {
+    width: 30,
+    height: 30,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  editBtnText: {
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  deleteBtn: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  deleteBtnText: {
-    fontSize: 12,
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  fabBtn: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primaryHover,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    elevation: 6,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
+  deleteActionBtn: {
+    borderWidth: 0,
   },
   emptyWrap: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 60,
     paddingHorizontal: 20,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: 10,
+    gap: 8,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 6,
+    fontSize: 15,
+    fontWeight: '600',
   },
   emptyText: {
-    color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 16,
+    fontSize: 15,
+    fontWeight: '700',
   },
-  inputGroup: {
-    marginBottom: 14,
+  modalSub: {
+    fontSize: 11,
+    marginTop: 1,
   },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 6,
+  closeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    padding: 16,
+    gap: 12,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   modalInput: {
-    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 8,
+    height: 40,
     paddingHorizontal: 12,
-    height: 44,
-    color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: 13,
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop: 4,
+  },
+  switchLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  switchSub: {
+    fontSize: 11,
+    marginTop: 1,
   },
   modalBtnRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 10,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
   },
   cancelBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
+    height: 36,
     borderRadius: 8,
-    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelBtnText: {
-    color: colors.textMuted,
+    fontSize: 12,
     fontWeight: '600',
-    fontSize: 13,
   },
   saveBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
+    height: 36,
     borderRadius: 8,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primaryHover,
-    minWidth: 100,
     alignItems: 'center',
-  },
-  saveBtnDisabled: {
-    opacity: 0.6,
+    justifyContent: 'center',
+    minWidth: 100,
   },
   saveBtnText: {
     color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
+

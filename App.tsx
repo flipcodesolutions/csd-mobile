@@ -6,11 +6,14 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { ThemeProvider, useTheme } from './src/core/theme/ThemeContext';
 import { AppNavigator } from './src/core/navigation/AppNavigator';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 import { SplashScreen } from './src/SplashScreen';
 import { authApi } from './src/features/auth/authService';
+import { setOnUnauthorizedHandler } from './src/core/api/client';
+import { csdToastConfig } from './src/core/ui/toastConfig';
 
 // App root
 function App() {
@@ -20,6 +23,7 @@ function App() {
         <ThemeProvider initialTheme="light">
           <BottomSheetModalProvider>
             <MainApp />
+            <Toast config={csdToastConfig} />
           </BottomSheetModalProvider>
         </ThemeProvider>
       </SafeAreaProvider>
@@ -30,7 +34,6 @@ function App() {
 function MainApp() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  console.log('>>> DEVICE_INSETS:', JSON.stringify(insets));
 
   // App Navigation States
   const [isSplashDone, setIsSplashDone] = useState(false);
@@ -38,18 +41,30 @@ function MainApp() {
   const [currentUserEmail, setCurrentUserEmail] = useState('david.miller@carcrm.com');
   const [currentUserRole, setCurrentUserRole] = useState('Sales Executive');
 
-  // Auto-restore session from persistent storage
+  // Auto-restore session & register global 401 Unauthorized listener
   useEffect(() => {
     let isMounted = true;
-    authApi.restoreSession().then((session) => {
-      if (isMounted && session && session.token) {
-        setIsLoggedIn(true);
-        if (session.user?.email) setCurrentUserEmail(session.user.email);
-        if (session.user?.role) setCurrentUserRole(session.user.role);
+
+    // Global 401 session expiry handler
+    setOnUnauthorizedHandler(() => {
+      if (isMounted) {
+        setIsLoggedIn(false);
       }
-    }).catch((err) => {
-      console.log('Session restore error (fallback to login):', err);
     });
+
+    authApi
+      .restoreSession()
+      .then((session) => {
+        if (isMounted && session && session.token) {
+          setIsLoggedIn(true);
+          if (session.user?.email) setCurrentUserEmail(session.user.email);
+          if (session.user?.role) setCurrentUserRole(session.user.role);
+        }
+      })
+      .catch((err) => {
+        console.log('Session restore error (fallback to login):', err);
+      });
+
     return () => {
       isMounted = false;
     };
@@ -112,8 +127,10 @@ function MainApp() {
         />
       </View>
 
-      {/* Bottom System Navigation Bar Inset Spacer - Protects buttons & cards */}
-      <View style={{ height: insets.bottom, backgroundColor: bottomBarColor }} />
+      {/* System Navigation Bar Inset Spacer - Protects buttons & content on older devices */}
+      {insets.bottom > 0 && (
+        <View style={{ height: insets.bottom, backgroundColor: bottomBarColor }} />
+      )}
     </View>
   );
 }
@@ -128,3 +145,4 @@ const styles = StyleSheet.create({
 });
 
 export default App;
+

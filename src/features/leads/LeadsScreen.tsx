@@ -25,8 +25,11 @@ import {
   Sun,
   X,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../core/utils/haptics';
+import { exportCsvToFile } from '../../core/utils/csvExporter';
+import { FabSpeedDial } from '../../shared';
 import { leadApi } from './leadService';
 import { dealApi } from '../deals/dealService';
 import {
@@ -65,6 +68,7 @@ interface LeadsScreenProps {
 
 export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer }) => {
   const { colors, isDark, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isNarrow = width < 360;
 
@@ -542,6 +546,36 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer }) => {
     ]
   );
 
+  const handleExportCSV = async () => {
+    triggerHaptic('impactLight');
+    const rows = filteredLeads.map((l) => [
+      l.id,
+      l.name || 'N/A',
+      l.phone || 'N/A',
+      l.city || 'N/A',
+      l.status_name || 'New',
+      l.priority || 'Warm',
+      l.brand_name || 'N/A',
+      l.model_name || 'N/A',
+      l.assigned_user_name || 'Unassigned',
+    ]);
+    await exportCsvToFile({
+      filename: `customer_leads_${new Date().toISOString().split('T')[0]}`,
+      headers: [
+        'Lead ID',
+        'Customer Name',
+        'Phone',
+        'City',
+        'Pipeline Status',
+        'Priority',
+        'Brand',
+        'Model',
+        'Assigned To',
+      ],
+      rows,
+    });
+  };
+
   return (
     <View
       style={[
@@ -554,7 +588,10 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer }) => {
         data={filteredLeads}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: Math.max(insets.bottom + 90, 110) },
+        ]}
         initialNumToRender={8}
         maxToRenderPerBatch={10}
         windowSize={7}
@@ -1357,6 +1394,21 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Material 3 Expressive FAB Menu */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Filter Leads',
+          onPress: () => {
+            triggerHaptic('selection');
+            setFilterModalVisible(true);
+          },
+        }}
+        secondaryAction={{
+          label: 'Download CSV',
+          onPress: handleExportCSV,
+        }}
+      />
     </View>
   );
 };

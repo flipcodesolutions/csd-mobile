@@ -3,3 +3,4 @@ export * from './Badge';
 export * from './Modal';
 export * from './KpiCard';
 export * from './StartAlignedInput';
+export * from './FabSpeedDial';
