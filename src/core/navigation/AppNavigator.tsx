@@ -68,7 +68,18 @@ const SCREEN_TITLES: Record<string, string> = {
 
 function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
   const { isDark } = useTheme();
-  const initialRoute = userRole === 'Sales Executive' ? 'my-leads' : 'leads';
+  // Task 1: When admin (or Super Admin) logs in, default screen MUST be 'dashboard'
+  const isSuperAdminOrAdmin =
+    !userRole ||
+    userRole.toLowerCase().includes('admin') ||
+    userRole === 'Super Admin' ||
+    userRole === 'Admin';
+
+  const initialRoute: keyof DrawerParamList = isSuperAdminOrAdmin
+    ? 'dashboard'
+    : userRole === 'Sales Executive'
+      ? 'my-leads'
+      : 'dashboard';
 
   const getDashboardTitle = () => {
     switch (userRole) {
@@ -81,7 +92,7 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       case 'Accountant':
         return 'Finance & Accounts';
       default:
-        return 'Dealership Dashboard';
+        return 'Business Overview';
     }
   };
 
@@ -123,7 +134,7 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       <Drawer.Screen name="dashboard">
         {({ navigation }) => (
           <DashboardScreen
-            userRole={userRole || 'Sales Executive'}
+            userRole={userRole || 'Super Admin'}
             onNavigate={(screen) => (navigation as any).navigate(screen)}
           />
         )}
@@ -214,6 +225,7 @@ export function AppNavigator({ userRole, userEmail, onLogout }: AppNavigatorProp
         <Stack.Screen name="MainDrawer">
           {() => (
             <DrawerNavigator
+              key={`drawer-${userRole || 'admin'}`}
               userRole={userRole}
               userEmail={userEmail}
               onLogout={onLogout}

@@ -130,6 +130,33 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
     fetchDashboardStats();
   }, []);
 
+  if (selectedRole === 'Super Admin') {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <SuperAdminDashboardView
+          onNavigate={onNavigate}
+          onSwitchRole={(role) => setSelectedRole(role)}
+        />
+        <FabSpeedDial
+          primaryAction={{
+            label: 'Customer Leads',
+            onPress: () => {
+              triggerHaptic('impactLight');
+              onNavigate('leads');
+            },
+          }}
+          secondaryAction={{
+            label: 'Follow-Up Queue',
+            onPress: () => {
+              triggerHaptic('impactLight');
+              onNavigate('follow-ups');
+            },
+          }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
