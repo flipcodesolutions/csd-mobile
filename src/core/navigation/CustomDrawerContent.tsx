@@ -72,7 +72,6 @@ const MENU_ICONS: Record<
 
 const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'my-leads', label: 'My Assigned Leads' },
   { id: 'leads', label: 'Leads Pipeline' },
   { id: 'follow-ups', label: 'Follow-Up Call Desk', badge: 'Live' },
   { id: 'brand', label: 'Brand Master' },

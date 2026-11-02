@@ -84,19 +84,29 @@ export interface PendingApproval {
 export interface UpcomingDelivery {
   id: number | string;
   customer_name: string;
-  delivery_date: string;
-  city: string;
-  vehicle_variant: string;
-  status: string;
+  detail?: string;
+  delivery_date?: string;
+  city?: string;
+  vehicle?: string;
+  vehicle_variant?: string;
+  status?: string;
+  status_label?: string;
+  badge_bg?: string;
+  badge_color?: string;
 }
 
-export interface ActivityTimelineItem {
+export interface RecentActivity {
   id: number | string;
-  action: string;
+  text?: string;
+  action?: string;
   description?: string;
-  time_ago: string;
+  time_ago?: string;
+  time?: string;
+  dot_color?: string;
   dotColor?: string;
 }
+
+export type ActivityTimelineItem = RecentActivity;
 
 interface Props {
   onNavigate: (screen: ScreenName) => void;
@@ -1193,6 +1203,18 @@ const styles = StyleSheet.create({
     color: THEME.textSecondary,
     marginTop: 3,
     lineHeight: 16,
+  },
+  statusBadgePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusBadgePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  timelineRowLast: {
+    marginBottom: 0,
   },
   statusBadge: {
     paddingHorizontal: 10,
