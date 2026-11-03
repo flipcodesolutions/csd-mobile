@@ -194,11 +194,8 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
 
   const handleOpenCreateLead = () => {
     triggerHaptic('impactLight');
-    if (navigation?.navigate) {
-      navigation.navigate('CreateLead');
-    } else {
-      setCreateLeadModalVisible(true);
-    }
+    setEditingLead(null);
+    setLeadModalVisible(true);
   };
   
   // 5. Action Modal States
@@ -372,15 +369,6 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
   // Filtered Leads
   const filteredLeads = useMemo(() => {
     return leads.filter((item) => {
-
-      // 0. Status Tab Filter
-      if (selectedStatusTab !== 'All') {
-        const clean = getCleanLeadStatus(item, statuses);
-        if (clean !== selectedStatusTab) {
-          return false;
-        }
-      }
-
       // 1. Search term
       const term = search.toLowerCase().trim();
       if (term) {
@@ -936,62 +924,6 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             </View>
 
             
-            {/* Horizontal Status Tabs (Scrollable pill badges with icons and item counts) */}
-            <View style={styles.statusTabsContainer}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.statusTabsScroll}
-              >
-                {STATUS_TABS.map((tab) => {
-                  const isActive = selectedStatusTab === tab.key;
-                  const count = statusTabCounts[tab.key] || 0;
-                  return (
-                    <TouchableOpacity
-                      key={tab.key}
-                      style={[
-                        styles.statusTabPill,
-                        isActive ? styles.statusTabPillActive : styles.statusTabPillInactive,
-                      ]}
-                      onPress={() => {
-                        triggerHaptic('selection');
-                        setSelectedStatusTab(tab.key);
-                      }}
-                      activeOpacity={0.75}
-                    >
-                      <Text
-                        style={[
-                          styles.statusTabLabel,
-                          isActive ? styles.statusTabLabelActive : styles.statusTabLabelInactive,
-                        ]}
-                      >
-                        {tab.icon ? `${tab.icon} ${tab.label}` : tab.label}
-                      </Text>
-                      <View
-                        style={[
-                          styles.statusTabCountBadge,
-                          isActive
-                            ? styles.statusTabCountBadgeActive
-                            : styles.statusTabCountBadgeInactive,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.statusTabCountText,
-                            isActive
-                              ? styles.statusTabCountTextActive
-                              : styles.statusTabCountTextInactive,
-                          ]}
-                        >
-                          {count}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
             {/* Active Filters Pill Strip (Only shown when filters are applied) */}
             {activeFiltersCount > 0 && (
               <View style={styles.activeFiltersRow}>

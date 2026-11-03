@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,8 @@ import {
   Edit3,
   Eye,
   FileText,
+  MessageCircle,
+  Phone,
   PhoneCall,
   Trash2,
   X,
@@ -25,6 +28,8 @@ interface LeadActionsModalProps {
   visible: boolean;
   lead: CustomerLead | null;
   onClose: () => void;
+  onCall?: (phone: string) => void;
+  onWhatsApp?: (phone: string) => void;
   onView360: (lead: CustomerLead) => void;
   onConvertDeal: (lead: CustomerLead) => void;
   onLogFollowUp: (lead: CustomerLead) => void;
@@ -37,6 +42,8 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
   visible,
   lead,
   onClose,
+  onCall,
+  onWhatsApp,
   onView360,
   onConvertDeal,
   onLogFollowUp,
@@ -55,6 +62,44 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
     }
   };
 
+  const handleCall = () => {
+    triggerHaptic('impactLight');
+    onClose();
+    if (!lead?.phone) return;
+    if (onCall) {
+      onCall(lead.phone);
+    } else {
+      Linking.openURL(`tel:${lead.phone}`).catch(() => {});
+    }
+  };
+
+  const handleWhatsApp = () => {
+    triggerHaptic('impactLight');
+    onClose();
+    if (!lead?.phone) return;
+    if (onWhatsApp) {
+      onWhatsApp(lead.phone);
+    } else {
+      const cleanPhone = (lead.phone || '').replace(/\D/g, '');
+      const phoneWithCountry =
+        cleanPhone.startsWith('91') && cleanPhone.length === 12
+          ? cleanPhone
+          : `91${cleanPhone}`;
+      const url = `whatsapp://send?phone=${phoneWithCountry}`;
+      Linking.canOpenURL(url)
+        .then((supported) => {
+          if (supported) {
+            Linking.openURL(url);
+          } else {
+            Linking.openURL(`https://wa.me/${phoneWithCountry}`);
+          }
+        })
+        .catch(() => {
+          Linking.openURL(`https://wa.me/${phoneWithCountry}`);
+        });
+    }
+  };
+
   if (!visible || !lead) return null;
 
   return (
@@ -63,6 +108,7 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
         <TouchableOpacity
@@ -91,7 +137,7 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
           <ScrollView
             style={styles.modalContent}
             contentContainerStyle={{
-              paddingBottom: Math.max(insets.bottom, 16) + 12,
+              paddingBottom: Math.max(insets.bottom, 16) + 16,
             }}
             showsVerticalScrollIndicator={false}
           >
@@ -132,44 +178,90 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Actions List - Exact Sequence matching Screenshot 2 */}
+            {/* Actions List */}
             <View style={styles.actionsList}>
-              {/* 1. Log Follow-Up */}
+              {/* 1. Direct Call */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={handleCall}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
+                  <Phone size={17} color="#16A34A" strokeWidth={2.4} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                    Call Customer
+                  </Text>
+                  <Text style={[styles.actionSubtext, { color: colors.textSecondary }]}>
+                    {lead.phone}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* 2. Direct WhatsApp */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={handleWhatsApp}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
+                  <MessageCircle size={17} color="#16A34A" strokeWidth={2.4} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                    WhatsApp Chat
+                  </Text>
+                  <Text style={[styles.actionSubtext, { color: colors.textSecondary }]}>
+                    Send message directly
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View
+                style={[
+                  styles.itemDivider,
+                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
+                ]}
+              />
+
+              {/* 3. Log Follow-Up */}
               <TouchableOpacity
                 style={styles.actionItem}
                 onPress={() => handleAction(onLogFollowUp)}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconBox}>
-                  <PhoneCall size={18} color="#2563EB" strokeWidth={2.2} />
+                <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
+                  <PhoneCall size={17} color="#2563EB" strokeWidth={2.2} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.textPrimary }]}>
                   Log Follow-Up
                 </Text>
               </TouchableOpacity>
 
-              {/* 2. Send Quotation */}
+              {/* 4. Send Quotation */}
               <TouchableOpacity
                 style={styles.actionItem}
                 onPress={() => handleAction(onSendQuotation)}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconBox}>
-                  <FileText size={18} color="#0284C7" strokeWidth={2.2} />
+                <View style={[styles.iconBox, { backgroundColor: '#E0F2FE' }]}>
+                  <FileText size={17} color="#0284C7" strokeWidth={2.2} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.textPrimary }]}>
                   Send Quotation
                 </Text>
               </TouchableOpacity>
 
-              {/* 3. Convert to Deal (Green Trophy) */}
+              {/* 5. Convert to Deal (Green Trophy) */}
               <TouchableOpacity
                 style={styles.actionItem}
                 onPress={() => handleAction(onConvertDeal)}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconBox}>
-                  <Award size={18} color="#16A34A" strokeWidth={2.2} />
+                <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
+                  <Award size={17} color="#16A34A" strokeWidth={2.2} />
                 </View>
                 <Text
                   style={[
@@ -189,47 +281,55 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
                 ]}
               />
 
-              {/* 4. View Lead Details */}
+              {/* 6. View Lead Details */}
               <TouchableOpacity
                 style={styles.actionItem}
                 onPress={() => handleAction(onView360)}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconBox}>
-                  <Eye size={18} color="#64748B" strokeWidth={2.2} />
+                <View style={[styles.iconBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                  <Eye size={17} color="#64748B" strokeWidth={2.2} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.textPrimary }]}>
                   View Lead Details
                 </Text>
               </TouchableOpacity>
 
-              {/* 5. Edit Lead */}
+              {/* 7. Edit Lead */}
               <TouchableOpacity
                 style={styles.actionItem}
                 onPress={() => handleAction(onEditLead)}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconBox}>
-                  <Edit3 size={18} color="#D97706" strokeWidth={2.2} />
+                <View style={[styles.iconBox, { backgroundColor: '#FEF3C7' }]}>
+                  <Edit3 size={17} color="#D97706" strokeWidth={2.2} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.textPrimary }]}>
                   Edit Lead
                 </Text>
               </TouchableOpacity>
 
-              {/* 6. Delete Lead */}
+              {/* Divider */}
+              <View
+                style={[
+                  styles.itemDivider,
+                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
+                ]}
+              />
+
+              {/* 8. Delete Lead */}
               <TouchableOpacity
                 style={styles.actionItem}
                 onPress={() => handleAction(onDeleteLead)}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconBox}>
-                  <Trash2 size={18} color="#DC2626" strokeWidth={2.2} />
+                <View style={[styles.iconBox, { backgroundColor: '#FEE2E2' }]}>
+                  <Trash2 size={17} color="#DC2626" strokeWidth={2.2} />
                 </View>
                 <Text
                   style={[
                     styles.actionText,
-                    { color: isDark ? '#F87171' : '#DC2626' },
+                    { color: isDark ? '#F87171' : '#DC2626', fontWeight: '700' },
                   ]}
                 >
                   Delete Lead
@@ -307,14 +407,21 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   iconBox: {
-    width: 28,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   actionText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  actionSubtext: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
   },
   itemDivider: {
     height: 1,

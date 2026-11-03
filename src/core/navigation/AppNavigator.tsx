@@ -260,8 +260,9 @@ export function AppNavigator({ userRole, userEmail, onLogout }: AppNavigatorProp
           name="CreateLead"
           options={{ headerShown: false }}
         >
-          {({ navigation }) => (
+          {({ route, navigation }) => (
             <CreateLeadScreen
+              route={route}
               navigation={navigation}
               onBack={() => navigation.goBack()}
               onSuccess={() => navigation.goBack()}

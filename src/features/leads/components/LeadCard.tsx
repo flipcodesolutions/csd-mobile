@@ -258,18 +258,19 @@ export const LeadCard: React.FC<LeadCardProps> = React.memo(({
           </View>
 
           {/* 3-Dots Menu Button */}
-          {onOpenActionsMenu && (
-            <TouchableOpacity
-              style={styles.dotsButton}
-              onPress={() => {
-                triggerHaptic('impactLight');
+          <TouchableOpacity
+            style={styles.dotsButton}
+            onPress={() => {
+              triggerHaptic('impactLight');
+              if (onOpenActionsMenu) {
                 onOpenActionsMenu(item);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <MoreVertical size={16} color={THEME.textSecondary} />
-            </TouchableOpacity>
-          )}
+              }
+            }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.6}
+          >
+            <MoreVertical size={18} color={THEME.textPrimary} strokeWidth={2.4} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -345,54 +346,6 @@ export const LeadCard: React.FC<LeadCardProps> = React.memo(({
           <Calendar size={12} color={THEME.textSecondary} strokeWidth={2} />
           <Text style={styles.metaText}>{formattedDate}</Text>
         </View>
-      </View>
-
-      {/* Thin Separator */}
-      <View style={styles.separator} />
-
-      {/* ----------------------------------------------------------- */}
-      {/* ROW 5: Quick Actions (Call, WhatsApp, Follow-up, Quote)     */}
-      {/* ----------------------------------------------------------- */}
-      <View style={styles.row5Actions}>
-        {/* [📞 Call] */}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.callActionBtn]}
-          onPress={handleCall}
-          activeOpacity={0.75}
-        >
-          <Phone size={13} color="#FFFFFF" strokeWidth={2.4} />
-          <Text style={styles.callActionBtnText}>Call</Text>
-        </TouchableOpacity>
-
-        {/* [💬 WhatsApp] */}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.whatsappActionBtn]}
-          onPress={handleWhatsApp}
-          activeOpacity={0.75}
-        >
-          <MessageCircle size={13} color="#16A34A" strokeWidth={2.4} />
-          <Text style={styles.whatsappActionBtnText}>WhatsApp</Text>
-        </TouchableOpacity>
-
-        {/* [🔄 Follow-up] */}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.followUpActionBtn]}
-          onPress={handleFollowUp}
-          activeOpacity={0.75}
-        >
-          <Repeat size={13} color={THEME.primaryNavy} strokeWidth={2.4} />
-          <Text style={styles.followUpActionBtnText}>Follow-up</Text>
-        </TouchableOpacity>
-
-        {/* [📄 Quote] */}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.quoteActionBtn]}
-          onPress={handleQuote}
-          activeOpacity={0.75}
-        >
-          <FileText size={13} color={THEME.info} strokeWidth={2.4} />
-          <Text style={styles.quoteActionBtnText}>Quote</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -485,8 +438,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dotsButton: {
-    padding: 2,
-    marginLeft: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
   },
 
   // Row 2: Contact

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,8 +30,9 @@ import {
 import { triggerHaptic } from '../../core/utils/haptics';
 import { api } from '../../core/api/client';
 import { leadApi } from './leadService';
-import { brandApi, modelApi, variantApi, leadSourceApi, userApi } from '../masters/masterService';
-import { BrandItem, ModelItem, SourceItem, UserItem, VariantItem } from './types';
+import { brandApi, modelApi, variantApi, leadSourceApi, leadStatusApi, userApi } from '../masters/masterService';
+import { BrandItem, ModelItem, SourceItem, StatusItem, UserItem, VariantItem } from './types';
+import { DatePickerModal } from './components/DatePickerModal';
 
 // Theme Colors matching Web Admin Panel
 const THEME = {
@@ -55,10 +56,11 @@ const THEME = {
 };
 
 const TIMELINE_OPTIONS = [
-  'Immediate (Within 7 Days)',
+  'Immediate (< 7 Days)',
   '15-30 Days',
   '1-3 Months',
   'More than 3 Months',
+  'Exploring / Later',
 ];
 
 const STATIC_STATUSES = [
@@ -73,12 +75,14 @@ interface CreateLeadScreenProps {
   onBack?: () => void;
   onSuccess?: () => void;
   navigation?: any;
+  route?: any;
 }
 
 export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
   onBack,
   onSuccess,
   navigation,
+  route,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -103,10 +107,12 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
   const [selectedModel, setSelectedModel] = useState<ModelItem | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<VariantItem | null>(null);
   const [budget, setBudget] = useState('');
-  const [timeline, setTimeline] = useState('Immediate (Within 7 Days)');
+  const [timeline, setTimeline] = useState('Immediate (< 7 Days)');
 
   // Cascading Data Sets
-  const [brands, setBrands] = useState<BrandItem[]>([]);
+  const [brands, setBrands] = useState<BrandItem[]>(route?.params?.brands || []);
+  const [allModels, setAllModels] = useState<ModelItem[]>(route?.params?.models || []);
+  const [allVariants, setAllVariants] = useState<VariantItem[]>(route?.params?.variants || []);
   const [models, setModels] = useState<ModelItem[]>([]);
   const [variants, setVariants] = useState<VariantItem[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
@@ -120,8 +126,9 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
   const [statusName, setStatusName] = useState('New');
   const [selectedExecutive, setSelectedExecutive] = useState<UserItem | null>(null);
 
-  const [sources, setSources] = useState<SourceItem[]>([]);
-  const [users, setUsers] = useState<UserItem[]>([]);
+  const [sources, setSources] = useState<SourceItem[]>(route?.params?.sources || []);
+  const [statuses, setStatuses] = useState<StatusItem[]>(route?.params?.statuses || []);
+  const [users, setUsers] = useState<UserItem[]>(route?.params?.users || []);
 
   // ----------------------------------------------------
   // UI & Loading States
@@ -137,65 +144,136 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
   const [onPickerSelect, setOnPickerSelect] = useState<(item: any) => void>(() => {});
 
   // Date Modal State
-  const [dateModalVisible, setDateModalVisible] = useState(false);
-  const [dateModalTitle, setDateModalTitle] = useState('');
-  const [targetDateField, setTargetDateField] = useState<'birth' | 'anniversary'>('birth');
-  const [inputDateText, setInputDateText] = useState('');
+  const [activeDatePicker, setActiveDatePicker] = useState<'birth' | 'anniversary' | null>(null);
+
+  // ----------------------------------------------------
+  // Helper to parse list from any response format
+  // ----------------------------------------------------
+  const parseList = (res: any): any[] => {
+    if (!res) return [];
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res.data)) return res.data;
+    if (Array.isArray(res.data?.data)) return res.data.data;
+    return [];
+  };
 
   // ----------------------------------------------------
   // Initial Data Fetch
   // ----------------------------------------------------
   const loadInitialMasters = useCallback(async () => {
     try {
-      // 1. Load Brands (filter by segment)
-      const brandsRes = await brandApi.getAll({ per_page: 100 });
-      const rawBrands: any[] = brandsRes?.data?.data || brandsRes?.data || [];
-      const filteredBrands: BrandItem[] = rawBrands
-        .filter((b: any) => {
-          if (!b.vehicle_type) return true;
-          const vt = Array.isArray(b.vehicle_type) ? b.vehicle_type : [b.vehicle_type];
-          if (segment === '4 Wheeler') {
-            return vt.some((t: string) => /4[_\s-]?wheeler|car/i.test(t));
-          } else {
-            return vt.some((t: string) => /2[_\s-]?wheeler|bike/i.test(t));
-          }
-        })
-        .map((b: any) => ({
-          id: b.id,
-          name: b.name,
-        }));
-      setBrands(filteredBrands);
+      const [bRes, mRes, vRes, sRes, stRes, uRes] = await Promise.allSettled([
+        brandApi.getAll(),
+        modelApi.getAll(),
+        variantApi.getAll(),
+        leadSourceApi.getAll(),
+        leadStatusApi.getAll(),
+        userApi.getAll(),
+      ]);
 
-      // 2. Load Sources
-      const sourcesRes = await leadSourceApi.getAll({ per_page: 50, all: true });
-      const rawSources: any[] = sourcesRes?.data?.data || sourcesRes?.data || [];
-      setSources(
-        rawSources.map((s: any) => ({
+      const rawBrands = bRes.status === 'fulfilled' ? parseList(bRes.value) : [];
+      const rawModels = mRes.status === 'fulfilled' ? parseList(mRes.value) : [];
+      const rawVariants = vRes.status === 'fulfilled' ? parseList(vRes.value) : [];
+      const rawSources = sRes.status === 'fulfilled' ? parseList(sRes.value) : [];
+      const rawStatuses = stRes.status === 'fulfilled' ? parseList(stRes.value) : [];
+      const rawUsers = uRes.status === 'fulfilled' ? parseList(uRes.value) : [];
+
+      if (rawBrands.length > 0) {
+        setBrands(rawBrands.map((b: any) => ({
+          id: b.id,
+          name: b.name || b.title || 'Brand',
+          vehicle_type: b.vehicle_type,
+        })));
+      }
+
+      if (rawModels.length > 0) {
+        setAllModels(rawModels.map((m: any) => ({
+          id: m.id,
+          brand_id: m.brand_id,
+          name: m.name || m.title || 'Model',
+          vehicle_segment: m.vehicle_segment,
+        })));
+      }
+
+      if (rawVariants.length > 0) {
+        setAllVariants(rawVariants.map((v: any) => ({
+          id: v.id,
+          model_id: v.model_id,
+          name: v.name || v.title || 'Variant',
+          price: v.price || v.ex_showroom_price,
+        })));
+      }
+
+      if (rawSources.length > 0) {
+        setSources(rawSources.map((s: any) => ({
           id: s.id,
           name: s.title || s.name || 'Direct',
           title: s.title || s.name || 'Direct',
-        }))
-      );
+        })));
+      } else {
+        setSources([
+          { id: 1, name: 'Showroom Walk-in', title: 'Showroom Walk-in' },
+          { id: 2, name: 'Website', title: 'Website' },
+          { id: 3, name: 'Reference', title: 'Reference' },
+          { id: 4, name: 'Phone Inquiry', title: 'Phone Inquiry' },
+          { id: 5, name: 'Social Media', title: 'Social Media' },
+        ]);
+      }
 
-      // 3. Load Users (Sales Executives)
-      const usersRes = await userApi.getAll();
-      const rawUsers: any[] = usersRes?.data?.data || usersRes?.data || [];
-      setUsers(
-        rawUsers.map((u: any) => ({
+      if (rawStatuses.length > 0) {
+        setStatuses(rawStatuses.map((st: any) => ({
+          id: st.id,
+          name: st.name || st.title || 'New',
+        })));
+      } else {
+        setStatuses([
+          { id: 1, name: 'New' },
+          { id: 2, name: 'Follow-up' },
+          { id: 3, name: 'Quotation Sent' },
+          { id: 4, name: 'Deal & Booking' },
+          { id: 5, name: 'Lost' },
+        ]);
+      }
+
+      if (rawUsers.length > 0) {
+        setUsers(rawUsers.map((u: any) => ({
           id: u.id,
           name: u.name,
           role: u.role || u.role_name || 'Sales Executive',
           role_name: u.role_name || u.role || 'Sales Executive',
-        }))
-      );
+        })));
+      }
     } catch (err) {
       console.log('Error loading initial lead masters:', err);
     }
-  }, [segment]);
+  }, []);
 
   useEffect(() => {
     loadInitialMasters();
   }, [loadInitialMasters]);
+
+  // Filtered brands by segment
+  const displayedBrands = useMemo(() => {
+    if (!brands || brands.length === 0) return [];
+    const filtered = brands.filter((b: any) => {
+      if (!b.vehicle_type) return true;
+      let vt = b.vehicle_type;
+      if (typeof vt === 'string') {
+        try {
+          vt = JSON.parse(vt);
+        } catch {
+          vt = [vt];
+        }
+      }
+      if (!Array.isArray(vt)) vt = [vt];
+      if (segment === '4 Wheeler') {
+        return vt.some((t: string) => /4[_\s-]?wheeler|car/i.test(String(t)));
+      } else {
+        return vt.some((t: string) => /2[_\s-]?wheeler|bike/i.test(String(t)));
+      }
+    });
+    return filtered.length > 0 ? filtered : brands;
+  }, [brands, segment]);
 
   // ----------------------------------------------------
   // Cascading Models Fetch on Brand Selection
@@ -204,20 +282,20 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
     setSelectedBrand(brand);
     setSelectedModel(null);
     setSelectedVariant(null);
-    setModels([]);
     setVariants([]);
 
+    // 1. Immediately filter from preloaded allModels
+    const localMatches = allModels.filter((m) => m.brand_id === brand.id);
+    if (localMatches.length > 0) {
+      setModels(localMatches);
+      return;
+    }
+
+    // 2. Fallback to API if not present in allModels
     setIsLoadingModels(true);
     try {
-      let rawModels: any[] = [];
-      try {
-        const res = await api.get(`/brands/${brand.id}/models`);
-        rawModels = res?.data?.data || res?.data || [];
-      } catch {
-        const res = await modelApi.getAll({ brand_id: brand.id, per_page: 100 });
-        rawModels = res?.data?.data || res?.data || [];
-      }
-
+      const res = await modelApi.getAll({ brand_id: brand.id, per_page: 100 });
+      const rawModels = parseList(res);
       setModels(
         rawModels.map((m: any) => ({
           id: m.id,
@@ -238,19 +316,19 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
   const handleSelectModel = async (model: ModelItem) => {
     setSelectedModel(model);
     setSelectedVariant(null);
-    setVariants([]);
 
+    // 1. Immediately filter from preloaded allVariants
+    const localMatches = allVariants.filter((v) => v.model_id === model.id);
+    if (localMatches.length > 0) {
+      setVariants(localMatches);
+      return;
+    }
+
+    // 2. Fallback to API if not present in allVariants
     setIsLoadingVariants(true);
     try {
-      let rawVariants: any[] = [];
-      try {
-        const res = await api.get(`/models/${model.id}/variants`);
-        rawVariants = res?.data?.data || res?.data || [];
-      } catch {
-        const res = await variantApi.getAll({ model_id: model.id, per_page: 100 });
-        rawVariants = res?.data?.data || res?.data || [];
-      }
-
+      const res = await variantApi.getAll({ model_id: model.id, per_page: 100 });
+      const rawVariants = parseList(res);
       setVariants(
         rawVariants.map((v: any) => ({
           id: v.id,
@@ -280,31 +358,6 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
     setPickerSearch('');
     setOnPickerSelect(() => onSelect);
     setPickerModalVisible(true);
-  };
-
-  // ----------------------------------------------------
-  // Open Date Modal Helper
-  // ----------------------------------------------------
-  const openDateModal = (field: 'birth' | 'anniversary', title: string, currentValue: string) => {
-    triggerHaptic('impactLight');
-    setTargetDateField(field);
-    setDateModalTitle(title);
-    setInputDateText(currentValue || '');
-    setDateModalVisible(true);
-  };
-
-  const handleSaveDate = () => {
-    const trimmed = inputDateText.trim();
-    if (trimmed && !/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      Alert.alert('Invalid Format', 'Please enter date in YYYY-MM-DD format (e.g. 1990-05-15)');
-      return;
-    }
-    if (targetDateField === 'birth') {
-      setBirthDate(trimmed);
-    } else {
-      setAnniversaryDate(trimmed);
-    }
-    setDateModalVisible(false);
   };
 
   // ----------------------------------------------------
@@ -572,7 +625,10 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
               <Text style={styles.inputLabel}>Birth Date</Text>
               <TouchableOpacity
                 style={styles.dateSelector}
-                onPress={() => openDateModal('birth', 'Select Birth Date', birthDate)}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  setActiveDatePicker('birth');
+                }}
                 activeOpacity={0.7}
               >
                 <Calendar size={15} color={THEME.textSecondary} strokeWidth={2} />
@@ -586,7 +642,10 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
               <Text style={styles.inputLabel}>Anniversary Date</Text>
               <TouchableOpacity
                 style={styles.dateSelector}
-                onPress={() => openDateModal('anniversary', 'Select Anniversary Date', anniversaryDate)}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  setActiveDatePicker('anniversary');
+                }}
                 activeOpacity={0.7}
               >
                 <Calendar size={15} color={THEME.textSecondary} strokeWidth={2} />
@@ -650,7 +709,7 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
               onPress={() =>
                 openPicker(
                   'Select Brand',
-                  brands.map((b) => ({ id: b.id, label: b.name })),
+                  displayedBrands.map((b: BrandItem) => ({ id: b.id, label: b.name })),
                   (item) => handleSelectBrand({ id: item.id, name: item.label })
                 )
               }
@@ -669,13 +728,24 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
             <TouchableOpacity
               style={[styles.dropdownSelector, !selectedBrand && styles.dropdownDisabled]}
               disabled={!selectedBrand || isLoadingModels}
-              onPress={() =>
+              onPress={() => {
+                const availableModels =
+                  models.length > 0
+                    ? models
+                    : allModels.filter((m) =>
+                        selectedBrand ? m.brand_id === selectedBrand.id : true
+                      );
                 openPicker(
                   'Select Model',
-                  models.map((m) => ({ id: m.id, label: m.name })),
-                  (item) => handleSelectModel({ id: item.id, brand_id: selectedBrand!.id, name: item.label })
-                )
-              }
+                  availableModels.map((m) => ({ id: m.id, label: m.name })),
+                  (item) =>
+                    handleSelectModel({
+                      id: item.id,
+                      brand_id: selectedBrand ? selectedBrand.id : 0,
+                      name: item.label,
+                    })
+                );
+              }}
               activeOpacity={0.7}
             >
               {isLoadingModels ? (
@@ -698,10 +768,16 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
             <TouchableOpacity
               style={[styles.dropdownSelector, !selectedModel && styles.dropdownDisabled]}
               disabled={!selectedModel || isLoadingVariants}
-              onPress={() =>
+              onPress={() => {
+                const availableVariants =
+                  variants.length > 0
+                    ? variants
+                    : allVariants.filter((v) =>
+                        selectedModel ? v.model_id === selectedModel.id : true
+                      );
                 openPicker(
                   'Select Variant',
-                  variants.map((v) => ({
+                  availableVariants.map((v) => ({
                     id: v.id,
                     label: v.name,
                     sublabel: v.price ? `₹${Number(v.price).toLocaleString('en-IN')}` : undefined,
@@ -709,11 +785,11 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
                   (item) =>
                     setSelectedVariant({
                       id: item.id,
-                      model_id: selectedModel!.id,
+                      model_id: selectedModel ? selectedModel.id : 0,
                       name: item.label,
                     })
-                )
-              }
+                );
+              }}
               activeOpacity={0.7}
             >
               {isLoadingVariants ? (
@@ -876,18 +952,18 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Lead Status Dropdown (Static options, default 'New') */}
+          {/* Lead Status Dropdown (Static from SS 1) */}
           <View style={styles.formGroup}>
             <Text style={styles.inputLabel}>Lead Status</Text>
             <TouchableOpacity
               style={styles.dropdownSelector}
-              onPress={() =>
+              onPress={() => {
                 openPicker(
                   'Select Lead Status',
                   STATIC_STATUSES.map((st) => ({ id: st, label: st })),
                   (item) => setStatusName(item.label)
-                )
-              }
+                );
+              }}
               activeOpacity={0.7}
             >
               <Text style={styles.dropdownSelectedText}>{statusName}</Text>
@@ -1033,60 +1109,23 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
       </Modal>
 
       {/* ========================================================= */}
-      {/* Date Input Modal */}
+      {/* Calendar Date Picker Modal (Current & Past Dates Only)     */}
       {/* ========================================================= */}
-      <Modal
-        visible={dateModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDateModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setDateModalVisible(false)}
-          />
-          <View style={styles.dateModalBox}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerHeaderTitle}>{dateModalTitle}</Text>
-              <TouchableOpacity onPress={() => setDateModalVisible(false)}>
-                <X size={20} color={THEME.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.dateHelperText}>
-              Enter date in YYYY-MM-DD format (e.g. 1995-10-25)
-            </Text>
-
-            <TextInput
-              style={styles.dateModalInput}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={THEME.textMuted}
-              value={inputDateText}
-              onChangeText={setInputDateText}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-              autoFocus
-            />
-
-            <View style={styles.dateModalBtnRow}>
-              <TouchableOpacity
-                style={styles.dateModalCancelBtn}
-                onPress={() => setDateModalVisible(false)}
-              >
-                <Text style={styles.dateModalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dateModalSaveBtn}
-                onPress={handleSaveDate}
-              >
-                <Text style={styles.dateModalSaveText}>Apply Date</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <DatePickerModal
+        visible={activeDatePicker !== null}
+        title={activeDatePicker === 'birth' ? 'Select Birth Date (Birthday)' : 'Select Anniversary Date'}
+        initialDate={activeDatePicker === 'birth' ? birthDate : anniversaryDate}
+        allowFuture={false}
+        onClose={() => setActiveDatePicker(null)}
+        onSelectDate={(dateStr) => {
+          if (activeDatePicker === 'birth') {
+            setBirthDate(dateStr);
+          } else {
+            setAnniversaryDate(dateStr);
+          }
+          setActiveDatePicker(null);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };

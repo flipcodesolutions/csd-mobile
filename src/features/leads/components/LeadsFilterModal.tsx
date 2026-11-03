@@ -72,8 +72,9 @@ export const LeadsFilterModal: React.FC<LeadsFilterModalProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
         <TouchableOpacity
@@ -321,11 +322,11 @@ export const LeadsFilterModal: React.FC<LeadsFilterModalProps> = ({
                 const isActive = stage === st;
                 const count =
                   st === 'All'
-                    ? Object.values(stageCounts).reduce(
+                    ? Object.values(stageCounts || {}).reduce(
                         (a, b) => a + b,
                         0
                       )
-                    : stageCounts[st] || 0;
+                    : (stageCounts && stageCounts[st]) || 0;
                 return (
                   <TouchableOpacity
                     key={st}
@@ -656,7 +657,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    height: '84%',
+    height: '85%',
+    maxHeight: '90%',
+    width: '100%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
