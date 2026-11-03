@@ -16,6 +16,7 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  Clock,
   DollarSign,
   MessageSquare,
   PhoneCall,
@@ -29,6 +30,8 @@ import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
 import { StartAlignedInput } from '../../../shared';
 import { CustomerLead } from '../../leads/types';
+import { DatePickerModal } from '../../leads/components/DatePickerModal';
+import { TimePickerModal } from '../../leads/components/TimePickerModal';
 import {
   CreateFollowUpPayload,
   FollowUpItem,
@@ -77,6 +80,10 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
   const [vehicle, setVehicle] = useState('');
   const [outcome, setOutcome] = useState<OutcomeStatus>('Interested / Call Back');
   const [interactionType, setInteractionType] = useState<InteractionType>('Phone Call');
+  const [interactionDate, setInteractionDate] = useState('');
+  const [interactionTime, setInteractionTime] = useState('11:00 AM');
+  const [datePickerTarget, setDatePickerTarget] = useState<'interaction' | 'next' | null>(null);
+  const [timePickerTarget, setTimePickerTarget] = useState<'interaction' | 'next' | null>(null);
   const [nextDate, setNextDate] = useState('');
   const [nextTime, setNextTime] = useState('10:00 AM');
   const [notes, setNotes] = useState('');
@@ -101,6 +108,10 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
           (prefillItem.status as OutcomeStatus) || 'Interested / Call Back'
         );
         setInteractionType(prefillItem.type || 'Phone Call');
+        setInteractionDate(
+          prefillItem.follow_up_date || new Date().toISOString().split('T')[0]
+        );
+        setInteractionTime(prefillItem.follow_up_time || '11:00 AM');
         setNextDate(
           prefillItem.next_follow_up_date ||
             new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
@@ -146,6 +157,14 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (!interactionDate) {
+      Alert.alert('Required Field', 'Please select interaction date.');
+      return;
+    }
+    if (!interactionTime) {
+      Alert.alert('Required Field', 'Please select interaction time.');
+      return;
+    }
     if (!customerName.trim()) {
       Alert.alert('Required Field', 'Please enter customer name.');
       return;
@@ -513,6 +532,70 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
               </View>
             </View>
 
+            
+            {/* Interaction Date & Time (Current & Future Allowed) */}
+            <View style={styles.twoColRow}>
+              <View style={[styles.fieldGroup, { flex: 1.1 }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  INTERACTION DATE <Text style={styles.reqStar}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.pickerTriggerBtn,
+                    {
+                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                    },
+                  ]}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setDatePickerTarget('interaction');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.pickerTriggerText,
+                      { color: interactionDate ? colors.textPrimary : colors.textMuted },
+                    ]}
+                  >
+                    {interactionDate || 'Select Date'}
+                  </Text>
+                  <Calendar size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.fieldGroup, { flex: 1 }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  INTERACTION TIME <Text style={styles.reqStar}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.pickerTriggerBtn,
+                    {
+                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                    },
+                  ]}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setTimePickerTarget('interaction');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.pickerTriggerText,
+                      { color: interactionTime ? colors.textPrimary : colors.textMuted },
+                    ]}
+                  >
+                    {interactionTime || 'Select Time'}
+                  </Text>
+                  <Clock size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* 3. Call Outcome Selection (7 Web Options) */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
@@ -861,6 +944,36 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
           </ScrollView>
         </View>
       </View>
+    
+      <DatePickerModal
+        visible={datePickerTarget !== null}
+        title={datePickerTarget === 'interaction' ? 'Select Interaction Date' : 'Select Next Action Date'}
+        initialDate={datePickerTarget === 'interaction' ? interactionDate : nextDate}
+        allowFuture={true}
+        allowPast={false}
+        onClose={() => setDatePickerTarget(null)}
+        onSelectDate={(formattedDate) => {
+          if (datePickerTarget === 'interaction') {
+            setInteractionDate(formattedDate);
+          } else {
+            setNextDate(formattedDate);
+          }
+        }}
+      />
+
+      <TimePickerModal
+        visible={timePickerTarget !== null}
+        title={timePickerTarget === 'interaction' ? 'Select Interaction Time' : 'Select Next Action Time'}
+        initialTime={timePickerTarget === 'interaction' ? interactionTime : nextTime}
+        onClose={() => setTimePickerTarget(null)}
+        onSelectTime={(formattedTime) => {
+          if (timePickerTarget === 'interaction') {
+            setInteractionTime(formattedTime);
+          } else {
+            setNextTime(formattedTime);
+          }
+        }}
+      />
     </Modal>
   );
 };
@@ -964,6 +1077,19 @@ const styles = StyleSheet.create({
   twoColRow: {
     flexDirection: 'row',
     gap: 10,
+  },
+  pickerTriggerBtn: {
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+  },
+  pickerTriggerText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   input: {
     height: 42,

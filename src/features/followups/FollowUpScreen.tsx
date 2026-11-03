@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../core/utils/haptics';
 import { exportCsvToFile } from '../../core/utils/csvExporter';
+import { DatePickerModal } from '../leads/components/DatePickerModal';
 import { FabSpeedDial } from '../../shared';
 import { leadApi } from '../leads/leadService';
 import { CustomerLead } from '../leads/types';
@@ -72,6 +73,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showDateFilters, setShowDateFilters] = useState(false);
+  const [datePickerTarget, setDatePickerTarget] = useState<'from' | 'to' | null>(null);
 
   // Modals
   const [logModalVisible, setLogModalVisible] = useState(false);
@@ -81,6 +83,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<FollowUpItem | null>(null);
   const [selectedActionItem, setSelectedActionItem] = useState<FollowUpItem | null>(null);
+  const [historyCounts, setHistoryCounts] = useState<Record<number, number>>({});
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [activeProfileLead, setActiveProfileLead] = useState<CustomerLead | null>(null);
@@ -375,7 +378,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                           : '#CBD5E1',
                     },
                   ]}
-                  onPress={() => setShowDateFilters(!showDateFilters)}
+                  onPress={() => { triggerHaptic('selection'); setShowDateFilters(!showDateFilters); }}
                   activeOpacity={0.7}
                 >
                   <Calendar
@@ -385,6 +388,29 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                   />
                 </TouchableOpacity>
               </View>
+
+              
+              {/* Active Date Filter Chip */}
+              {(startDate || endDate) && (
+                <View style={styles.activeDateChipRow}>
+                  <View style={[styles.activeDateChip, { backgroundColor: isDark ? 'rgba(88, 99, 42, 0.25)' : '#F5F8EE', borderColor: colors.primary }]}>
+                    <Calendar size={12} color={colors.primary} />
+                    <Text style={[styles.activeDateText, { color: colors.primary }]}>
+                      Filtered: {startDate} {endDate && endDate !== startDate ? 'to ' + endDate : ''}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        triggerHaptic('selection');
+                        setStartDate('');
+                        setEndDate('');
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <X size={12} color={colors.primary} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               {/* Collapsible Date Range Picker */}
               {showDateFilters && (
@@ -407,20 +433,30 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                       >
                         FROM DATE
                       </Text>
-                      <TextInput
+                      <TouchableOpacity
                         style={[
-                          styles.dateInput,
+                          styles.datePickerBtn,
                           {
                             backgroundColor: isDark ? '#162030' : '#F8FAFC',
-                            borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                            color: colors.textPrimary,
+                            borderColor: startDate ? colors.primary : isDark ? '#1E293B' : '#CBD5E1',
                           },
                         ]}
-                        value={startDate}
-                        onChangeText={setStartDate}
-                        placeholder="YYYY-MM-DD"
-                        placeholderTextColor={colors.textMuted}
-                      />
+                        onPress={() => {
+                          triggerHaptic('selection');
+                          setDatePickerTarget('from');
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.datePickerBtnText,
+                            { color: startDate ? colors.textPrimary : colors.textMuted },
+                          ]}
+                        >
+                          {startDate || 'Select Date'}
+                        </Text>
+                        <Calendar size={13} color={startDate ? colors.primary : colors.textMuted} />
+                      </TouchableOpacity>
                     </View>
 
                     <View style={styles.dateCol}>
@@ -432,20 +468,30 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                       >
                         TO DATE
                       </Text>
-                      <TextInput
+                      <TouchableOpacity
                         style={[
-                          styles.dateInput,
+                          styles.datePickerBtn,
                           {
                             backgroundColor: isDark ? '#162030' : '#F8FAFC',
-                            borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                            color: colors.textPrimary,
+                            borderColor: endDate ? colors.primary : isDark ? '#1E293B' : '#CBD5E1',
                           },
                         ]}
-                        value={endDate}
-                        onChangeText={setEndDate}
-                        placeholder="YYYY-MM-DD"
-                        placeholderTextColor={colors.textMuted}
-                      />
+                        onPress={() => {
+                          triggerHaptic('selection');
+                          setDatePickerTarget('to');
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.datePickerBtnText,
+                            { color: endDate ? colors.textPrimary : colors.textMuted },
+                          ]}
+                        >
+                          {endDate || 'Select Date'}
+                        </Text>
+                        <Calendar size={13} color={endDate ? colors.primary : colors.textMuted} />
+                      </TouchableOpacity>
                     </View>
                   </View>
 
@@ -643,6 +689,25 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
           onPress: handleExportCSV,
         }}
       />
+    
+      {/* Date Filter Calendar Modal */}
+      <DatePickerModal
+        visible={datePickerTarget !== null}
+        title={datePickerTarget === 'from' ? 'Select Start Date (From)' : 'Select End Date (To)'}
+        initialDate={(datePickerTarget === 'from' ? startDate : endDate) || new Date().toISOString().split('T')[0]}
+        allowFuture={true}
+        allowPast={true}
+        onClose={() => setDatePickerTarget(null)}
+        onSelectDate={(formattedDate) => {
+          if (datePickerTarget === 'from') {
+            setStartDate(formattedDate);
+          } else {
+            setEndDate(formattedDate);
+          }
+          setDatePickerTarget(null);
+        }}
+      />
+
     </View>
   );
 };
@@ -721,6 +786,24 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     height: '100%',
   },
+  activeDateChipRow: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    flexDirection: 'row',
+  },
+  activeDateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  activeDateText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   dateToggleBtn: {
     width: 40,
     height: 40,
@@ -747,6 +830,19 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  datePickerBtn: {
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  datePickerBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   dateInput: {
     height: 36,

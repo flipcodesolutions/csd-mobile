@@ -31,6 +31,7 @@ export interface FollowUpHistoryModalProps {
   onClose: () => void;
   onLogNewFollowUp: (item: FollowUpItem) => void;
   onCall: (phone: string) => void;
+  onHistoryCountFetched?: (leadId: number, count: number) => void;
 }
 
 export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
@@ -39,6 +40,7 @@ export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
   onClose,
   onLogNewFollowUp,
   onCall,
+  onHistoryCountFetched,
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -56,6 +58,7 @@ export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
         const list = Array.isArray(res) ? res : res?.data || [];
         if (list.length > 0) {
           setHistoryList(list);
+          onHistoryCountFetched?.(leadId, list.length);
           return;
         }
       }
@@ -141,7 +144,7 @@ export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
                     ]}
                     numberOfLines={1}
                   >
-                    {item.customer_name}
+                    Follow-Up History: {item.customer_name}
                   </Text>
                   <View
                     style={[

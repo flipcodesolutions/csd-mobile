@@ -1,11 +1,5 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import {
-  AlertTriangle,
-  Calendar,
-  CalendarClock,
-  CheckCheck,
-} from 'lucide-react-native';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
 import { FollowUpStats, FollowUpTab } from '../types';
@@ -27,55 +21,44 @@ export const FollowUpKpiDeck: React.FC<FollowUpKpiDeckProps> = ({
     id: FollowUpTab;
     title: string;
     count: number;
-    sub: string;
     accentColor: string;
-    icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
   }[] = [
     {
       id: 'overdue',
-      title: 'OVERDUE CALLS',
+      title: 'OVERDUE',
       count: stats.overdue,
-      sub: 'Action required urgently',
       accentColor: '#EF4444',
-      icon: AlertTriangle,
     },
     {
       id: 'today',
       title: 'DUE TODAY',
       count: stats.due_today,
-      sub: 'Scheduled for today',
       accentColor: '#FB923C',
-      icon: Calendar,
     },
     {
       id: 'upcoming',
-      title: 'UPCOMING (7D)',
+      title: 'UPCOMING',
       count: stats.upcoming,
-      sub: 'Pipeline nurturing',
       accentColor: '#38BDF8',
-      icon: CalendarClock,
     },
     {
       id: 'all',
-      title: 'TOTAL CALLS',
+      title: 'TOTAL',
       count: stats.total,
-      sub: 'Active CRM tracking',
       accentColor: '#22C55E',
-      icon: CheckCheck,
     },
   ];
 
   return (
     <View style={styles.deckContainer}>
-      <View style={styles.gridRow}>
+      <View style={styles.singleRow}>
         {cards.map((card) => {
           const isActive = activeTab === card.id;
-          const IconComp = card.icon;
           return (
             <TouchableOpacity
               key={card.id}
               style={[
-                styles.kpiCard,
+                styles.kpiBox,
                 {
                   backgroundColor: isDark ? '#101726' : '#FFFFFF',
                   borderColor: isActive
@@ -83,10 +66,13 @@ export const FollowUpKpiDeck: React.FC<FollowUpKpiDeckProps> = ({
                     : isDark
                     ? '#1E293B'
                     : '#E2E8F0',
-                  borderLeftColor: card.accentColor,
-                  borderLeftWidth: 4,
+                  borderTopColor: card.accentColor,
+                  borderTopWidth: 3,
+                },
+                isActive && {
                   shadowColor: card.accentColor,
-                  shadowOpacity: isActive ? 0.2 : 0.05,
+                  shadowOpacity: 0.18,
+                  elevation: 2,
                 },
               ]}
               activeOpacity={0.75}
@@ -95,47 +81,29 @@ export const FollowUpKpiDeck: React.FC<FollowUpKpiDeckProps> = ({
                 onSelectTab(card.id);
               }}
             >
-              <View style={styles.cardHeader}>
-                <Text
-                  style={[
-                    styles.cardTitle,
-                    { color: isDark ? '#94A3B8' : '#64748B' },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {card.title}
-                </Text>
-                <View
-                  style={[
-                    styles.iconPill,
-                    {
-                      backgroundColor: isDark
-                        ? `${card.accentColor}20`
-                        : `${card.accentColor}15`,
-                    },
-                  ]}
-                >
-                  <IconComp size={14} color={card.accentColor} strokeWidth={2.5} />
-                </View>
-              </View>
-
               <Text
                 style={[
-                  styles.countText,
-                  { color: isDark ? '#F8FAFC' : '#0F172A' },
-                ]}
-              >
-                {card.count}
-              </Text>
-
-              <Text
-                style={[
-                  styles.subText,
-                  { color: isDark ? '#64748B' : '#94A3B8' },
+                  styles.cardLabel,
+                  { color: isActive ? card.accentColor : isDark ? '#94A3B8' : '#64748B' },
                 ]}
                 numberOfLines={1}
               >
-                {card.sub}
+                {card.title}
+              </Text>
+              <Text
+                style={[
+                  styles.countValue,
+                  {
+                    color:
+                      card.id === 'overdue' && card.count > 0
+                        ? '#EF4444'
+                        : isDark
+                        ? '#F8FAFC'
+                        : '#0F172A',
+                  },
+                ]}
+              >
+                {card.count}
               </Text>
             </TouchableOpacity>
           );
@@ -148,51 +116,32 @@ export const FollowUpKpiDeck: React.FC<FollowUpKpiDeckProps> = ({
 const styles = StyleSheet.create({
   deckContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
-  gridRow: {
+  singleRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
-  kpiCard: {
+  kpiBox: {
     flex: 1,
-    minWidth: '47%',
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  cardTitle: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  iconPill: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  countText: {
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: -0.5,
+  cardLabel: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.4,
     marginBottom: 2,
+    textAlign: 'center',
   },
-  subText: {
-    fontSize: 9.5,
-    fontWeight: '500',
+  countValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
   },
 });

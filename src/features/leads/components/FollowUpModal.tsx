@@ -133,6 +133,14 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
 
   const handleSubmit = async () => {
     if (!lead) return;
+    if (!interactionDate) {
+      Alert.alert('Required Field', 'Please select interaction date.');
+      return;
+    }
+    if (!interactionTime) {
+      Alert.alert('Required Field', 'Please select interaction time.');
+      return;
+    }
     if (!notes.trim()) {
       Alert.alert('Required Field', 'Please enter call notes & conversation summary.');
       return;
@@ -418,7 +426,7 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
             <View style={styles.twoColRow}>
               <View style={styles.colCell}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  INTERACTION DATE
+                  INTERACTION DATE <Text style={styles.reqStar}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -452,7 +460,7 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
               </View>
               <View style={styles.colCell}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  INTERACTION TIME
+                  INTERACTION TIME <Text style={styles.reqStar}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -765,6 +773,7 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
           datePickerTarget === 'interaction' ? interactionDate : nextActionDate
         }
         allowFuture={true}
+        allowPast={false}
         onClose={() => setDatePickerTarget(null)}
         onSelectDate={(formattedDate) => {
           if (datePickerTarget === 'interaction') {

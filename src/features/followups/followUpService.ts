@@ -92,13 +92,32 @@ export const normalizeFollowUpItem = (raw: any, idx = 0): FollowUpItem => {
   const lead = raw.lead || {};
   const user = raw.user || {};
   
+  const rawFollowUpsList =
+    (Array.isArray(raw.follow_ups) ? raw.follow_ups : null) ||
+    (Array.isArray(raw.followups) ? raw.followups : null) ||
+    (Array.isArray(raw.history) ? raw.history : null) ||
+    (Array.isArray(raw.interactions) ? raw.interactions : null) ||
+    (Array.isArray(lead.follow_ups) ? lead.follow_ups : null) ||
+    (Array.isArray(lead.followups) ? lead.followups : null) ||
+    (Array.isArray(lead.history) ? lead.history : null) ||
+    (Array.isArray(lead.interactions) ? lead.interactions : null);
+
   const rawCalls =
+    (rawFollowUpsList ? rawFollowUpsList.length : null) ??
     raw.calls_count ??
     raw.call_count ??
     raw.calls ??
     raw.total_calls ??
+    raw.follow_ups_count ??
+    raw.followups_count ??
+    raw.follow_up_count ??
+    raw.interactions_count ??
     lead.calls_count ??
+    lead.call_count ??
     lead.follow_ups_count ??
+    lead.followups_count ??
+    lead.follow_up_count ??
+    lead.interactions_count ??
     lead.total_calls ??
     1;
 

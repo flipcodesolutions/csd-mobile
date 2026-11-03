@@ -21,6 +21,7 @@ interface DatePickerModalProps {
   title: string;
   initialDate?: string; // YYYY-MM-DD
   allowFuture?: boolean;
+  allowPast?: boolean;
   onClose: () => void;
   onSelectDate: (dateStr: string) => void;
 }
@@ -47,6 +48,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
   title,
   initialDate,
   allowFuture = false,
+  allowPast = true,
   onClose,
   onSelectDate,
 }) => {
@@ -97,16 +99,19 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
   const yearsList = useMemo(() => {
     const list: number[] = [];
     const maxYear = allowFuture ? todayYear + 10 : todayYear;
-    const minYear = allowFuture ? todayYear - 2 : 1950;
+    const minYear = !allowPast ? todayYear : allowFuture ? todayYear - 2 : 1950;
     for (let y = maxYear; y >= minYear; y--) {
       list.push(y);
     }
     return list;
-  }, [todayYear, allowFuture]);
+  }, [todayYear, allowFuture, allowPast]);
 
   // Navigate month
   const handlePrevMonth = () => {
     triggerHaptic('selection');
+    if (!allowPast && currentYear <= todayYear && currentMonth <= todayMonth) {
+      return;
+    }
     if (currentMonth === 0) {
       setCurrentMonth(11);
       setCurrentYear((y) => y - 1);
@@ -141,6 +146,14 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
         return;
       }
     }
+    if (!allowPast) {
+      const checkDate = new Date(currentYear, currentMonth, day);
+      const startOfToday = new Date(todayYear, todayMonth, todayDate, 0, 0, 0);
+      if (checkDate < startOfToday) {
+        triggerHaptic('notificationWarning');
+        return;
+      }
+    }
 
     triggerHaptic('selection');
     setSelectedDay(day);
@@ -151,6 +164,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
     onClose();
   };
 
+  const isPrevDisabled = !allowPast && currentYear <= todayYear && currentMonth <= todayMonth;
   const isNextDisabled = !allowFuture
     ? currentYear === todayYear && currentMonth >= todayMonth
     : currentYear >= todayYear + 10 && currentMonth === 11;
@@ -212,9 +226,11 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                 {
                   backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
                   borderColor: isDark ? '#334155' : '#CBD5E1',
+                  opacity: isPrevDisabled ? 0.3 : 1,
                 },
               ]}
               onPress={handlePrevMonth}
+              disabled={isPrevDisabled}
             >
               <ChevronLeft size={16} color={colors.textPrimary} />
             </TouchableOpacity>
@@ -275,7 +291,11 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                   { color: colors.textSecondary },
                 ]}
               >
-                Select Year (Current & Past Only):
+                {allowFuture && !allowPast
+                  ? 'Select Year (Current & Future Only):'
+                  : !allowFuture
+                  ? 'Select Year (Current & Past Only):'
+                  : 'Select Year:'}
               </Text>
               <ScrollView
                 style={{ maxHeight: 200 }}
@@ -354,7 +374,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                     currentMonth === todayMonth &&
                     day === todayDate;
 
-                  // Check if future
+                  // Check if future or past
                   const isFuture =
                     currentYear > todayYear ||
                     (currentYear === todayYear && currentMonth > todayMonth) ||
@@ -362,7 +382,14 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                       currentMonth === todayMonth &&
                       day > todayDate);
 
-                  const isBlocked = !allowFuture && isFuture;
+                  const isPast =
+                    currentYear < todayYear ||
+                    (currentYear === todayYear && currentMonth < todayMonth) ||
+                    (currentYear === todayYear &&
+                      currentMonth === todayMonth &&
+                      day < todayDate);
+
+                  const isBlocked = (!allowFuture && isFuture) || (!allowPast && isPast);
                   const isSelected = selectedDay === day;
 
                   return (
