@@ -39,11 +39,10 @@ import {
 export const OUTCOME_OPTIONS: OutcomeStatus[] = [
   'Interested / Call Back',
   'Quotation Requested',
-  'Ready for Booking',
-  'Not Answering / Busy',
-  'Price Too High',
-  'Bought Competitor Car',
-  'Showroom Visit Done',
+  'Negotiation / Price Discussion',
+  'Not Reachable / Busy',
+  'Lost to Competitor / Lost of Lead',
+  'Deal Won / Booking',
 ];
 
 export const INTERACTION_TYPES: InteractionType[] = [

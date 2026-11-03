@@ -11,9 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Calendar } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { triggerHaptic } from '../../../core/utils/haptics';
 import { StartAlignedInput } from '../../../shared';
+import { DatePickerModal } from './DatePickerModal';
 import {
   BrandItem,
   CustomerLead,
@@ -22,6 +25,8 @@ import {
   StatusItem,
   UserItem,
   VariantItem,
+  LEAD_STATUS_OPTIONS,
+  PURCHASE_TIMELINE_OPTIONS,
 } from '../types';
 
 interface EditProspectModalProps {
@@ -54,21 +59,29 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
 
   const isEdit = !!lead;
 
-  // Form State
+  // 1. Customer Details
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [city, setCity] = useState('');
+  const [homeTown, setHomeTown] = useState('');
+  const [posting, setPosting] = useState('');
   const [state, setState] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [anniversaryDate, setAnniversaryDate] = useState('');
+  const [activeDatePicker, setActiveDatePicker] = useState<'birthDate' | 'anniversaryDate' | null>(null);
+
+  // 2. Vehicle Requirement & Lead Priority
   const [segment, setSegment] = useState<'4 Wheeler' | '2 Wheeler'>('4 Wheeler');
   const [brandId, setBrandId] = useState<number | null>(null);
   const [modelId, setModelId] = useState<number | null>(null);
   const [variantId, setVariantId] = useState<number | null>(null);
   const [priority, setPriority] = useState<'Hot' | 'Warm' | 'Cold'>('Hot');
-  const [timeline, setTimeline] = useState('Immediate (< 7 Days)');
-  const [budget, setBudget] = useState('CSD Entitlement');
+  const [timeline, setTimeline] = useState<string>('Immediate (< 7 Days)');
+  const [budget, setBudget] = useState('');
+
+  // 3. Lead Tracking & Assignment
   const [sourceId, setSourceId] = useState<number | null>(null);
-  const [statusId, setStatusId] = useState<number | null>(null);
+  const [statusName, setStatusName] = useState<string>('New');
   const [assignedTo, setAssignedTo] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,34 +99,40 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
       setName(lead.name || '');
       setPhone(lead.phone || '');
       setEmail(lead.email || '');
-      setCity(lead.city || '');
+      setHomeTown(lead.home_town || lead.city || '');
+      setPosting(lead.posting || '');
       setState(lead.state || '');
+      setBirthDate(lead.birth_date || lead.birthday || '');
+      setAnniversaryDate(lead.anniversary_date || '');
       setSegment(lead.vehicle_segment || '4 Wheeler');
       setBrandId(lead.brand_id || null);
       setModelId(lead.model_id || null);
       setVariantId(lead.variant_id || null);
       setPriority(lead.priority || 'Hot');
       setTimeline(lead.purchase_timeline || 'Immediate (< 7 Days)');
-      setBudget(lead.budget ? lead.budget.toString() : 'CSD Entitlement');
-      setSourceId(lead.source_id || null);
-      setStatusId(lead.status_id || null);
-      setAssignedTo(lead.assigned_to || null);
+      setBudget(lead.budget !== undefined && lead.budget !== null ? lead.budget.toString() : '');
+      setSourceId(lead.source_id || (sources[0]?.id ?? null));
+      setStatusName(lead.status_name || lead.lead_status || 'New');
+      setAssignedTo(lead.assigned_to || (users[0]?.id ?? null));
       setNotes(lead.notes || '');
     } else {
       setName('');
       setPhone('');
       setEmail('');
-      setCity('Delhi');
-      setState('Delhi');
+      setHomeTown('');
+      setPosting('');
+      setState('');
+      setBirthDate('');
+      setAnniversaryDate('');
       setSegment('4 Wheeler');
       setBrandId(brands[0]?.id || null);
       setModelId(null);
       setVariantId(null);
       setPriority('Hot');
       setTimeline('Immediate (< 7 Days)');
-      setBudget('CSD Entitlement');
+      setBudget(''); // Default Blank
       setSourceId(sources[0]?.id || null);
-      setStatusId(statuses[0]?.id || null);
+      setStatusName('New');
       setAssignedTo(users[0]?.id || null);
       setNotes('');
     }
@@ -135,12 +154,21 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
       const selectedModel = models.find((m) => m.id === modelId);
       const selectedVariant = variants.find((v) => v.id === variantId);
 
+      const matchedStatus = statuses.find(
+        (s) => s.name?.toLowerCase() === statusName.toLowerCase()
+      );
+
       const payload = {
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim(),
-        city: city.trim(),
+        city: homeTown.trim() || 'Delhi',
+        home_town: homeTown.trim(),
+        posting: posting.trim(),
         state: state.trim(),
+        birth_date: birthDate.trim(),
+        birthday: birthDate.trim(),
+        anniversary_date: anniversaryDate.trim(),
         vehicle_segment: segment,
         brand_id: brandId,
         brand_name: selectedBrand?.name,
@@ -148,13 +176,21 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
         model_name: selectedModel?.name,
         variant_id: variantId,
         variant_name: selectedVariant?.name,
-        model_variant: `${selectedModel?.name || ''} ${selectedVariant?.name || ''}`.trim() || 'CSD Vehicle',
+        model_variant:
+          `${selectedModel?.name || ''} ${selectedVariant?.name || ''}`.trim() ||
+          (selectedBrand ? `${selectedBrand.name} Vehicle` : 'CSD Vehicle'),
         priority,
         purchase_timeline: timeline,
-        budget,
+        budget: budget.trim(),
         source_id: sourceId,
-        status_id: statusId,
+        source_name:
+          sources.find((s) => s.id === sourceId)?.title ||
+          sources.find((s) => s.id === sourceId)?.name,
+        status_id: matchedStatus?.id || undefined,
+        status_name: statusName,
+        lead_status: statusName,
         assigned_to: assignedTo,
+        assigned_user_name: users.find((u) => u.id === assignedTo)?.name,
         notes: notes.trim(),
       };
 
@@ -232,7 +268,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                       { color: colors.textPrimary },
                     ]}
                   >
-                    {isEdit ? 'Edit Prospect' : 'Register New Prospect'}
+                    {isEdit ? 'Edit Customer Lead' : 'Add New Customer Lead'}
                   </Text>
                   <View
                     style={[
@@ -253,7 +289,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                         { color: isDark ? colors.primary : colors.primaryDark },
                       ]}
                     >
-                      CSD QUOTA
+                      PIPELINE
                     </Text>
                   </View>
                 </View>
@@ -263,7 +299,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                     { color: colors.textSecondary },
                   ]}
                 >
-                  Vehicle entitlement & allocation tracker
+                  Manage prospect specifications & allocation
                 </Text>
               </View>
             </View>
@@ -292,314 +328,350 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
             nestedScrollEnabled={true}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Vehicle Segment Selector */}
-            <View style={styles.fieldGroup}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                VEHICLE SEGMENT <Text style={styles.reqStar}>*</Text>
-              </Text>
-              <View
-                style={[
-                  styles.segmentToggleBox,
-                  {
-                    backgroundColor: isDark ? '#101726' : '#F1F5F9',
-                    borderColor: isDark ? '#1E293B' : '#E2E8F0',
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.segmentBtn,
-                    segment === '4 Wheeler' && [
-                      styles.segmentBtnActive,
-                      { backgroundColor: colors.primary },
-                    ],
-                  ]}
-                  onPress={() => setSegment('4 Wheeler')}
-                >
-                  <Text style={styles.segIcon}>🚗</Text>
-                  <Text
-                    style={[
-                      styles.segmentBtnText,
-                      {
-                        color:
-                          segment === '4 Wheeler'
-                            ? '#FFFFFF'
-                            : colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    4-Wheeler (Car/SUV)
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.segmentBtn,
-                    segment === '2 Wheeler' && [
-                      styles.segmentBtnActive,
-                      { backgroundColor: colors.primary },
-                    ],
-                  ]}
-                  onPress={() => setSegment('2 Wheeler')}
-                >
-                  <Text style={styles.segIcon}>🏍️</Text>
-                  <Text
-                    style={[
-                      styles.segmentBtnText,
-                      {
-                        color:
-                          segment === '2 Wheeler'
-                            ? '#FFFFFF'
-                            : colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    2-Wheeler (Bike)
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Customer Name */}
-            <View style={styles.fieldGroup}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                CUSTOMER FULL NAME <Text style={styles.reqStar}>*</Text>
-              </Text>
-              <StartAlignedInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                    borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                    color: colors.textPrimary,
-                  },
-                ]}
-                value={name}
-                onChangeText={setName}
-                placeholder="Rank, Full Name (e.g. Maj. Rohit Sharma)"
-                placeholderTextColor={colors.textMuted}
-              />
-            </View>
-
-            {/* Phone & Email Row */}
-            <View style={styles.twoColRow}>
-              <View style={styles.colCell}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  PHONE NUMBER <Text style={styles.reqStar}>*</Text>
+            {/* =========================================
+                SECTION 1: CUSTOMER DETAILS
+            ========================================= */}
+            <View
+              style={[
+                styles.sectionCard,
+                {
+                  backgroundColor: isDark ? '#101726' : '#F8FAFC',
+                  borderColor: isDark ? '#1E293B' : '#E2E8F0',
+                },
+              ]}
+            >
+              <View style={styles.sectionHeaderRow}>
+                <View style={[styles.sectionIndicator, { backgroundColor: colors.primary }]} />
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  1. Customer Details
                 </Text>
-                <View style={styles.phoneInputRow}>
-                  <View
-                    style={[
-                      styles.phonePrefix,
-                      {
-                        backgroundColor: isDark ? '#162030' : '#F1F5F9',
-                        borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                      },
-                    ]}
-                  >
-                    <Text
+              </View>
+
+              {/* Customer Full Name */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  CUSTOMER FULL NAME <Text style={styles.reqStar}>*</Text>
+                </Text>
+                <StartAlignedInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="e.g. Maj. Rohit Sharma / Jinal Pujara"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+
+              {/* Phone & Email Row */}
+              <View style={styles.twoColRow}>
+                <View style={styles.colCell}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    PHONE NUMBER <Text style={styles.reqStar}>*</Text>
+                  </Text>
+                  <View style={styles.phoneInputRow}>
+                    <View
                       style={[
-                        styles.prefixText,
-                        { color: colors.textSecondary },
+                        styles.phonePrefix,
+                        {
+                          backgroundColor: isDark ? '#162030' : '#F1F5F9',
+                          borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                        },
                       ]}
                     >
-                      +91
-                    </Text>
+                      <Text style={[styles.prefixText, { color: colors.textSecondary }]}>
+                        +91
+                      </Text>
+                    </View>
+                    <StartAlignedInput
+                      style={[
+                        styles.phoneInput,
+                        {
+                          backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                          borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                          color: colors.textPrimary,
+                        },
+                      ]}
+                      value={phone}
+                      onChangeText={setPhone}
+                      placeholder="9876543210"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="phone-pad"
+                    />
                   </View>
+                </View>
+
+                <View style={styles.colCell}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    EMAIL ADDRESS
+                  </Text>
                   <StartAlignedInput
                     style={[
-                      styles.phoneInput,
+                      styles.input,
                       {
-                        backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                        backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
                         borderColor: isDark ? '#1E293B' : '#CBD5E1',
                         color: colors.textPrimary,
                       },
                     ]}
-                    value={phone}
-                    onChangeText={setPhone}
-                    placeholder="9876543210"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="officer@nic.in"
                     placeholderTextColor={colors.textMuted}
-                    keyboardType="phone-pad"
+                    keyboardType="email-address"
                   />
                 </View>
               </View>
 
-              <View style={styles.colCell}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  EMAIL ADDRESS
-                </Text>
-                <StartAlignedInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="officer@nic.in"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="email-address"
-                />
-              </View>
-            </View>
+              {/* Home Town & Posting */}
+              <View style={styles.twoColRow}>
+                <View style={styles.colCell}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    HOME TOWN
+                  </Text>
+                  <StartAlignedInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                        borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                    value={homeTown}
+                    onChangeText={setHomeTown}
+                    placeholder="e.g. Surendranagar / Pune"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
 
-            {/* Station / City & State */}
-            <View style={styles.twoColRow}>
-              <View style={styles.colCell}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  STATION / CITY
-                </Text>
-                <StartAlignedInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                  value={city}
-                  onChangeText={setCity}
-                  placeholder="e.g. Pune / Delhi"
-                  placeholderTextColor={colors.textMuted}
-                />
+                <View style={styles.colCell}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    POSTING
+                  </Text>
+                  <StartAlignedInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                        borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                    value={posting}
+                    onChangeText={setPosting}
+                    placeholder="e.g. Pune Cantt / HQ"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
               </View>
 
-              <View style={styles.colCell}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  STATE / COMMAND
+              {/* State */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  STATE
                 </Text>
                 <StartAlignedInput
                   style={[
                     styles.input,
                     {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                      backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
                       borderColor: isDark ? '#1E293B' : '#CBD5E1',
                       color: colors.textPrimary,
                     },
                   ]}
                   value={state}
                   onChangeText={setState}
-                  placeholder="e.g. Maharashtra"
+                  placeholder="e.g. Gujarat / Maharashtra"
                   placeholderTextColor={colors.textMuted}
                 />
               </View>
-            </View>
 
-            {/* Vehicle Selection Chips */}
-            <View style={styles.fieldGroup}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                BRAND SELECTION
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-                {brands.map((b) => {
-                  const isSel = brandId === b.id;
-                  return (
-                    <TouchableOpacity
-                      key={b.id}
+              {/* Birth Date & Anniversary Date */}
+              <View style={styles.twoColRow}>
+                <View style={styles.colCell}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    BIRTH DATE (BIRTHDAY)
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.datePickerBtn,
+                      {
+                        backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                        borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                      },
+                    ]}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setActiveDatePicker('birthDate');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Calendar size={14} color={birthDate ? colors.primary : colors.textMuted} />
+                    <Text
                       style={[
-                        styles.chipBtn,
+                        styles.datePickerBtnText,
                         {
-                          backgroundColor: isSel
-                            ? colors.primary
-                            : isDark
-                            ? '#101726'
-                            : '#F1F5F9',
-                          borderColor: isSel
-                            ? colors.primaryDark
-                            : isDark
-                            ? '#1E293B'
-                            : '#CBD5E1',
+                          color: birthDate ? colors.textPrimary : colors.textMuted,
                         },
                       ]}
-                      onPress={() => {
-                        setBrandId(b.id);
-                        setModelId(null);
-                        setVariantId(null);
-                      }}
+                      numberOfLines={1}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          {
-                            color: isSel
-                              ? '#FFFFFF'
-                              : isDark
-                              ? '#94A3B8'
-                              : '#475569',
-                          },
-                        ]}
-                      >
-                        {b.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+                      {birthDate || 'Select Date'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.colCell}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    ANNIVERSARY DATE
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.datePickerBtn,
+                      {
+                        backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                        borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                      },
+                    ]}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setActiveDatePicker('anniversaryDate');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Calendar size={14} color={anniversaryDate ? colors.primary : colors.textMuted} />
+                    <Text
+                      style={[
+                        styles.datePickerBtnText,
+                        {
+                          color: anniversaryDate ? colors.textPrimary : colors.textMuted,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {anniversaryDate || 'Select Date'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
 
-            {/* Model Selection Chips */}
-            {filteredModels.length > 0 && (
+            {/* =========================================
+                SECTION 2: VEHICLE REQUIREMENT & PRIORITY
+            ========================================= */}
+            <View
+              style={[
+                styles.sectionCard,
+                {
+                  backgroundColor: isDark ? '#101726' : '#F8FAFC',
+                  borderColor: isDark ? '#1E293B' : '#E2E8F0',
+                  marginTop: 14,
+                },
+              ]}
+            >
+              <View style={styles.sectionHeaderRow}>
+                <View style={[styles.sectionIndicator, { backgroundColor: '#38BDF8' }]} />
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  2. Vehicle Requirement & Lead Priority
+                </Text>
+              </View>
+
+              {/* Vehicle Segment Selector */}
               <View style={styles.fieldGroup}>
-                <Text
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  VEHICLE SEGMENT <Text style={styles.reqStar}>*</Text>
+                </Text>
+                <View
                   style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
+                    styles.segmentToggleBox,
+                    {
+                      backgroundColor: isDark ? '#131B2E' : '#F1F5F9',
+                      borderColor: isDark ? '#1E293B' : '#E2E8F0',
+                    },
                   ]}
                 >
-                  MODEL
+                  <TouchableOpacity
+                    style={[
+                      styles.segmentBtn,
+                      segment === '4 Wheeler' && [
+                        styles.segmentBtnActive,
+                        { backgroundColor: colors.primary },
+                      ],
+                    ]}
+                    onPress={() => setSegment('4 Wheeler')}
+                  >
+                    <Text style={styles.segIcon}>🚗</Text>
+                    <Text
+                      style={[
+                        styles.segmentBtnText,
+                        {
+                          color:
+                            segment === '4 Wheeler'
+                              ? '#FFFFFF'
+                              : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      4-Wheeler (Car/SUV)
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.segmentBtn,
+                      segment === '2 Wheeler' && [
+                        styles.segmentBtnActive,
+                        { backgroundColor: colors.primary },
+                      ],
+                    ]}
+                    onPress={() => setSegment('2 Wheeler')}
+                  >
+                    <Text style={styles.segIcon}>🏍️</Text>
+                    <Text
+                      style={[
+                        styles.segmentBtnText,
+                        {
+                          color:
+                            segment === '2 Wheeler'
+                              ? '#FFFFFF'
+                              : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      2-Wheeler (Bike)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Brand Selection Chips */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  BRAND NAME <Text style={styles.reqStar}>*</Text>
                 </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-                  {filteredModels.map((m) => {
-                    const isSel = modelId === m.id;
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsScroll}
+                >
+                  {brands.map((b) => {
+                    const isSel = brandId === b.id;
                     return (
                       <TouchableOpacity
-                        key={m.id}
+                        key={b.id}
                         style={[
                           styles.chipBtn,
                           {
                             backgroundColor: isSel
                               ? colors.primary
                               : isDark
-                              ? '#101726'
+                              ? '#131B2E'
                               : '#F1F5F9',
                             borderColor: isSel
                               ? colors.primaryDark
@@ -609,7 +681,8 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                           },
                         ]}
                         onPress={() => {
-                          setModelId(m.id);
+                          setBrandId(b.id);
+                          setModelId(null);
                           setVariantId(null);
                         }}
                       >
@@ -625,39 +698,195 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                             },
                           ]}
                         >
-                          {m.name}
+                          {b.name}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
               </View>
-            )}
 
-            {/* Variant Selection Chips */}
-            {filteredVariants.length > 0 && (
+              {/* Model Selection Chips */}
+              {filteredModels.length > 0 && (
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    MODEL
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsScroll}
+                  >
+                    {filteredModels.map((m) => {
+                      const isSel = modelId === m.id;
+                      return (
+                        <TouchableOpacity
+                          key={m.id}
+                          style={[
+                            styles.chipBtn,
+                            {
+                              backgroundColor: isSel
+                                ? colors.primary
+                                : isDark
+                                ? '#131B2E'
+                                : '#F1F5F9',
+                              borderColor: isSel
+                                ? colors.primaryDark
+                                : isDark
+                                ? '#1E293B'
+                                : '#CBD5E1',
+                            },
+                          ]}
+                          onPress={() => {
+                            setModelId(m.id);
+                            setVariantId(null);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              {
+                                color: isSel
+                                  ? '#FFFFFF'
+                                  : isDark
+                                  ? '#94A3B8'
+                                  : '#475569',
+                              },
+                            ]}
+                          >
+                            {m.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Variant Selection Chips */}
+              {filteredVariants.length > 0 && (
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    VARIANT
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsScroll}
+                  >
+                    {filteredVariants.map((v) => {
+                      const isSel = variantId === v.id;
+                      return (
+                        <TouchableOpacity
+                          key={v.id}
+                          style={[
+                            styles.chipBtn,
+                            {
+                              backgroundColor: isSel
+                                ? colors.primary
+                                : isDark
+                                ? '#131B2E'
+                                : '#F1F5F9',
+                              borderColor: isSel
+                                ? colors.primaryDark
+                                : isDark
+                                ? '#1E293B'
+                                : '#CBD5E1',
+                            },
+                          ]}
+                          onPress={() => setVariantId(v.id)}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              {
+                                color: isSel
+                                  ? '#FFFFFF'
+                                  : isDark
+                                  ? '#94A3B8'
+                                  : '#475569',
+                              },
+                            ]}
+                          >
+                            {v.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Lead Priority / Temperature */}
               <View style={styles.fieldGroup}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  VARIANT
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  LEAD PRIORITY / TEMPERATURE <Text style={styles.reqStar}>*</Text>
                 </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-                  {filteredVariants.map((v) => {
-                    const isSel = variantId === v.id;
+                <View style={styles.stageRow}>
+                  {(['Hot', 'Warm', 'Cold'] as const).map((p) => {
+                    const isActive = priority === p;
                     return (
                       <TouchableOpacity
-                        key={v.id}
+                        key={p}
                         style={[
-                          styles.chipBtn,
+                          styles.stageOption,
+                          {
+                            backgroundColor: isActive
+                              ? p === 'Hot'
+                                ? '#EF4444'
+                                : p === 'Warm'
+                                ? '#F59E0B'
+                                : '#0284C7'
+                              : isDark
+                              ? '#131B2E'
+                              : '#F1F5F9',
+                            borderColor: isActive
+                              ? '#FFFFFF'
+                              : isDark
+                              ? '#1E293B'
+                              : '#CBD5E1',
+                          },
+                        ]}
+                        onPress={() => setPriority(p)}
+                      >
+                        <Text
+                          style={[
+                            styles.stageOptionText,
+                            {
+                              color: isActive
+                                ? '#FFFFFF'
+                                : isDark
+                                ? '#94A3B8'
+                                : '#475569',
+                            },
+                          ]}
+                        >
+                          {p === 'Hot' ? '🔥 Hot' : p === 'Warm' ? '☀️ Warm' : '❄️ Cold'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Planning In (Purchase Timeline) - 3 Options like Priority */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  PLANNING IN (PURCHASE TIMELINE)
+                </Text>
+                <View style={styles.timelineChipsRow}>
+                  {PURCHASE_TIMELINE_OPTIONS.map((opt) => {
+                    const isSel = timeline === opt;
+                    return (
+                      <TouchableOpacity
+                        key={opt}
+                        style={[
+                          styles.timelineChip,
                           {
                             backgroundColor: isSel
                               ? colors.primary
                               : isDark
-                              ? '#101726'
+                              ? '#131B2E'
                               : '#F1F5F9',
                             borderColor: isSel
                               ? colors.primaryDark
@@ -666,7 +895,102 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                               : '#CBD5E1',
                           },
                         ]}
-                        onPress={() => setVariantId(v.id)}
+                        onPress={() => setTimeline(opt)}
+                      >
+                        <Text
+                          style={[
+                            styles.timelineChipText,
+                            {
+                              color: isSel
+                                ? '#FFFFFF'
+                                : isDark
+                                ? '#94A3B8'
+                                : '#475569',
+                            },
+                          ]}
+                        >
+                          {opt}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Budget (Blank by default) */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  BUDGET (₹)
+                </Text>
+                <StartAlignedInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                  value={budget}
+                  onChangeText={setBudget}
+                  placeholder="Enter expected budget or leave blank"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            {/* =========================================
+                SECTION 3: LEAD TRACKING & ASSIGNMENT
+            ========================================= */}
+            <View
+              style={[
+                styles.sectionCard,
+                {
+                  backgroundColor: isDark ? '#101726' : '#F8FAFC',
+                  borderColor: isDark ? '#1E293B' : '#E2E8F0',
+                  marginTop: 14,
+                },
+              ]}
+            >
+              <View style={styles.sectionHeaderRow}>
+                <View style={[styles.sectionIndicator, { backgroundColor: '#10B981' }]} />
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  3. Lead Tracking & Assignment
+                </Text>
+              </View>
+
+              {/* Lead Source */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  LEAD SOURCE
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsScroll}
+                >
+                  {sources.map((s) => {
+                    const isSel = sourceId === s.id;
+                    return (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[
+                          styles.chipBtn,
+                          {
+                            backgroundColor: isSel
+                              ? colors.primary
+                              : isDark
+                              ? '#131B2E'
+                              : '#F1F5F9',
+                            borderColor: isSel
+                              ? colors.primaryDark
+                              : isDark
+                              ? '#1E293B'
+                              : '#CBD5E1',
+                          },
+                        ]}
+                        onPress={() => setSourceId(s.id)}
                       >
                         <Text
                           style={[
@@ -680,200 +1004,136 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                             },
                           ]}
                         >
-                          {v.name}
+                          {s.title || s.name || `Source #${s.id}`}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
               </View>
-            )}
 
-            {/* Priority Selector */}
-            <View style={styles.fieldGroup}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                LEAD PRIORITY
-              </Text>
-              <View style={styles.stageRow}>
-                {(['Hot', 'Warm', 'Cold'] as const).map((p) => {
-                  const isActive = priority === p;
-                  return (
-                    <TouchableOpacity
-                      key={p}
-                      style={[
-                        styles.stageOption,
-                        {
-                          backgroundColor: isActive
-                            ? p === 'Hot'
-                              ? '#EF4444'
-                              : p === 'Warm'
-                              ? '#F59E0B'
-                              : '#0284C7'
-                            : isDark
-                            ? '#101726'
-                            : '#F1F5F9',
-                          borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                        },
-                      ]}
-                      onPress={() => setPriority(p)}
-                    >
-                      <Text
+              {/* Lead Status (Static from SS 1) */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  LEAD STATUS
+                </Text>
+                <View style={styles.statusChipsGrid}>
+                  {LEAD_STATUS_OPTIONS.map((st) => {
+                    const isSel = statusName.toLowerCase() === st.toLowerCase();
+                    return (
+                      <TouchableOpacity
+                        key={st}
                         style={[
-                          styles.stageOptionText,
+                          styles.statusChipBtn,
                           {
-                            color: isActive
-                              ? '#FFFFFF'
+                            backgroundColor: isSel
+                              ? colors.primary
                               : isDark
-                              ? '#94A3B8'
-                              : '#475569',
+                              ? '#131B2E'
+                              : '#F1F5F9',
+                            borderColor: isSel
+                              ? colors.primaryDark
+                              : isDark
+                              ? '#1E293B'
+                              : '#CBD5E1',
                           },
                         ]}
+                        onPress={() => setStatusName(st)}
                       >
-                        {p} Priority
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text
+                          style={[
+                            styles.statusChipText,
+                            {
+                              color: isSel
+                                ? '#FFFFFF'
+                                : isDark
+                                ? '#94A3B8'
+                                : '#475569',
+                            },
+                          ]}
+                        >
+                          {st}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
 
-            {/* Timeline & Budget Grid */}
-            <View style={styles.twoColRow}>
-              <View style={styles.colCell}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  BUYING TIMELINE
+              {/* Assigned Executive */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  ASSIGNED EXECUTIVE
                 </Text>
-                <StartAlignedInput
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsScroll}
+                >
+                  {users.map((u) => {
+                    const isSel = assignedTo === u.id;
+                    return (
+                      <TouchableOpacity
+                        key={u.id}
+                        style={[
+                          styles.chipBtn,
+                          {
+                            backgroundColor: isSel
+                              ? colors.primary
+                              : isDark
+                              ? '#131B2E'
+                              : '#F1F5F9',
+                            borderColor: isSel
+                              ? colors.primaryDark
+                              : isDark
+                              ? '#1E293B'
+                              : '#CBD5E1',
+                          },
+                        ]}
+                        onPress={() => setAssignedTo(u.id)}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            {
+                              color: isSel
+                                ? '#FFFFFF'
+                                : isDark
+                                ? '#94A3B8'
+                                : '#475569',
+                            },
+                          ]}
+                        >
+                          {u.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Notes */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  OPERATIONAL NOTES
+                </Text>
+                <TextInput
                   style={[
-                    styles.input,
+                    styles.inputMultiline,
                     {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                      backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
                       borderColor: isDark ? '#1E293B' : '#CBD5E1',
                       color: colors.textPrimary,
                     },
                   ]}
-                  value={timeline}
-                  onChangeText={setTimeline}
-                  placeholder="Immediate (< 7 Days)"
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  numberOfLines={3}
+                  placeholder="Enter special requirements, unit details, canteen remarks..."
                   placeholderTextColor={colors.textMuted}
                 />
               </View>
-
-              <View style={styles.colCell}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  BUDGET / ENTITLEMENT
-                </Text>
-                <StartAlignedInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                  value={budget}
-                  onChangeText={setBudget}
-                  placeholder="CSD Entitlement"
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
-            </View>
-
-            {/* Assigned Executive */}
-            <View style={styles.fieldGroup}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                ASSIGN TO SALES EXECUTIVE
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-                {users.map((u) => {
-                  const isSel = assignedTo === u.id;
-                  return (
-                    <TouchableOpacity
-                      key={u.id}
-                      style={[
-                        styles.chipBtn,
-                        {
-                          backgroundColor: isSel
-                            ? colors.primary
-                            : isDark
-                            ? '#101726'
-                            : '#F1F5F9',
-                          borderColor: isSel
-                            ? colors.primaryDark
-                            : isDark
-                            ? '#1E293B'
-                            : '#CBD5E1',
-                        },
-                      ]}
-                      onPress={() => setAssignedTo(u.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          {
-                            color: isSel
-                              ? '#FFFFFF'
-                              : isDark
-                              ? '#94A3B8'
-                              : '#475569',
-                          },
-                        ]}
-                      >
-                        {u.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Notes */}
-            <View style={styles.fieldGroup}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                OPERATIONAL NOTES
-              </Text>
-              <TextInput
-                style={[
-                  styles.inputMultiline,
-                  {
-                    backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                    borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                    color: colors.textPrimary,
-                  },
-                ]}
-                value={notes}
-                onChangeText={setNotes}
-                multiline
-                numberOfLines={3}
-                placeholder="Enter special requirements, defense command, canteen verification..."
-                placeholderTextColor={colors.textMuted}
-              />
             </View>
           </ScrollView>
 
@@ -884,7 +1144,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
               {
                 borderTopColor: isDark ? '#1E293B' : '#F1F5F9',
                 backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
-                paddingBottom: Math.max(insets.bottom, 28) + 8,
+                paddingBottom: Math.max(insets.bottom, 24) + 8,
               },
             ]}
           >
@@ -899,12 +1159,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
               onPress={onClose}
               disabled={isSubmitting}
             >
-              <Text
-                style={[
-                  styles.cancelBtnText,
-                  { color: colors.textPrimary },
-                ]}
-              >
+              <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -919,16 +1174,37 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
               activeOpacity={0.8}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.submitBtnText}>
-                  {isEdit ? 'Save & Update Prospect' : 'Register Prospect'}
+                  {isEdit ? 'Save Changes' : 'Create Customer Lead'}
                 </Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
       </View>
+
+      {/* Date Picker Modal for Birth Date & Anniversary Date (Current & Past Dates Only) */}
+      <DatePickerModal
+        visible={activeDatePicker !== null}
+        title={
+          activeDatePicker === 'birthDate'
+            ? 'Select Birth Date (Birthday)'
+            : 'Select Anniversary Date'
+        }
+        initialDate={
+          activeDatePicker === 'birthDate' ? birthDate : anniversaryDate
+        }
+        onClose={() => setActiveDatePicker(null)}
+        onSelectDate={(selectedDate) => {
+          if (activeDatePicker === 'birthDate') {
+            setBirthDate(selectedDate);
+          } else if (activeDatePicker === 'anniversaryDate') {
+            setAnniversaryDate(selectedDate);
+          }
+        }}
+      />
     </Modal>
   );
 };
@@ -936,148 +1212,137 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderTopWidth: 1,
-    height: '92%',
+    maxHeight: '92%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderBottomWidth: 0,
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 10,
   },
   grabHandleRow: {
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 4,
   },
   grabHandle: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
+    width: 38,
+    height: 4,
+    borderRadius: 2,
   },
   sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   logoBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     borderWidth: 1,
-    padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoImg: {
-    width: '100%',
-    height: '100%',
+    width: 26,
+    height: 26,
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   sheetTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: -0.2,
   },
   quotaBadge: {
     paddingHorizontal: 6,
-    paddingVertical: 1.5,
+    paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
   },
   quotaText: {
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.5,
   },
   sheetSub: {
     fontSize: 11,
     fontWeight: '500',
-    marginTop: 2,
+    marginTop: 1,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeIcon: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '700',
   },
   formScroll: {
-    flex: 1,
+    flexGrow: 0,
   },
   formContent: {
-    padding: 18,
-    gap: 14,
+    padding: 14,
+    paddingBottom: 20,
+  },
+  sectionCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(150,150,150,0.2)',
+  },
+  sectionIndicator: {
+    width: 4,
+    height: 16,
+    borderRadius: 2,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   fieldGroup: {
-    gap: 6,
+    marginBottom: 12,
   },
   fieldLabel: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.5,
+    marginBottom: 5,
     textTransform: 'uppercase',
   },
   reqStar: {
     color: '#EF4444',
   },
-  segmentToggleBox: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 4,
-    gap: 6,
-  },
-  segmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  segmentBtnActive: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  segIcon: {
-    fontSize: 14,
-  },
-  segmentBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
   input: {
-    height: 44,
-    borderRadius: 10,
+    height: 42,
+    borderRadius: 9,
     borderWidth: 1,
     paddingHorizontal: 12,
     fontSize: 13,
@@ -1085,20 +1350,34 @@ const styles = StyleSheet.create({
   },
   twoColRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    marginBottom: 12,
+  },
+  datePickerBtn: {
+    height: 42,
+    borderRadius: 9,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  datePickerBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   colCell: {
     flex: 1,
-    gap: 6,
   },
   phoneInputRow: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   phonePrefix: {
-    width: 48,
-    height: 44,
-    borderTopLeftRadius: 10,
-    borderBottomLeftRadius: 10,
+    height: 42,
+    paddingHorizontal: 10,
+    borderTopLeftRadius: 9,
+    borderBottomLeftRadius: 9,
     borderWidth: 1,
     borderRightWidth: 0,
     alignItems: 'center',
@@ -1110,13 +1389,43 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
-    height: 44,
-    borderTopRightRadius: 10,
-    borderBottomRightRadius: 10,
+    height: 42,
+    borderTopRightRadius: 9,
+    borderBottomRightRadius: 9,
     borderWidth: 1,
     paddingHorizontal: 10,
     fontSize: 13,
     fontWeight: '600',
+  },
+  segmentToggleBox: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
+    gap: 6,
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 7,
+    gap: 6,
+  },
+  segmentBtnActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  segIcon: {
+    fontSize: 14,
+  },
+  segmentBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   chipsScroll: {
     gap: 8,
@@ -1148,11 +1457,41 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  inputMultiline: {
-    minHeight: 72,
-    borderRadius: 10,
+  timelineChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timelineChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    padding: 12,
+  },
+  timelineChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  statusChipsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  statusChipBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  statusChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  inputMultiline: {
+    minHeight: 68,
+    borderRadius: 9,
+    borderWidth: 1,
+    padding: 10,
     fontSize: 12,
     fontWeight: '500',
     textAlignVertical: 'top',
@@ -1161,14 +1500,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
   },
   cancelBtn: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 11,
     borderWidth: 1,
   },
   cancelBtnText: {
@@ -1177,15 +1516,10 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4A5D23',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
   },
   submitBtnText: {
     color: '#FFFFFF',

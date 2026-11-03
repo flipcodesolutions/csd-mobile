@@ -28,7 +28,7 @@ import { exportCsvToFile } from '../../core/utils/csvExporter';
 import { FabSpeedDial } from '../../shared';
 import { leadApi } from '../leads/leadService';
 import { CustomerLead } from '../leads/types';
-import { Prospect360Modal } from '../leads/components/Prospect360Modal';
+import { LeadProfileModal } from '../leads/components/LeadProfileModal';
 import { followUpService } from './followUpService';
 import {
   CreateFollowUpPayload,
@@ -40,6 +40,7 @@ import { FollowUpKpiDeck } from './components/FollowUpKpiDeck';
 import { FollowUpCard } from './components/FollowUpCard';
 import { LogCallModal } from './components/LogCallModal';
 import { FollowUpActionsModal } from './components/FollowUpActionsModal';
+import { FollowUpHistoryModal } from './components/FollowUpHistoryModal';
 
 interface FollowUpScreenProps {
   onOpenDrawer?: () => void;
@@ -77,6 +78,8 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   const [activePrefillItem, setActivePrefillItem] = useState<FollowUpItem | null>(null);
 
   const [actionsModalVisible, setActionsModalVisible] = useState(false);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<FollowUpItem | null>(null);
   const [selectedActionItem, setSelectedActionItem] = useState<FollowUpItem | null>(null);
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
@@ -157,6 +160,12 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     setLogModalVisible(true);
   }, []);
 
+  const handleOpenHistory = useCallback((item: FollowUpItem) => {
+    triggerHaptic('selection');
+    setSelectedHistoryItem(item);
+    setHistoryModalVisible(true);
+  }, []);
+
   const handleOpenActions = useCallback((item: FollowUpItem) => {
     triggerHaptic('impactLight');
     setSelectedActionItem(item);
@@ -164,26 +173,38 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   }, []);
 
   const handleViewProfile = useCallback(
-    (item: FollowUpItem) => {
+    async (item: FollowUpItem) => {
       triggerHaptic('selection');
-      // If item has full lead attached or we find it in leadsList
-      const matched =
-        item.lead || leadsList.find((l) => l.id === item.lead_id);
+      if (item.lead_id) {
+        try {
+          const res = await leadApi.getById(item.lead_id);
+          const fullLead = res?.data || res;
+          if (fullLead && (fullLead.name || fullLead.id)) {
+            setActiveProfileLead(fullLead);
+            setProfileModalVisible(true);
+            return;
+          }
+        } catch (e) {
+          console.log('Using local lead data for profile:', e);
+        }
+      }
+
+      const matched = item.lead || leadsList.find((l) => l.id === item.lead_id);
       if (matched) {
         setActiveProfileLead(matched);
         setProfileModalVisible(true);
       } else {
-        // Construct a synthetic lead object from follow-up attributes
         const syntheticLead: CustomerLead = {
           id: item.lead_id || item.id,
           name: item.customer_name,
           phone: item.phone,
-          city: item.city || 'Delhi Cantonment',
+          city: item.city || 'Surendranagar',
           vehicle_segment: '4 Wheeler',
           model_variant: item.vehicle || 'CSD Entitlement',
+          brand_name: item.brand_name || 'Maruti Suzuki',
           priority: item.priority || 'Hot',
           status_name: item.status,
-          assigned_user_name: item.rep || 'Alexander Vance',
+          assigned_user_name: item.rep || 'Admin User (Super Admin)',
           notes: item.notes,
         };
         setActiveProfileLead(syntheticLead);
@@ -576,15 +597,28 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         visible={actionsModalVisible}
         item={selectedActionItem}
         onClose={() => setActionsModalVisible(false)}
+        onCall={(phone) => handleCall(phone)}
         onCallAndLog={(item) => {
           handleCall(item.phone);
           handleOpenLogNext(item);
         }}
+        onLogAction={(item) => handleOpenLogNext(item)}
         onSendQuotation={handleSendQuotation}
         onViewProfile={handleViewProfile}
       />
 
-      <Prospect360Modal
+      <FollowUpHistoryModal
+        visible={historyModalVisible}
+        item={selectedHistoryItem}
+        onClose={() => setHistoryModalVisible(false)}
+        onCall={handleCall}
+        onLogNewFollowUp={(item) => {
+          setHistoryModalVisible(false);
+          handleOpenLogNext(item);
+        }}
+      />
+
+      <LeadProfileModal
         visible={profileModalVisible}
         lead={activeProfileLead}
         onClose={() => setProfileModalVisible(false)}

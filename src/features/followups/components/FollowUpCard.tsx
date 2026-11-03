@@ -6,9 +6,7 @@ import {
   View,
 } from 'react-native';
 import {
-  AlertTriangle,
   Calendar,
-  Check,
   CheckCircle,
   Clock,
   Flame,
@@ -16,7 +14,6 @@ import {
   MapPin,
   MoreVertical,
   Phone,
-  PhoneCall,
   User,
   XCircle,
 } from 'lucide-react-native';
@@ -27,19 +24,19 @@ import { FollowUpItem } from '../types';
 interface FollowUpCardProps {
   item: FollowUpItem;
   onCall: (phone: string) => void;
-  onLogNext: (item: FollowUpItem) => void;
-  onSendQuotation: (item: FollowUpItem) => void;
+  onLogNext?: (item: FollowUpItem) => void;
+  onSendQuotation?: (item: FollowUpItem) => void;
   onViewProfile: (item: FollowUpItem) => void;
   onOpenActions: (item: FollowUpItem) => void;
+  onOpenHistory?: (item: FollowUpItem) => void;
 }
 
 export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
   item,
   onCall,
-  onLogNext,
-  onSendQuotation,
   onViewProfile,
   onOpenActions,
+  onOpenHistory,
 }) => {
   const { colors, isDark } = useTheme();
 
@@ -53,12 +50,8 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
         .toUpperCase()
     : 'CU';
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const dueDate = item.next_follow_up_date || item.follow_up_date;
-  const isOverdue = dueDate < todayStr;
-  const isDueToday = dueDate === todayStr;
-
-  const isHot = item.priority === 'Hot';
+  const isHot = item.priority === 'Hot' || !item.priority;
+  const callsCount = item.calls_count || 1;
 
   return (
     <View
@@ -70,47 +63,86 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
         },
       ]}
     >
-      {/* 1. Header: Customer Contact & Urgency Tag */}
+      {/* 1. Header: Customer Info & 3-Dots Action Button */}
       <View style={styles.headerRow}>
         <View style={styles.customerLeft}>
-          <View
+          <TouchableOpacity
             style={[
               styles.avatarBadge,
               {
                 backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-                borderColor: isDark ? '#334155' : '#CBD5E1',
+                borderColor: isDark ? '#334155' : '#E2E8F0',
               },
             ]}
+            onPress={() => {
+              triggerHaptic('impactLight');
+              onViewProfile(item);
+            }}
+            activeOpacity={0.7}
           >
             <Text
               style={[
                 styles.avatarText,
-                { color: isDark ? '#CBD5E1' : '#334155' },
+                { color: isDark ? '#CBD5E1' : '#0D1554' },
               ]}
             >
               {initials}
             </Text>
-          </View>
+          </TouchableOpacity>
 
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <TouchableOpacity
-              onPress={() => {
-                triggerHaptic('impactLight');
-                onViewProfile(item);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.customerName,
-                  { color: isDark ? '#F8FAFC' : '#0F172A' },
-                ]}
-                numberOfLines={1}
+            {/* Customer Name & Calls Count Badge */}
+            <View style={styles.nameCallsRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  triggerHaptic('impactLight');
+                  onViewProfile(item);
+                }}
+                activeOpacity={0.7}
+                style={{ flexShrink: 1 }}
               >
-                {item.customer_name}
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.customerName,
+                    { color: isDark ? '#60A5FA' : '#0D1554' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.customer_name}
+                </Text>
+              </TouchableOpacity>
 
+              <TouchableOpacity
+                style={[
+                  styles.callsPill,
+                  {
+                    backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                    borderColor: isDark ? '#334155' : '#CBD5E1',
+                  },
+                ]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  if (onOpenHistory) {
+                    onOpenHistory(item);
+                  } else {
+                    onViewProfile(item);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Clock size={10} color={isDark ? '#94A3B8' : '#64748B'} strokeWidth={2} />
+                <Text
+                  style={[
+                    styles.callsPillText,
+                    { color: isDark ? '#CBD5E1' : '#475569' },
+                  ]}
+                >
+                  {callsCount} {callsCount === 1 ? 'Call' : 'Calls'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Phone & City Subtitle */}
             <View style={styles.phoneLocationRow}>
               <TouchableOpacity
                 onPress={() => {
@@ -133,21 +165,19 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
 
               {item.city ? (
                 <>
-                  <Text
-                    style={[styles.dotSep, { color: colors.borderSubtle }]}
-                  >
+                  <Text style={[styles.dotSep, { color: isDark ? '#334155' : '#CBD5E1' }]}>
                     •
                   </Text>
                   <View style={styles.cityRow}>
                     <MapPin
                       size={11}
-                      color={colors.textSecondary}
+                      color={isDark ? '#94A3B8' : '#64748B'}
                       strokeWidth={2}
                     />
                     <Text
                       style={[
                         styles.cityText,
-                        { color: colors.textSecondary, marginLeft: 2 },
+                        { color: isDark ? '#94A3B8' : '#64748B', marginLeft: 2 },
                       ]}
                       numberOfLines={1}
                     >
@@ -160,95 +190,72 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
           </View>
         </View>
 
-        {/* Urgency Badge */}
-        <View
+        {/* 3-Dots Action Button */}
+        <TouchableOpacity
           style={[
-            styles.urgencyBadge,
+            styles.threeDotsBtn,
             {
-              backgroundColor: isHot
-                ? isDark
-                  ? 'rgba(239, 68, 68, 0.15)'
-                  : '#FEF2F2'
-                : isDark
-                ? 'rgba(245, 158, 11, 0.15)'
-                : '#FFFBEB',
-              borderColor: isHot
-                ? isDark
-                  ? '#EF4444'
-                  : '#FCA5A5'
-                : isDark
-                ? '#F59E0B'
-                : '#FDE68A',
+              backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+              borderColor: isDark ? '#334155' : '#E2E8F0',
             },
           ]}
+          onPress={() => {
+            triggerHaptic('impactLight');
+            onOpenActions(item);
+          }}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          {isHot && (
-            <Flame
-              size={11}
-              color={isDark ? '#F87171' : '#DC2626'}
-              strokeWidth={2.5}
-              style={{ marginRight: 3 }}
-            />
-          )}
-          <Text
-            style={[
-              styles.urgencyText,
-              {
-                color: isHot
-                  ? isDark
-                    ? '#F87171'
-                    : '#DC2626'
-                  : isDark
-                  ? '#FBBF24'
-                  : '#D97706',
-              },
-            ]}
-          >
-            {isHot ? 'High Urgency' : 'Medium Urgency'}
-          </Text>
-        </View>
+          <MoreVertical size={16} color={isDark ? '#CBD5E1' : '#475569'} strokeWidth={2.2} />
+        </TouchableOpacity>
       </View>
 
       {/* 2. Vehicle Interested Row */}
       {item.vehicle ? (
-        <View style={styles.vehicleRow}>
+        <View
+          style={[
+            styles.vehicleBox,
+            {
+              backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+              borderColor: isDark ? '#1E293B' : '#F1F5F9',
+            },
+          ]}
+        >
           <Text
             style={[
               styles.vehicleName,
-              { color: isDark ? '#E2E8F0' : '#1E293B' },
+              { color: isDark ? '#F1F5F9' : '#0F172A' },
             ]}
             numberOfLines={1}
           >
             {item.vehicle}
           </Text>
-          <Text style={[styles.brandSub, { color: colors.gold }]}>
-            {item.brand_name
-              ? `${item.brand_name.toUpperCase()} • CSD APPROVED`
-              : 'CSD APPROVED'}
+          <Text style={[styles.brandSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+            {item.brand_name || 'Maruti Suzuki'}
           </Text>
         </View>
       ) : null}
 
-      {/* 3. Outcome & Discount Badges Row */}
+      {/* 3. Last Call Outcome & Discount Row */}
       <View style={styles.outcomeRow}>
+        {/* Outcome Badge */}
         <View
           style={[
             styles.outcomeChip,
             {
-              backgroundColor: isDark
-                ? 'rgba(189, 207, 121, 0.12)'
-                : '#F5F8EE',
-              borderColor: colors.primary,
+              backgroundColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
+              borderColor: isDark ? '#D97706' : '#FDE68A',
             },
           ]}
         >
-          <Text style={[styles.outcomeChipText, { color: colors.primary }]}>
-            {item.status || 'Completed'}
+          <Phone size={10} color="#D97706" strokeWidth={2.5} style={{ marginRight: 4 }} />
+          <Text style={styles.outcomeChipText}>
+            {item.status || 'Interested / Call Back'}
           </Text>
         </View>
 
-        {/* Real-time Discount Badges (Web Section 5) */}
-        {item.is_discount_requested && item.discount_amount ? (
+        {/* Real-time Discount Badges (Pending / Approved) */}
+        {item.is_discount_requested && item.discount_amount != null ? (
           <View
             style={[
               styles.discountBadge,
@@ -257,35 +264,29 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
                   item.discount_status === 'approved'
                     ? isDark
                       ? 'rgba(16, 185, 129, 0.15)'
-                      : '#ECFDF5'
+                      : '#DCFCE7'
                     : item.discount_status === 'rejected'
                     ? isDark
                       ? 'rgba(239, 68, 68, 0.15)'
-                      : '#FEF2F2'
+                      : '#FEE2E2'
                     : isDark
-                    ? 'rgba(245, 158, 11, 0.15)'
-                    : '#FFFBEB',
+                    ? 'rgba(217, 119, 6, 0.15)'
+                    : '#FEF3C7',
                 borderColor:
                   item.discount_status === 'approved'
-                    ? isDark
-                      ? '#10B981'
-                      : '#86EFAC'
+                    ? '#16A34A'
                     : item.discount_status === 'rejected'
-                    ? isDark
-                      ? '#EF4444'
-                      : '#FCA5A5'
-                    : isDark
-                    ? '#F59E0B'
-                    : '#FDE68A',
+                    ? '#DC2626'
+                    : '#D97706',
               },
             ]}
           >
             {item.discount_status === 'approved' ? (
-              <CheckCircle size={10} color="#10B981" strokeWidth={2.5} style={{ marginRight: 3 }} />
+              <CheckCircle size={11} color="#16A34A" strokeWidth={2.5} style={{ marginRight: 3 }} />
             ) : item.discount_status === 'rejected' ? (
-              <XCircle size={10} color="#EF4444" strokeWidth={2.5} style={{ marginRight: 3 }} />
+              <XCircle size={11} color="#DC2626" strokeWidth={2.5} style={{ marginRight: 3 }} />
             ) : (
-              <Hourglass size={10} color="#F59E0B" strokeWidth={2.5} style={{ marginRight: 3 }} />
+              <Hourglass size={11} color="#D97706" strokeWidth={2.5} style={{ marginRight: 3 }} />
             )}
             <Text
               style={[
@@ -293,9 +294,9 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
                 {
                   color:
                     item.discount_status === 'approved'
-                      ? '#10B981'
+                      ? '#16A34A'
                       : item.discount_status === 'rejected'
-                      ? '#EF4444'
+                      ? '#DC2626'
                       : '#D97706',
                 },
               ]}
@@ -310,216 +311,99 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
         ) : null}
       </View>
 
-      {/* 4. Notes Summary Box */}
+      {/* 4. Notes Text (if present) */}
       {item.notes ? (
-        <View
+        <Text
           style={[
-            styles.notesContainer,
-            {
-              backgroundColor: isDark ? '#0B111E' : '#F8FAFC',
-              borderColor: isDark ? '#1E293B' : '#F1F5F9',
-            },
+            styles.notesText,
+            { color: isDark ? '#94A3B8' : '#64748B' },
           ]}
+          numberOfLines={2}
         >
-          <Text
-            style={[
-              styles.notesText,
-              { color: isDark ? '#94A3B8' : '#475569' },
-            ]}
-            numberOfLines={2}
-          >
-            "{item.notes}"
-          </Text>
-        </View>
+          {item.notes}
+        </Text>
       ) : null}
 
-      {/* 5. Date Tracking & Assigned Rep Row */}
-      <View style={styles.metaTrackingRow}>
-        <View style={styles.dateMetaLeft}>
-          <View style={styles.dateBlock}>
-            <Calendar size={11} color={colors.textSecondary} strokeWidth={2} />
-            <Text
-              style={[
-                styles.dateMetaText,
-                { color: colors.textSecondary, marginLeft: 3 },
-              ]}
-            >
-              {item.follow_up_date} {item.follow_up_time || ''}
-            </Text>
-          </View>
-
-          {/* Next Due Highlight */}
-          <View
+      {/* 5. Date Tracking Row (Follow-Up Date & Next Date) */}
+      <View
+        style={[
+          styles.metaTrackingRow,
+          {
+            backgroundColor: isDark ? '#0B111E' : '#F8FAFC',
+            borderColor: isDark ? '#1E293B' : '#F1F5F9',
+          },
+        ]}
+      >
+        <View style={styles.dateBlock}>
+          <Calendar size={11} color={isDark ? '#94A3B8' : '#475569'} strokeWidth={2} />
+          <Text
             style={[
-              styles.dueHighlightPill,
-              {
-                backgroundColor: isOverdue
-                  ? isDark
-                    ? 'rgba(239, 68, 68, 0.15)'
-                    : '#FEF2F2'
-                  : isDueToday
-                  ? isDark
-                    ? 'rgba(245, 158, 11, 0.15)'
-                    : '#FFFBEB'
-                  : isDark
-                  ? '#162030'
-                  : '#F1F5F9',
-                borderColor: isOverdue
-                  ? isDark
-                    ? '#EF4444'
-                    : '#FCA5A5'
-                  : isDueToday
-                  ? isDark
-                    ? '#F59E0B'
-                    : '#FDE68A'
-                  : isDark
-                  ? '#1E293B'
-                  : '#CBD5E1',
-              },
+              styles.dateMetaText,
+              { color: isDark ? '#CBD5E1' : '#334155', marginLeft: 4 },
             ]}
           >
-            <Clock
-              size={10}
-              color={
-                isOverdue
-                  ? '#EF4444'
-                  : isDueToday
-                  ? '#F59E0B'
-                  : colors.textSecondary
-              }
-              strokeWidth={2.5}
-            />
-            <Text
-              style={[
-                styles.dueHighlightText,
-                {
-                  color: isOverdue
-                    ? '#EF4444'
-                    : isDueToday
-                    ? '#D97706'
-                    : colors.textSecondary,
-                  fontWeight: isOverdue || isDueToday ? '800' : '600',
-                  marginLeft: 3,
-                },
-              ]}
-            >
-              {isOverdue ? 'Overdue: ' : isDueToday ? 'Today: ' : 'Next: '}
-              {item.next_follow_up_date || 'N/A'}{' '}
+            {item.follow_up_date || 'N/A'}{' '}
+            {item.follow_up_time ? `• ${item.follow_up_time}` : ''}
+          </Text>
+        </View>
+
+        {/* Next Due Highlight */}
+        {item.next_follow_up_date ? (
+          <View style={styles.nextDateBlock}>
+            <Clock size={11} color="#D97706" strokeWidth={2.2} />
+            <Text style={styles.nextDueText}>
+              Next: {item.next_follow_up_date}{' '}
               {item.next_follow_up_time || '10:00 AM'}
             </Text>
           </View>
-        </View>
+        ) : null}
+      </View>
 
-        {/* Assigned Rep */}
+      {/* 6. Assigned Rep & Urgency Row */}
+      <View style={styles.repUrgencyRow}>
         <View style={styles.repBox}>
-          <User size={11} color={colors.textSecondary} strokeWidth={2} />
+          <User size={12} color={isDark ? '#94A3B8' : '#64748B'} strokeWidth={2} />
           <Text
             style={[
               styles.repText,
-              { color: isDark ? '#CBD5E1' : '#334155', marginLeft: 3 },
+              { color: isDark ? '#E2E8F0' : '#1E293B', marginLeft: 4 },
             ]}
             numberOfLines={1}
           >
-            {item.rep || item.user_name || 'Admin'}
+            {item.rep || 'Admin User (Super Admin)'}
           </Text>
         </View>
-      </View>
 
-      {/* Divider */}
-      <View
-        style={[
-          styles.divider,
-          { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-        ]}
-      />
-
-      {/* 6. Action Toolbar */}
-      <View style={styles.actionRow}>
-        {/* Call Now Button */}
-        <TouchableOpacity
-          style={[styles.callBtn, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            triggerHaptic('impactMedium');
-            onCall(item.phone);
-          }}
-          activeOpacity={0.8}
-        >
-          <PhoneCall size={13} color="#FFFFFF" strokeWidth={2.2} />
-          <Text style={styles.callBtnText}>Call Now</Text>
-        </TouchableOpacity>
-
-        {/* Log Action Button */}
-        <TouchableOpacity
+        <View
           style={[
-            styles.logBtn,
+            styles.urgencyBadge,
             {
-              backgroundColor: isDark
-                ? 'rgba(189, 207, 121, 0.12)'
-                : '#F5F8EE',
-              borderColor: colors.primary,
+              backgroundColor: isHot
+                ? isDark
+                  ? 'rgba(239, 68, 68, 0.15)'
+                  : '#FEE2E2'
+                : isDark
+                ? 'rgba(245, 158, 11, 0.15)'
+                : '#FEF3C7',
+              borderColor: isHot ? '#DC2626' : '#D97706',
             },
           ]}
-          onPress={() => {
-            triggerHaptic('selection');
-            onLogNext(item);
-          }}
-          activeOpacity={0.8}
         >
+          <Flame
+            size={11}
+            color={isHot ? '#DC2626' : '#D97706'}
+            strokeWidth={2.5}
+            style={{ marginRight: 3 }}
+          />
           <Text
             style={[
-              styles.logBtnText,
-              { color: isDark ? colors.primary : colors.primaryDark },
+              styles.urgencyText,
+              { color: isHot ? '#DC2626' : '#D97706' },
             ]}
           >
-            Log Action
+            {isHot ? 'High Urgency' : 'Medium Urgency'}
           </Text>
-        </TouchableOpacity>
-
-        {/* Send Quotation Button */}
-        <TouchableOpacity
-          style={[
-            styles.quotationBtn,
-            {
-              backgroundColor: isDark
-                ? 'rgba(59, 130, 246, 0.15)'
-                : 'rgba(13, 110, 253, 0.08)',
-              borderColor: isDark ? '#3B82F6' : '#93C5FD',
-            },
-          ]}
-          onPress={() => {
-            triggerHaptic('selection');
-            onSendQuotation(item);
-          }}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.quotationBtnText,
-              { color: isDark ? '#60A5FA' : '#0D6EFD' },
-            ]}
-          >
-            Quotation
-          </Text>
-        </TouchableOpacity>
-
-        {/* 3-Dots More Menu */}
-        <TouchableOpacity
-          style={[
-            styles.moreBtn,
-            {
-              backgroundColor: isDark ? '#101726' : '#F8FAFC',
-              borderColor: isDark ? '#1E293B' : '#E2E8F0',
-            },
-          ]}
-          onPress={() => {
-            triggerHaptic('impactLight');
-            onOpenActions(item);
-          }}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 6, right: 8 }}
-        >
-          <MoreVertical size={16} color={colors.textPrimary} strokeWidth={2} />
-        </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -532,7 +416,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginHorizontal: 16,
     marginBottom: 12,
-    shadowColor: '#000000',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1.5 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
@@ -544,15 +428,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   customerLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
     marginRight: 8,
   },
   avatarBadge: {
     width: 38,
     height: 38,
-    borderRadius: 10,
+    borderRadius: 19,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -560,63 +444,79 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.5,
+  },
+  nameCallsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
   },
   customerName: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 14.5,
+    fontWeight: '700',
     letterSpacing: -0.2,
+  },
+  callsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 3,
+  },
+  callsPillText: {
+    fontSize: 10.5,
+    fontWeight: '600',
   },
   phoneLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
-    flexWrap: 'wrap',
+    marginTop: 3,
   },
   phoneClick: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   phoneText: {
-    fontSize: 11.5,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
   },
   dotSep: {
-    marginHorizontal: 5,
-    fontSize: 10,
+    marginHorizontal: 6,
+    fontSize: 11,
   },
   cityRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
   },
   cityText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
-  urgencyBadge: {
-    flexDirection: 'row',
+  threeDotsBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    justifyContent: 'center',
+  },
+  vehicleBox: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
     borderWidth: 1,
   },
-  urgencyText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  vehicleRow: {
-    marginTop: 8,
-  },
   vehicleName: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   brandSub: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: '500',
     marginTop: 1,
   },
   outcomeRow: {
@@ -624,138 +524,97 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 8,
+    marginTop: 9,
   },
   outcomeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 3.5,
     borderRadius: 6,
     borderWidth: 1,
   },
   outcomeChipText: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
+    color: '#D97706',
   },
   discountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
     borderRadius: 6,
     borderWidth: 1,
   },
   discountBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  notesContainer: {
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 8,
+    fontSize: 11,
+    fontWeight: '700',
   },
   notesText: {
     fontSize: 11.5,
+    fontWeight: '500',
     fontStyle: 'italic',
-    lineHeight: 16,
+    marginTop: 6,
+    marginLeft: 2,
   },
   metaTrackingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
     marginTop: 10,
     flexWrap: 'wrap',
     gap: 6,
-  },
-  dateMetaLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    flex: 1,
   },
   dateBlock: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   dateMetaText: {
-    fontSize: 10.5,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
   },
-  dueHighlightPill: {
+  nextDateBlock: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
-    borderWidth: 1,
+    gap: 3,
   },
-  dueHighlightText: {
-    fontSize: 10,
+  nextDueText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+  repUrgencyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 8,
   },
   repBox: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
   },
   repText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
-  divider: {
-    height: 1,
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  actionRow: {
+  urgencyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  callBtn: {
-    flex: 1.1,
-    height: 38,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  callBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  logBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 12,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  logBtnText: {
-    fontSize: 12,
+  urgencyText: {
+    fontSize: 10.5,
     fontWeight: '700',
-  },
-  quotationBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quotationBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  moreBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

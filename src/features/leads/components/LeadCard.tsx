@@ -1,503 +1,397 @@
 import React from 'react';
 import {
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import {
-  Award,
   Calendar,
   Check,
+  FileText,
   Flame,
   MapPin,
+  MessageCircle,
   MoreVertical,
   Phone,
   Radio,
+  Repeat,
   Snowflake,
   Sun,
+  Tag,
   User,
 } from 'lucide-react-native';
-import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
 import { CustomerLead } from '../types';
 
+const THEME = {
+  primaryNavy: '#0D1554',
+  cardBg: '#FFFFFF',
+  border: '#E5E7EB',
+  textPrimary: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  danger: '#DC2626',
+  dangerBg: '#FEE2E2',
+  warning: '#D97706',
+  warningBg: '#FEF3C7',
+  success: '#16A34A',
+  successBg: '#DCFCE7',
+  info: '#4F46E5',
+  infoBg: '#E0E7FF',
+  cold: '#0284C7',
+  coldBg: '#E0F2FE',
+};
+
 interface LeadCardProps {
   item: CustomerLead;
-  isSelected: boolean;
-  onToggleSelect: (id: number) => void;
-  onCall: (phone: string) => void;
-  onOpenFollowUp: (item: CustomerLead) => void;
-  onOpenConvertDeal: (item: CustomerLead) => void;
-  onOpenSendQuotation: (item: CustomerLead) => void;
-  onOpenQuickView: (item: CustomerLead) => void;
-  onOpenEdit: (item: CustomerLead) => void;
-  onOpen360: (item: CustomerLead) => void;
-  onOpenActionsMenu: (item: CustomerLead) => void;
-  onDelete: (id: number, name: string) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (id: number) => void;
+  onCall?: (phone: string) => void;
+  onOpenFollowUp?: (item: CustomerLead) => void;
+  onOpenConvertDeal?: (item: CustomerLead) => void;
+  onOpenSendQuotation?: (item: CustomerLead) => void;
+  onOpenQuickView?: (item: CustomerLead) => void;
+  onOpenEdit?: (item: CustomerLead) => void;
+  onOpen360?: (item: CustomerLead) => void;
+  onOpenActionsMenu?: (item: CustomerLead) => void;
+  onDelete?: (id: number, name: string) => void;
 }
 
 export const LeadCard: React.FC<LeadCardProps> = React.memo(({
   item,
-  isSelected,
+  isSelected = false,
   onToggleSelect,
   onCall,
   onOpenFollowUp,
-  onOpenConvertDeal,
   onOpenSendQuotation,
   onOpenQuickView,
-  onOpenEdit,
-  onOpen360,
   onOpenActionsMenu,
-  onDelete,
 }) => {
-  const { colors, isDark } = useTheme();
-  const { width } = useWindowDimensions();
+  // Check Birthday / Anniversary Today
+  const checkIsToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      const today = new Date();
+      return d.getDate() === today.getDate() && d.getMonth() === today.getMonth();
+    } catch {
+      return false;
+    }
+  };
 
-  // Extract initials
-  const initials = item.name
-    ? item.name
-        .trim()
-        .split(' ')
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
-    : 'LD';
+  const isBdayToday = checkIsToday(item.birth_date || item.birthday);
+  const isAnnivToday = checkIsToday(item.anniversary_date);
 
-  const brandName = item.brand_name || 'MARUTI SUZUKI';
-  const modelVariant =
-    item.model_variant ||
-    `${item.model_name || 'Brezza'} ${item.variant_name || 'ZXi'}`.trim();
-
-  // Lead Source Name (e.g. LinkedIn, Facebook, Walk-in, Website)
-  const sourceTitle =
-    item.source?.title ||
-    item.source?.name ||
-    item.source_name ||
-    item.lead_source ||
-    'Direct';
-
-  const segmentShort =
-    item.vehicle_segment === '2 Wheeler' ||
-    (item as any).vehicle_segment_display === '2W'
-      ? '2W'
-      : '4W';
-
+  // Formatted Created Date (e.g. 10 Oct 2026 or YYYY-MM-DD)
   const formattedDate = item.created_at
     ? item.created_at.split('T')[0]
-    : '2026-10-10';
+    : 'Recent';
 
-  const city = item.city || 'pune';
-  const assignedRep = item.assigned_user_name || 'Admin User (Super Admin)';
-  const phone = item.phone || '8555555555';
+  // Priority styling
+  const priority = item.priority || 'Hot';
+  const getPriorityBadge = () => {
+    switch (priority) {
+      case 'Hot':
+        return {
+          icon: <Flame size={11} color="#DC2626" strokeWidth={2.5} />,
+          text: 'Hot',
+          bg: THEME.dangerBg,
+          color: THEME.danger,
+        };
+      case 'Warm':
+        return {
+          icon: <Sun size={11} color="#D97706" strokeWidth={2.5} />,
+          text: 'Warm',
+          bg: THEME.warningBg,
+          color: THEME.warning,
+        };
+      case 'Cold':
+      default:
+        return {
+          icon: <Snowflake size={11} color="#0284C7" strokeWidth={2.5} />,
+          text: 'Cold',
+          bg: THEME.coldBg,
+          color: THEME.cold,
+        };
+    }
+  };
 
-  // Priority
-  const isHot = item.priority === 'Hot';
-  const isWarm = item.priority === 'Warm';
+  // Status badge styling
+  const statusRaw = (item.status_name || item.lead_status || 'New').toLowerCase();
+  const getStatusBadge = () => {
+    if (statusRaw.includes('deal') || statusRaw.includes('booking') || statusRaw.includes('won') || item.is_converted) {
+      return { label: item.status_name || 'Deal Won', bg: THEME.successBg, color: THEME.success };
+    }
+    if (statusRaw.includes('lost')) {
+      return { label: 'Lost', bg: THEME.dangerBg, color: THEME.danger };
+    }
+    if (statusRaw.includes('follow')) {
+      return { label: 'Follow-up', bg: THEME.warningBg, color: THEME.warning };
+    }
+    if (statusRaw.includes('quote') || statusRaw.includes('quotation')) {
+      return { label: 'Quotation Sent', bg: THEME.infoBg, color: THEME.info };
+    }
+    return { label: 'New', bg: THEME.infoBg, color: THEME.info };
+  };
 
-  // Deal won status
-  const isDealWon =
-    item.is_converted ||
-    item.status_name === 'Deal Won' ||
-    item.status_name === 'Booked' ||
-    item.status_name === 'Delivered';
+  const priorityMeta = getPriorityBadge();
+  const statusMeta = getStatusBadge();
 
-  const stageDisplay = item.status_name || (isDealWon ? 'Deal Won' : 'New');
+  // Native Call Handler
+  const handleCall = () => {
+    triggerHaptic('impactLight');
+    if (onCall) {
+      onCall(item.phone);
+    } else {
+      Linking.openURL(`tel:${item.phone}`).catch(() => {});
+    }
+  };
+
+  // WhatsApp Handler
+  const handleWhatsApp = () => {
+    triggerHaptic('impactLight');
+    const cleanPhone = (item.phone || '').replace(/\D/g, '');
+    const phoneWithCountry = cleanPhone.startsWith('91') && cleanPhone.length === 12
+      ? cleanPhone
+      : `91${cleanPhone}`;
+    const url = `whatsapp://send?phone=${phoneWithCountry}`;
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          Linking.openURL(`https://wa.me/${phoneWithCountry}`);
+        }
+      })
+      .catch(() => {
+        Linking.openURL(`https://wa.me/${phoneWithCountry}`);
+      });
+  };
+
+  // Follow-up Handler
+  const handleFollowUp = () => {
+    triggerHaptic('selection');
+    if (onOpenFollowUp) {
+      onOpenFollowUp(item);
+    }
+  };
+
+  // Quote Handler
+  const handleQuote = () => {
+    triggerHaptic('selection');
+    if (onOpenSendQuotation) {
+      onOpenSendQuotation(item);
+    }
+  };
+
+  const locationText = `${item.city || item.home_town || 'Ahmedabad'} • Posting: ${item.posting || 'N/A'}`;
+  const brandName = item.brand_name || 'MARUTI SUZUKI';
+  const vehicleText = item.model_variant || 'Vehicle Requirement';
+  const sourceName = item.source?.title || item.source?.name || item.source_name || item.lead_source || 'Direct';
+  const isDiscountPending = item.discount_approval_status === 'pending' || Number(item.requested_discount || 0) > 0;
 
   return (
-    <View
-      style={[
-        styles.cardContainer,
-        {
-          backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
-          borderColor: isSelected
-            ? colors.primary
-            : isDark
-            ? '#1E293B'
-            : '#E2E8F0',
-        },
-      ]}
-    >
-      {/* 1. Top Row: Checkbox, Customer Name, Badges */}
-      <View style={styles.headerRow}>
-        <View style={styles.identityLeft}>
-          {/* Checkbox */}
-          <TouchableOpacity
-            style={[
-              styles.checkbox,
-              {
-                borderColor: isSelected
-                  ? colors.primary
-                  : isDark
-                  ? '#334155'
-                  : '#CBD5E1',
-                backgroundColor: isSelected
-                  ? colors.primary
-                  : isDark
-                  ? '#101726'
-                  : '#FFFFFF',
-              },
-            ]}
-            onPress={() => {
-              triggerHaptic('selection');
-              onToggleSelect(item.id);
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            {isSelected && <Check size={11} color="#FFFFFF" strokeWidth={3} />}
-          </TouchableOpacity>
+    <View style={[styles.card, isSelected && styles.cardSelected]}>
+      {/* ----------------------------------------------------------- */}
+      {/* ROW 1: Header (Name, Bday/Anniv Pill, Priority, Status)     */}
+      {/* ----------------------------------------------------------- */}
+      <View style={styles.row1Header}>
+        <View style={styles.row1Left}>
+          {onToggleSelect && (
+            <TouchableOpacity
+              style={[styles.checkbox, isSelected && styles.checkboxSelected]}
+              onPress={() => {
+                triggerHaptic('selection');
+                onToggleSelect(item.id);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              {isSelected && <Check size={11} color="#FFFFFF" strokeWidth={3} />}
+            </TouchableOpacity>
+          )}
 
-          {/* Name & ID */}
           <TouchableOpacity
             onPress={() => {
-              triggerHaptic('selection');
-              onOpenQuickView(item);
+              if (onOpenQuickView) {
+                triggerHaptic('selection');
+                onOpenQuickView(item);
+              }
             }}
             activeOpacity={0.7}
-            style={styles.nameTouch}
+            style={styles.nameContainer}
           >
-            <Text
-              style={[styles.customerName, { color: colors.textPrimary }]}
-              numberOfLines={1}
-            >
-              {item.name || 'CSD Beneficiary'}
+            <Text style={styles.customerName} numberOfLines={1}>
+              {item.name || 'Customer'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Priority & Status Badges */}
-        <View style={styles.badgesGroup}>
-          <View
-            style={[
-              styles.priorityBadge,
-              {
-                backgroundColor: isHot
-                  ? isDark
-                    ? 'rgba(239, 68, 68, 0.15)'
-                    : '#FEF2F2'
-                  : isWarm
-                  ? isDark
-                    ? 'rgba(245, 158, 11, 0.15)'
-                    : '#FFFBEB'
-                  : isDark
-                  ? '#101726'
-                  : '#F1F5F9',
-                borderColor: isHot
-                  ? isDark
-                    ? 'rgba(239, 68, 68, 0.4)'
-                    : '#FECDD3'
-                  : isWarm
-                  ? isDark
-                    ? 'rgba(245, 158, 11, 0.35)'
-                    : '#FDE68A'
-                  : isDark
-                  ? '#1E293B'
-                  : '#CBD5E1',
-              },
-            ]}
-          >
-            {isHot ? (
-              <Flame size={11} color={isDark ? '#F87171' : '#DC2626'} strokeWidth={2.2} />
-            ) : isWarm ? (
-              <Sun size={11} color={isDark ? '#FBBF24' : '#D97706'} strokeWidth={2.2} />
-            ) : (
-              <Snowflake size={11} color={colors.textSecondary} strokeWidth={2.2} />
-            )}
-            <Text
-              style={[
-                styles.priorityText,
-                {
-                  color: isHot
-                    ? isDark
-                      ? '#F87171'
-                      : '#DC2626'
-                    : isWarm
-                    ? isDark
-                      ? '#FBBF24'
-                      : '#D97706'
-                    : colors.textSecondary,
-                  marginLeft: 3,
-                },
-              ]}
-            >
-              {isHot ? 'Hot' : isWarm ? 'Warm' : 'Cold'}
+        <View style={styles.row1Badges}>
+          {/* Birthday / Anniversary Pill */}
+          {isBdayToday && (
+            <View style={styles.celebrationPill}>
+              <Text style={styles.celebrationPillText}>🎂 Birthday Today</Text>
+            </View>
+          )}
+          {isAnnivToday && !isBdayToday && (
+            <View style={styles.celebrationPill}>
+              <Text style={styles.celebrationPillText}>💐 Anniversary Today</Text>
+            </View>
+          )}
+
+          {/* Priority Badge */}
+          <View style={[styles.badgePill, { backgroundColor: priorityMeta.bg }]}>
+            {priorityMeta.icon}
+            <Text style={[styles.badgePillText, { color: priorityMeta.color }]}>
+              {priorityMeta.text}
             </Text>
           </View>
 
-          <View
-            style={[
-              styles.stageBadge,
-              {
-                backgroundColor: isDealWon
-                  ? isDark
-                    ? 'rgba(16, 185, 129, 0.15)'
-                    : '#ECFDF5'
-                  : isDark
-                  ? '#101726'
-                  : '#F1F5F9',
-                borderColor: isDealWon
-                  ? isDark
-                    ? 'rgba(16, 185, 129, 0.35)'
-                    : '#A7F3D0'
-                  : isDark
-                  ? '#1E293B'
-                  : '#E2E8F0',
-              },
-            ]}
-          >
-            {isDealWon && (
-              <Check
-                size={11}
-                color={isDark ? '#34D399' : '#059669'}
-                strokeWidth={2.5}
-                style={{ marginRight: 3 }}
-              />
-            )}
-            <Text
-              style={[
-                styles.stageText,
-                {
-                  color: isDealWon
-                    ? isDark
-                      ? '#34D399'
-                      : '#059669'
-                    : colors.textSecondary,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {stageDisplay}
+          {/* Status Badge */}
+          <View style={[styles.badgePill, { backgroundColor: statusMeta.bg }]}>
+            <Text style={[styles.badgePillText, { color: statusMeta.color }]}>
+              {statusMeta.label}
             </Text>
           </View>
+
+          {/* 3-Dots Menu Button */}
+          {onOpenActionsMenu && (
+            <TouchableOpacity
+              style={styles.dotsButton}
+              onPress={() => {
+                triggerHaptic('impactLight');
+                onOpenActionsMenu(item);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MoreVertical size={16} color={THEME.textSecondary} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* 2. Customer Meta Row: Phone (Dialable), Location, Created Date (Very Readable) */}
-      <View style={styles.customerMetaRow}>
+      {/* ----------------------------------------------------------- */}
+      {/* ROW 2: Contact & Location                                   */}
+      {/* ----------------------------------------------------------- */}
+      <View style={styles.row2Contact}>
         <TouchableOpacity
-          onPress={() => {
-            triggerHaptic('impactLight');
-            onCall(phone);
-          }}
+          style={styles.phoneGroup}
+          onPress={handleCall}
           activeOpacity={0.7}
-          style={styles.phoneClick}
         >
-          <Phone size={12} color={colors.primary} strokeWidth={2.2} />
-          <Text style={[styles.phoneText, { color: colors.primary, marginLeft: 4 }]}>
-            {phone}
-          </Text>
+          <Phone size={12} color={THEME.primaryNavy} strokeWidth={2.4} />
+          <Text style={styles.phoneText}>{item.phone}</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.metaDot, { color: colors.borderSubtle }]}>•</Text>
+        <Text style={styles.dotDivider}>•</Text>
 
-        <View style={styles.metaInline}>
-          <MapPin size={12} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={[styles.cityText, { color: colors.textSecondary, marginLeft: 3 }]}>
-            {city}
-          </Text>
-        </View>
-
-        <Text style={[styles.metaDot, { color: colors.borderSubtle }]}>•</Text>
-
-        <View style={styles.metaInline}>
-          <Calendar size={12} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={[styles.dateText, { color: colors.textSecondary, marginLeft: 3 }]}>
-            {formattedDate}
+        <View style={styles.locationGroup}>
+          <MapPin size={12} color={THEME.textSecondary} strokeWidth={2} />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {locationText}
           </Text>
         </View>
       </View>
 
-      {/* 3. Vehicle Requirement & Lead Source Row */}
-      <View style={styles.vehicleRequirementRow}>
-        <Text
-          style={[styles.vehicleModelName, { color: colors.textPrimary }]}
-          numberOfLines={1}
-        >
-          {modelVariant}
+      {/* ----------------------------------------------------------- */}
+      {/* ROW 3: Vehicle, Brand, Source & Discount Pending Badge     */}
+      {/* ----------------------------------------------------------- */}
+      <View style={styles.row3Vehicle}>
+        <Text style={styles.vehicleName} numberOfLines={1}>
+          {vehicleText}
         </Text>
 
-        <View style={styles.tagsContainer}>
-          {/* Brand Tag */}
-          <View
-            style={[
-              styles.brandTag,
-              {
-                backgroundColor: isDark ? '#1E293B' : '#E8EDF5',
-              },
-            ]}
-          >
-            <Text
-              style={[styles.brandTagText, { color: colors.textPrimary }]}
-            >
-              {brandName}
-            </Text>
+        <View style={styles.vehicleMetaPills}>
+          {/* Brand Pill */}
+          <View style={styles.brandPill}>
+            <Text style={styles.brandPillText}>{brandName}</Text>
           </View>
 
-          {/* Lead Source Badge */}
-          <View
-            style={[
-              styles.sourceTag,
-              {
-                backgroundColor: isDark ? '#0D1525' : '#1E293B',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-              },
-            ]}
-          >
+          {/* Source Pill */}
+          <View style={styles.sourcePill}>
             <Radio size={10} color="#38BDF8" strokeWidth={2.2} />
-            <Text style={styles.sourceTagText}>{sourceTitle}</Text>
+            <Text style={styles.sourcePillText}>{sourceName}</Text>
           </View>
 
-          {/* 4W / 2W Tag */}
-          <View
-            style={[
-              styles.segmentTag,
-              {
-                backgroundColor: isDark ? '#101726' : '#F1F5F9',
-                borderColor: isDark ? '#1E293B' : '#CBD5E1',
-              },
-            ]}
-          >
-            <Text style={[styles.segmentTagText, { color: colors.primary }]}>
-              {segmentShort}
-            </Text>
-          </View>
+          {/* Discount Pending Badge (If applicable) */}
+          {isDiscountPending && (
+            <View style={styles.discountPendingPill}>
+              <Tag size={10} color={THEME.warning} strokeWidth={2.4} />
+              <Text style={styles.discountPendingText}>
+                🏷️ Discount Pending (₹{Number(item.requested_discount || 0).toLocaleString('en-IN')})
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
-      {/* 4. Assigned Rep Row */}
-      <View style={styles.assignRow}>
-        <Text style={[styles.assignLabel, { color: colors.textSecondary }]}>
-          Assign To:
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
-          <User size={12} color={colors.textSecondary} strokeWidth={2} />
-          <Text
-            style={[styles.assignUserText, { color: colors.textPrimary }]}
-            numberOfLines={1}
-          >
-            {assignedRep}
+      {/* ----------------------------------------------------------- */}
+      {/* ROW 4: Meta & Assignment (Assigned To & Created Date)        */}
+      {/* ----------------------------------------------------------- */}
+      <View style={styles.row4Meta}>
+        <View style={styles.metaItem}>
+          <User size={12} color={THEME.textSecondary} strokeWidth={2} />
+          <Text style={styles.metaText} numberOfLines={1}>
+            Assigned: <Text style={styles.metaTextHighlight}>{item.assigned_user_name || 'Unassigned'}</Text>
           </Text>
+        </View>
+
+        <Text style={styles.dotDivider}>•</Text>
+
+        <View style={styles.metaItem}>
+          <Calendar size={12} color={THEME.textSecondary} strokeWidth={2} />
+          <Text style={styles.metaText}>{formattedDate}</Text>
         </View>
       </View>
 
-      {/* Divider */}
-      <View
-        style={[
-          styles.cardDivider,
-          { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-        ]}
-      />
+      {/* Thin Separator */}
+      <View style={styles.separator} />
 
-      {/* 5. Action Buttons Toolbar */}
-      <View style={styles.actionToolbar}>
-        {/* 1. Call Now Button (Army Olive Logo Themed) */}
+      {/* ----------------------------------------------------------- */}
+      {/* ROW 5: Quick Actions (Call, WhatsApp, Follow-up, Quote)     */}
+      {/* ----------------------------------------------------------- */}
+      <View style={styles.row5Actions}>
+        {/* [📞 Call] */}
         <TouchableOpacity
-          style={[styles.callBtn, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            triggerHaptic('impactMedium');
-            onCall(phone);
-          }}
-          activeOpacity={0.8}
+          style={[styles.actionBtn, styles.callActionBtn]}
+          onPress={handleCall}
+          activeOpacity={0.75}
         >
-          <Text style={styles.callBtnText}>Call Now</Text>
+          <Phone size={13} color="#FFFFFF" strokeWidth={2.4} />
+          <Text style={styles.callActionBtnText}>Call</Text>
         </TouchableOpacity>
 
-        {/* 2. Log Follow-Up Button */}
+        {/* [💬 WhatsApp] */}
         <TouchableOpacity
-          style={[
-            styles.followUpBtn,
-            {
-              backgroundColor: isDark
-                ? 'rgba(189, 207, 121, 0.12)'
-                : '#F5F8EE',
-              borderColor: colors.primary,
-            },
-          ]}
-          onPress={() => {
-            triggerHaptic('selection');
-            onOpenFollowUp(item);
-          }}
-          activeOpacity={0.8}
+          style={[styles.actionBtn, styles.whatsappActionBtn]}
+          onPress={handleWhatsApp}
+          activeOpacity={0.75}
         >
-          <Text
-            style={[
-              styles.followUpBtnText,
-              { color: isDark ? colors.primary : colors.primaryDark },
-            ]}
-          >
-            Follow-Up
-          </Text>
+          <MessageCircle size={13} color="#16A34A" strokeWidth={2.4} />
+          <Text style={styles.whatsappActionBtnText}>WhatsApp</Text>
         </TouchableOpacity>
 
-        {/* 3. Send Quotation Button */}
+        {/* [🔄 Follow-up] */}
         <TouchableOpacity
-          style={[
-            styles.quotationBtn,
-            {
-              backgroundColor: isDark
-                ? 'rgba(59, 130, 246, 0.15)'
-                : 'rgba(13, 110, 253, 0.08)',
-              borderColor: isDark ? '#3B82F6' : '#93C5FD',
-            },
-          ]}
-          onPress={() => {
-            triggerHaptic('selection');
-            onOpenSendQuotation(item);
-          }}
-          activeOpacity={0.8}
+          style={[styles.actionBtn, styles.followUpActionBtn]}
+          onPress={handleFollowUp}
+          activeOpacity={0.75}
         >
-          <Text
-            style={[
-              styles.quotationBtnText,
-              { color: isDark ? '#60A5FA' : '#0D6EFD' },
-            ]}
-          >
-            Quotation
-          </Text>
+          <Repeat size={13} color={THEME.primaryNavy} strokeWidth={2.4} />
+          <Text style={styles.followUpActionBtnText}>Follow-up</Text>
         </TouchableOpacity>
 
-        {/* 4. Convert Deal Quick Icon */}
+        {/* [📄 Quote] */}
         <TouchableOpacity
-          style={[
-            styles.quickIconBtn,
-            {
-              backgroundColor: isDark
-                ? 'rgba(16, 185, 129, 0.15)'
-                : 'rgba(21, 128, 61, 0.08)',
-              borderColor: isDark ? '#10B981' : '#86EFAC',
-            },
-          ]}
-          onPress={() => {
-            triggerHaptic('impactLight');
-            onOpenConvertDeal(item);
-          }}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+          style={[styles.actionBtn, styles.quoteActionBtn]}
+          onPress={handleQuote}
+          activeOpacity={0.75}
         >
-          <Award size={16} color={isDark ? '#34D399' : '#16A34A'} strokeWidth={2.2} />
-        </TouchableOpacity>
-
-        {/* 5. More Actions Sheet Trigger (3-dots) */}
-        <TouchableOpacity
-          style={[
-            styles.quickIconBtn,
-            {
-              backgroundColor: isDark ? '#101726' : '#F8FAFC',
-              borderColor: isDark ? '#1E293B' : '#E2E8F0',
-            },
-          ]}
-          onPress={() => {
-            triggerHaptic('impactLight');
-            onOpenActionsMenu(item);
-          }}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 6, right: 8 }}
-        >
-          <MoreVertical size={16} color={colors.textPrimary} strokeWidth={2} />
+          <FileText size={13} color={THEME.info} strokeWidth={2.4} />
+          <Text style={styles.quoteActionBtnText}>Quote</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -505,267 +399,261 @@ export const LeadCard: React.FC<LeadCardProps> = React.memo(({
 });
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    borderRadius: 14,
+  card: {
+    backgroundColor: THEME.cardBg,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
+    borderColor: THEME.border,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 2,
+    gap: 10,
   },
-  headerRow: {
+  cardSelected: {
+    borderColor: THEME.primaryNavy,
+    backgroundColor: '#F8FAFC',
+  },
+
+  // Row 1: Header
+  row1Header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  identityLeft: {
+  row1Left: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     flex: 1,
+    marginRight: 8,
   },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     borderRadius: 5,
-    borderWidth: 1.3,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 8,
   },
-  checkMark: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-    includeFontPadding: false,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    marginTop: -1,
+  checkboxSelected: {
+    backgroundColor: THEME.primaryNavy,
+    borderColor: THEME.primaryNavy,
   },
-  actionMenuBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionMenuDots: {
-    fontSize: 16,
-    fontWeight: '900',
-    includeFontPadding: false,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-  nameTouch: {
+  nameContainer: {
     flex: 1,
   },
   customerName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
+    color: THEME.primaryNavy,
     letterSpacing: -0.2,
-    includeFontPadding: false,
   },
-  badgesGroup: {
+  row1Badges: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  priorityBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 6,
+  celebrationPill: {
+    backgroundColor: '#FDF2F8',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#FCE7F3',
   },
-  priorityText: {
-    fontSize: 12,
-    fontWeight: '800',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-  },
-  stageBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  stageText: {
-    fontSize: 12,
+  celebrationPillText: {
+    fontSize: 10,
     fontWeight: '700',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
+    color: '#DB2777',
   },
-  customerMetaRow: {
+  badgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  dotsButton: {
+    padding: 2,
+    marginLeft: 2,
+  },
+
+  // Row 2: Contact
+  row2Contact: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 7,
   },
-  phoneClick: {
+  phoneGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 1,
-  },
-  metaInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 4,
   },
   phoneText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.primaryNavy,
+  },
+  dotDivider: {
+    fontSize: 12,
+    color: THEME.textMuted,
+  },
+  locationGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flexShrink: 1,
+  },
+  locationText: {
+    fontSize: 12,
+    color: THEME.textSecondary,
+    fontWeight: '500',
+  },
+
+  // Row 3: Vehicle & Pills
+  row3Vehicle: {
+    gap: 6,
+  },
+  vehicleName: {
     fontSize: 14,
     fontWeight: '700',
-    includeFontPadding: false,
+    color: THEME.textPrimary,
   },
-  metaDot: {
-    fontSize: 13,
-  },
-  cityText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    includeFontPadding: false,
-  },
-  dateText: {
-    fontSize: 13,
-    fontWeight: '500',
-    includeFontPadding: false,
-  },
-  vehicleRequirementRow: {
-    marginTop: 9,
-  },
-  vehicleModelName: {
-    fontSize: 15,
-    fontWeight: '800',
-    includeFontPadding: false,
-  },
-  tagsContainer: {
+  vehicleMetaPills: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 5,
     flexWrap: 'wrap',
+    gap: 6,
   },
-  brandTag: {
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 5,
+  brandPill: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
-  brandTagText: {
-    fontSize: 12,
-    fontWeight: '700',
-    includeFontPadding: false,
-  },
-  sourceTag: {
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 5,
-  },
-  sourceTagText: {
-    color: '#F8FAFC',
-    fontSize: 12,
-    fontWeight: '700',
-    includeFontPadding: false,
-  },
-  segmentTag: {
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 4,
-    borderWidth: 1,
-  },
-  segmentTagText: {
+  brandPillText: {
     fontSize: 11,
-    fontWeight: '800',
-    includeFontPadding: false,
+    fontWeight: '700',
+    color: THEME.textPrimary,
   },
-  assignRow: {
+  sourcePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  sourcePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  discountPendingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: THEME.warningBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  discountPendingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.warning,
+  },
+
+  // Row 4: Meta
+  row4Meta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 8,
   },
-  assignLabel: {
-    fontSize: 13,
-    fontWeight: '500',
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  assignUserText: {
-    fontSize: 13,
+  metaText: {
+    fontSize: 12,
+    color: THEME.textSecondary,
+  },
+  metaTextHighlight: {
     fontWeight: '700',
-    flex: 1,
+    color: THEME.textPrimary,
   },
-  cardDivider: {
+
+  // Separator
+  separator: {
     height: 1,
-    marginVertical: 10,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 2,
   },
-  actionToolbar: {
+
+  // Row 5: Actions
+  row5Actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  callBtn: {
-    flex: 1.2,
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 38,
-    borderRadius: 8,
-    paddingHorizontal: 4,
-  },
-  callBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 15,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    textAlign: 'center',
-  },
-  followUpBtn: {
-    flex: 1.2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 38,
-    borderRadius: 8,
+    gap: 4,
+    paddingVertical: 7,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 4,
   },
-  followUpBtnText: {
-    fontSize: 13,
+  callActionBtn: {
+    backgroundColor: THEME.primaryNavy,
+    borderColor: THEME.primaryNavy,
+  },
+  callActionBtnText: {
+    fontSize: 12,
     fontWeight: '700',
-    lineHeight: 15,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    textAlign: 'center',
+    color: '#FFFFFF',
   },
-  quotationBtn: {
-    flex: 1.2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 4,
+  whatsappActionBtn: {
+    backgroundColor: THEME.successBg,
+    borderColor: '#BBF7D0',
   },
-  quotationBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 15,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    textAlign: 'center',
+  whatsappActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.success,
   },
-  quickIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  followUpActionBtn: {
+    backgroundColor: '#FFFFFF',
+    borderColor: THEME.border,
   },
-  quickIconSymbol: {
-    fontSize: 15,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    textAlign: 'center',
+  followUpActionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.primaryNavy,
+  },
+  quoteActionBtn: {
+    backgroundColor: THEME.infoBg,
+    borderColor: '#C7D2FE',
+  },
+  quoteActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.info,
   },
 });

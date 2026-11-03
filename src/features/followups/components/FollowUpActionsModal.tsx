@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import {
+  Clock,
   Eye,
   FileSpreadsheet,
   PhoneCall,
@@ -17,11 +18,13 @@ import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
 import { FollowUpItem } from '../types';
 
-interface FollowUpActionsModalProps {
+export interface FollowUpActionsModalProps {
   visible: boolean;
   item: FollowUpItem | null;
   onClose: () => void;
-  onCallAndLog: (item: FollowUpItem) => void;
+  onCall?: (phone: string) => void;
+  onCallAndLog?: (item: FollowUpItem) => void;
+  onLogAction?: (item: FollowUpItem) => void;
   onSendQuotation: (item: FollowUpItem) => void;
   onViewProfile: (item: FollowUpItem) => void;
 }
@@ -30,7 +33,9 @@ export const FollowUpActionsModal: React.FC<FollowUpActionsModalProps> = ({
   visible,
   item,
   onClose,
+  onCall,
   onCallAndLog,
+  onLogAction,
   onSendQuotation,
   onViewProfile,
 }) => {
@@ -41,45 +46,67 @@ export const FollowUpActionsModal: React.FC<FollowUpActionsModalProps> = ({
 
   const actions = [
     {
-      id: 'call_log',
-      title: 'Call Now & Log Interaction',
-      sub: 'Open CRM dialer & record call conversation outcome',
+      id: 'call_now',
+      title: 'Call Now',
+      sub: `Direct phone call to ${item.phone}`,
       icon: PhoneCall,
+      color: '#16A34A',
+      bg: isDark ? 'rgba(22, 163, 74, 0.15)' : '#DCFCE7',
+      onPress: () => {
+        onClose();
+        setTimeout(() => {
+          if (onCall) {
+            onCall(item.phone);
+          } else if (onCallAndLog) {
+            onCallAndLog(item);
+          }
+        }, 120);
+      },
+    },
+    {
+      id: 'log_action',
+      title: 'Log Action / Follow-Up',
+      sub: 'Record call discussion outcome, notes & next schedule',
+      icon: Clock,
       color: colors.primary,
       bg: isDark ? 'rgba(88, 99, 42, 0.2)' : '#F5F8EE',
       onPress: () => {
         onClose();
         setTimeout(() => {
-          onCallAndLog(item);
-        }, 100);
+          if (onLogAction) {
+            onLogAction(item);
+          } else if (onCallAndLog) {
+            onCallAndLog(item);
+          }
+        }, 120);
       },
     },
     {
       id: 'quotation',
-      title: 'Send Official CSD Quotation',
-      sub: 'Generate proforma quote with on-road pricing breakdown',
+      title: 'Send Quotation',
+      sub: 'Generate official CSD proforma quotation with pricing',
       icon: FileSpreadsheet,
-      color: '#3B82F6',
-      bg: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(13, 110, 253, 0.08)',
+      color: '#2563EB',
+      bg: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF',
       onPress: () => {
         onClose();
         setTimeout(() => {
           onSendQuotation(item);
-        }, 100);
+        }, 120);
       },
     },
     {
-      id: 'profile',
-      title: 'View 360° Lead Dossier',
-      sub: 'Inspect customer entitlements, rank, unit & history',
+      id: 'view_details',
+      title: 'View Details',
+      sub: 'Inspect customer profile, vehicle preferences & lead details',
       icon: Eye,
-      color: '#8B5CF6',
-      bg: isDark ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF',
+      color: '#7C3AED',
+      bg: isDark ? 'rgba(124, 58, 237, 0.15)' : '#F5F3FF',
       onPress: () => {
         onClose();
         setTimeout(() => {
           onViewProfile(item);
-        }, 100);
+        }, 120);
       },
     },
   ];
@@ -124,12 +151,13 @@ export const FollowUpActionsModal: React.FC<FollowUpActionsModalProps> = ({
               { borderBottomColor: isDark ? '#1E293B' : '#F1F5F9' },
             ]}
           >
-            <View>
+            <View style={{ flex: 1, marginRight: 8 }}>
               <Text
                 style={[
                   styles.sheetTitle,
                   { color: isDark ? '#FFFFFF' : '#0F172A' },
                 ]}
+                numberOfLines={1}
               >
                 {item.customer_name}
               </Text>
@@ -138,6 +166,7 @@ export const FollowUpActionsModal: React.FC<FollowUpActionsModalProps> = ({
                   styles.sheetSub,
                   { color: isDark ? '#94A3B8' : '#64748B' },
                 ]}
+                numberOfLines={1}
               >
                 {item.phone} • {item.vehicle || 'CSD Entitlement'}
               </Text>
@@ -242,12 +271,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   sheetTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
   sheetSub: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     marginTop: 2,
   },
@@ -279,11 +308,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionTitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   actionSub: {
-    fontSize: 10.5,
+    fontSize: 11,
     marginTop: 2,
   },
 });

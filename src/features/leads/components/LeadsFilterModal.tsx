@@ -60,10 +60,10 @@ export const LeadsFilterModal: React.FC<LeadsFilterModalProps> = ({
   const stagesList = [
     'All',
     'New',
-    'In Follow-Up',
-    'Negotiation',
-    'Deal Won',
-    'Deal Lost',
+    'Follow-up',
+    'Quotation Sent',
+    'Deal & Booking',
+    'Lost',
   ];
 
   if (!visible) return null;
@@ -314,7 +314,7 @@ export const LeadsFilterModal: React.FC<LeadsFilterModalProps> = ({
                 { color: colors.textSecondary },
               ]}
             >
-              PIPELINE STAGE
+              LEAD STATUS / STAGE
             </Text>
             <View style={styles.chipsGrid}>
               {stagesList.map((st) => {

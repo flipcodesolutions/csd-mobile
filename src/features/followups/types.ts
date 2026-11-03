@@ -11,17 +11,17 @@ export type InteractionType =
 export type OutcomeStatus =
   | 'Interested / Call Back'
   | 'Quotation Requested'
-  | 'Ready for Booking'
-  | 'Not Answering / Busy'
-  | 'Price Too High'
-  | 'Bought Competitor Car'
-  | 'Showroom Visit Done';
+  | 'Negotiation / Price Discussion'
+  | 'Not Reachable / Busy'
+  | 'Lost to Competitor / Lost of Lead'
+  | 'Deal Won / Booking';
 
 export interface FollowUpItem {
   id: number;
   lead_id?: number | null;
   customer_name: string;
   phone: string;
+  calls_count?: number;
   city?: string;
   vehicle?: string;
   variant?: string;

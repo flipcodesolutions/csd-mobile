@@ -3,135 +3,197 @@ import { CreateFollowUpPayload, FollowUpItem, FollowUpStats } from './types';
 
 export const MOCK_FOLLOW_UPS: FollowUpItem[] = [
   {
-    id: 101,
-    lead_id: 42,
-    customer_name: 'Maj. Rohit Sharma',
-    phone: '8555555555',
-    city: 'Pune Cantonment',
-    vehicle: 'Brezza ZXi Dual Tone',
-    variant: 'Dual Tone Hybrid',
-    brand_name: 'Maruti Suzuki',
+    id: 53,
+    lead_id: 53,
+    customer_name: 'jinal pujara',
+    calls_count: 2,
+    phone: '9316130308',
+    city: 'Surendranagar',
+    vehicle: 'Mercedes-AMG GT GT 55 4MATIC+',
+    brand_name: 'Mercedes-Benz',
     type: 'Phone Call',
     status: 'Interested / Call Back',
-    notes: 'Discussed CSD loan sanction documents. Officer requested delivery before Diwali.',
-    follow_up_date: '2026-10-15',
-    follow_up_time: '11:30 AM',
-    next_follow_up_date: new Date().toISOString().split('T')[0], // Today
+    notes: 'discount',
+    follow_up_date: '02 Nov 2026',
+    follow_up_time: '02:51 PM',
+    next_follow_up_date: '05 Nov 2026',
     next_follow_up_time: '10:00 AM',
     is_discount_requested: true,
-    discount_amount: 25000,
-    discount_reason: 'Officer comparing quote with competing dealer; ready to book immediately.',
+    discount_amount: 5000,
     discount_status: 'pending',
-    rep: 'Alexander Vance',
+    rep: 'Admin User (Super Admin)',
     priority: 'Hot',
   },
   {
-    id: 102,
-    lead_id: 43,
-    customer_name: 'Col. Arvind Rathore',
-    phone: '9822012345',
-    city: 'Delhi Military HQ',
-    vehicle: 'Grand Vitara Alpha Plus AllGrip',
-    variant: 'Alpha+ AWD',
-    brand_name: 'Maruti Suzuki',
-    type: 'Showroom Visit',
-    status: 'Quotation Requested',
-    notes: 'Visited showroom with family. Impressed with hybrid mileage. Sent revised CSD quote.',
-    follow_up_date: '2026-10-14',
-    follow_up_time: '04:15 PM',
-    next_follow_up_date: '2026-10-16', // Overdue
-    next_follow_up_time: '02:30 PM',
-    is_discount_requested: true,
-    discount_amount: 30000,
-    discount_reason: 'Corporate army bulk group enquiry.',
-    discount_status: 'approved',
-    rep: 'Rohan Sharma',
-    priority: 'Hot',
-  },
-  {
-    id: 103,
-    lead_id: 44,
-    customer_name: 'Capt. Vikram Batra',
-    phone: '9876543210',
-    city: 'Chandigarh Station',
-    vehicle: 'Scorpio-N Z8L 4x4',
-    variant: 'Z8 Luxury Diesel 4WD',
-    brand_name: 'Mahindra',
-    type: 'WhatsApp',
-    status: 'Ready for Booking',
-    notes: 'CSD purchase authority letter verified. Token advance of ₹50,000 agreed.',
-    follow_up_date: '2026-10-16',
-    follow_up_time: '01:00 PM',
-    next_follow_up_date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0], // Upcoming
-    next_follow_up_time: '11:00 AM',
-    is_discount_requested: false,
-    rep: 'Alexander Vance',
-    priority: 'Hot',
-  },
-  {
-    id: 104,
-    lead_id: 45,
-    customer_name: 'Sub. Rajesh Gurung',
-    phone: '9765432109',
-    city: 'Dehradun',
-    vehicle: 'Swift ZXi Plus AMT',
-    variant: 'ZXi+ AMT Dual Tone',
+    id: 34,
+    lead_id: 34,
+    customer_name: 'vikash',
+    calls_count: 2,
+    phone: '7777777777',
+    city: 'pune',
+    vehicle: 'Brezza',
     brand_name: 'Maruti Suzuki',
     type: 'Phone Call',
-    status: 'Price Too High',
-    notes: 'Demanded additional dealer accessories kit for CSD purchase.',
-    follow_up_date: '2026-10-12',
-    follow_up_time: '10:45 AM',
-    next_follow_up_date: '2026-10-14', // Overdue
-    next_follow_up_time: '03:00 PM',
+    status: 'Interested / call back',
+    notes: 'vikash',
+    follow_up_date: '15 Oct 2026',
+    follow_up_time: '11:12 AM',
+    next_follow_up_date: '20 Oct 2026',
+    next_follow_up_time: '10:00 AM',
     is_discount_requested: true,
-    discount_amount: 15000,
-    discount_reason: 'Local dealer offering free mats and coating.',
-    discount_status: 'rejected',
-    rep: 'Vikram Singh',
-    priority: 'Warm',
-  },
-  {
-    id: 105,
-    lead_id: 46,
-    customer_name: 'Lt. Karan Thapar',
-    phone: '9811223344',
-    city: 'Jaipur Command',
-    vehicle: 'Thar AX Opt Hard Top',
-    variant: 'AX Opt Diesel MT',
-    brand_name: 'Mahindra',
-    type: 'Showroom Visit',
-    status: 'Showroom Visit Done',
-    notes: 'Test drive completed. Waiting for month-end CSD allocation window.',
-    follow_up_date: '2026-10-16',
-    follow_up_time: '05:00 PM',
-    next_follow_up_date: new Date().toISOString().split('T')[0], // Today
-    next_follow_up_time: '04:30 PM',
-    is_discount_requested: false,
-    rep: 'Alexander Vance',
+    discount_amount: 20,
+    discount_status: 'approved',
+    rep: 'Admin User (Super Admin)',
     priority: 'Hot',
   },
   {
-    id: 106,
-    lead_id: 47,
-    customer_name: 'Hav. Manoj Tiwari',
-    phone: '9455667788',
-    city: 'Lucknow',
-    vehicle: 'Baleno Alpha MT',
-    variant: 'Alpha 1.2 DualJet',
-    brand_name: 'Maruti Suzuki',
-    type: 'Email',
-    status: 'Interested / Call Back',
-    notes: 'Sent brochure and CSD base price calculation sheet.',
-    follow_up_date: '2026-10-15',
-    follow_up_time: '02:00 PM',
-    next_follow_up_date: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0], // Upcoming
+    id: 22,
+    lead_id: 22,
+    customer_name: 'Quote Test User',
+    calls_count: 2,
+    phone: '9822334466',
+    city: 'Ahmedabad',
+    vehicle: 'Nexon EV Empowered',
+    brand_name: 'Tata Motors',
+    type: 'Phone Call',
+    status: 'Interested / call back',
+    notes: 'test',
+    follow_up_date: '05 Oct 2026',
+    follow_up_time: '03:29 PM',
+    next_follow_up_date: '08 Oct 2026',
     next_follow_up_time: '10:00 AM',
     is_discount_requested: false,
-    rep: 'Rohan Sharma',
-    priority: 'Cold',
+    rep: 'Admin User (Super Admin)',
+    priority: 'Hot',
+  },
+  {
+    id: 15,
+    lead_id: 15,
+    customer_name: 'meet rameshbhai patel',
+    calls_count: 3,
+    phone: '9510600150',
+    city: 'surendranagar',
+    vehicle: 'maruti',
+    brand_name: 'Maruti Suzuki',
+    type: 'Phone Call',
+    status: 'Interested / call back',
+    notes: '',
+    follow_up_date: '29 Sept 2026',
+    follow_up_time: '05:32 PM',
+    next_follow_up_date: '29 Sept 2026',
+    next_follow_up_time: '06:00 PM',
+    is_discount_requested: false,
+    rep: 'Alexander Vance (Super Admin)',
+    priority: 'Hot',
   },
 ];
+
+export const normalizeFollowUpItem = (raw: any, idx = 0): FollowUpItem => {
+  const lead = raw.lead || {};
+  const user = raw.user || {};
+  
+  const rawCalls =
+    raw.calls_count ??
+    raw.call_count ??
+    raw.calls ??
+    raw.total_calls ??
+    lead.calls_count ??
+    lead.follow_ups_count ??
+    lead.total_calls ??
+    1;
+
+  const rawDiscount =
+    raw.discount_amount != null
+      ? Number(raw.discount_amount)
+      : raw.requested_discount != null
+      ? Number(raw.requested_discount)
+      : raw.discount != null
+      ? Number(raw.discount)
+      : lead.requested_discount != null
+      ? Number(lead.requested_discount)
+      : undefined;
+
+  const rawDiscountStatus =
+    raw.discount_status ||
+    raw.discount_approval_status ||
+    lead.discount_approval_status ||
+    'pending';
+
+  return {
+    id: raw.id || idx + 1,
+    lead_id: raw.lead_id || lead.id || raw.id,
+    customer_name:
+      raw.customer_name || raw.customer?.name || lead.name || raw.name || 'Customer',
+    calls_count: typeof rawCalls === 'number' ? rawCalls : parseInt(String(rawCalls), 10) || 1,
+    phone: String(raw.phone || raw.customer?.phone || lead.phone || ''),
+    city:
+      raw.city ||
+      raw.customer?.city ||
+      lead.city ||
+      lead.home_town ||
+      raw.home_town ||
+      '',
+    vehicle:
+      raw.vehicle ||
+      raw.vehicle_name ||
+      raw.model_variant ||
+      lead.model_variant ||
+      lead.model_name ||
+      raw.model ||
+      '',
+    variant: raw.variant || lead.variant_name || '',
+    brand_name:
+      raw.brand_name ||
+      raw.brand?.name ||
+      lead.brand_name ||
+      lead.brand?.name ||
+      '',
+    type: raw.type || raw.interaction_type || 'Phone Call',
+    status:
+      raw.status ||
+      raw.outcome ||
+      raw.last_call_outcome ||
+      raw.call_outcome ||
+      'Interested / Call Back',
+    notes:
+      raw.notes ||
+      raw.call_notes ||
+      raw.description ||
+      raw.remarks ||
+      raw.conversation_summary ||
+      '',
+    follow_up_date:
+      raw.follow_up_date ||
+      raw.date ||
+      (raw.created_at ? raw.created_at.split('T')[0] : '') ||
+      '',
+    follow_up_time: raw.follow_up_time || raw.time || '',
+    next_follow_up_date:
+      raw.next_follow_up_date || raw.next_date || raw.next_action_date || '',
+    next_follow_up_time:
+      raw.next_follow_up_time || raw.next_time || raw.next_action_time || '10:00 AM',
+    is_discount_requested: Boolean(
+      raw.is_discount_requested ||
+      raw.requested_discount ||
+      raw.discount_amount ||
+      lead.requested_discount ||
+      (rawDiscount && rawDiscount > 0)
+    ),
+    discount_amount: rawDiscount,
+    discount_reason: raw.discount_reason || raw.reason || lead.discount_reason || '',
+    discount_status: rawDiscountStatus,
+    rep:
+      raw.rep ||
+      raw.user_name ||
+      user.name ||
+      raw.assigned_user_name ||
+      lead.assigned_user_name ||
+      'Admin User (Super Admin)',
+    priority: (raw.priority || raw.urgency || lead.priority || 'Hot') as any,
+    lead: raw.lead || undefined,
+    created_at: raw.created_at || undefined,
+  };
+};
 
 export const followUpService = {
   getStats: async (params?: {
@@ -143,11 +205,13 @@ export const followUpService = {
       if (response.data?.status && response.data?.data) {
         return response.data.data;
       }
+      if (response.data && typeof response.data.total === 'number') {
+        return response.data;
+      }
     } catch (err) {
       console.log('Using calculated stats fallback:', err);
     }
 
-    // Default calculated stats fallback
     const todayStr = new Date().toISOString().split('T')[0];
     let overdue = 0;
     let dueToday = 0;
@@ -187,20 +251,34 @@ export const followUpService = {
   }> => {
     try {
       const response = await api.get('/follow-ups', { params });
-      if (response.data?.status && Array.isArray(response.data?.data)) {
+      const res = response?.data;
+      let rawList: any[] | null = null;
+
+      if (Array.isArray(res)) {
+        rawList = res;
+      } else if (Array.isArray(res?.data)) {
+        rawList = res.data;
+      } else if (Array.isArray(res?.data?.data)) {
+        rawList = res.data.data;
+      } else if (Array.isArray(res?.follow_ups)) {
+        rawList = res.follow_ups;
+      }
+
+      if (rawList && rawList.length > 0) {
+        const normalized = rawList.map((item, idx) => normalizeFollowUpItem(item, idx));
         return {
-          data: response.data.data,
-          kpis: response.data.kpis || {
+          data: normalized,
+          kpis: res?.kpis || {
             overdue: 0,
             due_today: 0,
             upcoming: 0,
-            total: response.data.data.length,
+            total: normalized.length,
           },
-          pagination: response.data.pagination || {
-            current_page: 1,
-            last_page: 1,
-            per_page: params?.per_page || 10,
-            total: response.data.data.length,
+          pagination: {
+            current_page: res?.current_page || res?.pagination?.current_page || params?.page || 1,
+            last_page: res?.last_page || res?.pagination?.last_page || 1,
+            per_page: res?.per_page || res?.pagination?.per_page || params?.per_page || 50,
+            total: res?.total || res?.pagination?.total || normalized.length,
           },
         };
       }
@@ -208,7 +286,7 @@ export const followUpService = {
       console.log('Using MOCK_FOLLOW_UPS fallback:', err);
     }
 
-    // Client-side filtering fallback
+    // Client-side filtering fallback using verified dynamic mock data
     let filtered = [...MOCK_FOLLOW_UPS];
     const todayStr = new Date().toISOString().split('T')[0];
 

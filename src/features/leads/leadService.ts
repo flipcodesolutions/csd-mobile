@@ -8,6 +8,8 @@ export interface LeadFilterParams {
   vehicle_segment?: string;
   status?: string;
   status_id?: number | string;
+  status_name?: string;
+  lead_status?: string;
   brand_id?: number | string;
   source_id?: number | string;
   assigned_to?: number | string;
@@ -27,18 +29,31 @@ export const leadApi = {
     phone: string;
     email?: string;
     city?: string;
+    home_town?: string;
+    posting?: string;
     state?: string;
+    birth_date?: string;
+    birthday?: string;
+    anniversary_date?: string;
     vehicle_segment: '2 Wheeler' | '4 Wheeler';
     brand_id?: number;
     brand_name?: string;
+    model_id?: number;
+    model_name?: string;
+    variant_id?: number;
+    variant_name?: string;
     model_variant: string;
     priority: 'Hot' | 'Warm' | 'Cold';
     purchase_timeline?: string;
+    budget?: string | number;
     source_id?: number;
     source_name?: string;
     status_id?: number;
     status_name?: string;
+    lead_status?: string;
+    assigned_to?: number;
     assigned_user_name?: string;
+    notes?: string;
   }) => {
     const response = await api.post('/leads', data);
     return response.data;
@@ -50,18 +65,31 @@ export const leadApi = {
       phone: string;
       email: string;
       city: string;
+      home_town: string;
+      posting: string;
       state: string;
+      birth_date: string;
+      birthday: string;
+      anniversary_date: string;
       vehicle_segment: '2 Wheeler' | '4 Wheeler';
       brand_id: number;
       brand_name: string;
+      model_id: number;
+      model_name: string;
+      variant_id: number;
+      variant_name: string;
       model_variant: string;
       priority: 'Hot' | 'Warm' | 'Cold';
       purchase_timeline: string;
+      budget: string | number;
       source_id: number;
       source_name: string;
       status_id: number;
       status_name: string;
+      lead_status: string;
+      assigned_to: number;
       assigned_user_name: string;
+      notes: string;
     }>
   ) => {
     const response = await api.put(`/leads/${id}`, data);
@@ -152,6 +180,9 @@ export const leadApi = {
       customer_name?: string;
       phone?: string;
       status?: string;
+      is_discount_requested?: boolean;
+      discount_amount?: number | null;
+      reason?: string;
     }
   ) => {
     try {

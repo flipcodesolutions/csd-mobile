@@ -17,6 +17,7 @@ import { LeadStatusScreen } from '../../features/masters/LeadStatusScreen';
 import { LeadSourceScreen } from '../../features/masters/LeadSourceScreen';
 import { UserMasterScreen } from '../../features/masters/UserMasterScreen';
 import { FollowUpScreen } from '../../features/followups/FollowUpScreen';
+import { CreateLeadScreen } from '../../features/leads/CreateLeadScreen';
 
 import { useTheme } from '../theme/ThemeContext';
 import { CustomDrawerContent } from './CustomDrawerContent';
@@ -25,6 +26,7 @@ import { Header } from './Header';
 export type RootStackParamList = {
   MainDrawer: undefined;
   LeadDetail: { leadId: number };
+  CreateLead: undefined;
 };
 
 export type DrawerParamList = {
@@ -152,7 +154,7 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="leads">
         {({ navigation }) => (
-          <LeadsScreen onOpenDrawer={() => (navigation as any).openDrawer()} />
+          <LeadsScreen navigation={navigation} onOpenDrawer={() => (navigation as any).openDrawer()} />
         )}
       </Drawer.Screen>
 
@@ -251,6 +253,18 @@ export function AppNavigator({ userRole, userEmail, onLogout }: AppNavigatorProp
             <SalesExecutiveLeadDetailScreen
               leadId={route.params?.leadId}
               onBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="CreateLead"
+          options={{ headerShown: false }}
+        >
+          {({ navigation }) => (
+            <CreateLeadScreen
+              navigation={navigation}
+              onBack={() => navigation.goBack()}
+              onSuccess={() => navigation.goBack()}
             />
           )}
         </Stack.Screen>

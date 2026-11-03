@@ -12,9 +12,8 @@ import {
   Edit3,
   Eye,
   FileText,
-  Phone,
+  PhoneCall,
   Trash2,
-  User,
   X,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,7 +29,6 @@ interface LeadActionsModalProps {
   onConvertDeal: (lead: CustomerLead) => void;
   onLogFollowUp: (lead: CustomerLead) => void;
   onSendQuotation: (lead: CustomerLead) => void;
-  onQuickView: (lead: CustomerLead) => void;
   onEditLead: (lead: CustomerLead) => void;
   onDeleteLead: (lead: CustomerLead) => void;
 }
@@ -43,7 +41,6 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
   onConvertDeal,
   onLogFollowUp,
   onSendQuotation,
-  onQuickView,
   onEditLead,
   onDeleteLead,
 }) => {
@@ -98,172 +95,147 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
             }}
             showsVerticalScrollIndicator={false}
           >
-        {/* Header: Lead Name & Quick Meta */}
-        <View
-          style={[
-            styles.headerRow,
-            { borderBottomColor: isDark ? '#1E293B' : '#F1F5F9' },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[styles.leadName, { color: colors.textPrimary }]}
-              numberOfLines={1}
-            >
-              {lead.name}
-            </Text>
-            <Text
-              style={[styles.leadPhone, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {lead.phone} • {lead.city || 'CSD Beneficiary'}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => {
-              triggerHaptic('impactLight');
-              onClose();
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={[
-              styles.closeBtn,
-              { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-            ]}
-            activeOpacity={0.7}
-          >
-            <X size={16} color={colors.textSecondary} strokeWidth={2.2} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Actions List */}
-        <View style={styles.actionsList}>
-          {/* 1. View 360 Profile */}
-          <TouchableOpacity
-            style={[
-              styles.actionItem,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(59, 130, 246, 0.15)'
-                  : 'rgba(13, 110, 253, 0.08)',
-              },
-            ]}
-            onPress={() => handleAction(onView360)}
-            activeOpacity={0.7}
-          >
-            <User size={18} color={isDark ? '#60A5FA' : '#0D6EFD'} strokeWidth={2} />
-            <Text
+            {/* Header: Lead Name & Quick Meta */}
+            <View
               style={[
-                styles.actionTextPrimary,
-                { color: isDark ? '#60A5FA' : '#0D6EFD' },
+                styles.headerRow,
+                { borderBottomColor: isDark ? '#1E293B' : '#F1F5F9' },
               ]}
             >
-              View 360 Profile
-            </Text>
-          </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[styles.leadName, { color: colors.textPrimary }]}
+                  numberOfLines={1}
+                >
+                  {lead.name}
+                </Text>
+                <Text
+                  style={[styles.leadPhone, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {lead.phone} • {lead.home_town || lead.city || 'CSD Beneficiary'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  triggerHaptic('impactLight');
+                  onClose();
+                }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={[
+                  styles.closeBtn,
+                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
+                ]}
+                activeOpacity={0.7}
+              >
+                <X size={16} color={colors.textSecondary} strokeWidth={2.2} />
+              </TouchableOpacity>
+            </View>
 
-          {/* 2. Convert to Deal */}
-          <TouchableOpacity
-            style={[
-              styles.actionItem,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(16, 185, 129, 0.15)'
-                  : 'rgba(21, 128, 61, 0.08)',
-              },
-            ]}
-            onPress={() => handleAction(onConvertDeal)}
-            activeOpacity={0.7}
-          >
-            <Award size={18} color={isDark ? '#34D399' : '#15803D'} strokeWidth={2} />
-            <Text
-              style={[
-                styles.actionTextSuccess,
-                { color: isDark ? '#34D399' : '#15803D' },
-              ]}
-            >
-              Convert to Deal
-            </Text>
-          </TouchableOpacity>
+            {/* Actions List - Exact Sequence matching Screenshot 2 */}
+            <View style={styles.actionsList}>
+              {/* 1. Log Follow-Up */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={() => handleAction(onLogFollowUp)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBox}>
+                  <PhoneCall size={18} color="#2563EB" strokeWidth={2.2} />
+                </View>
+                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                  Log Follow-Up
+                </Text>
+              </TouchableOpacity>
 
-          <View
-            style={[
-              styles.itemDivider,
-              { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-            ]}
-          />
+              {/* 2. Send Quotation */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={() => handleAction(onSendQuotation)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBox}>
+                  <FileText size={18} color="#0284C7" strokeWidth={2.2} />
+                </View>
+                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                  Send Quotation
+                </Text>
+              </TouchableOpacity>
 
-          {/* 3. Log Follow-Up */}
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={() => handleAction(onLogFollowUp)}
-            activeOpacity={0.7}
-          >
-            <Phone size={17} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-              Log Follow-Up
-            </Text>
-          </TouchableOpacity>
+              {/* 3. Convert to Deal (Green Trophy) */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={() => handleAction(onConvertDeal)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBox}>
+                  <Award size={18} color="#16A34A" strokeWidth={2.2} />
+                </View>
+                <Text
+                  style={[
+                    styles.actionText,
+                    { color: isDark ? '#34D399' : '#15803D', fontWeight: '800' },
+                  ]}
+                >
+                  Convert to Deal
+                </Text>
+              </TouchableOpacity>
 
-          {/* 4. Send Quotation */}
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={() => handleAction(onSendQuotation)}
-            activeOpacity={0.7}
-          >
-            <FileText size={17} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-              Send Quotation
-            </Text>
-          </TouchableOpacity>
+              {/* Divider between deals and details */}
+              <View
+                style={[
+                  styles.itemDivider,
+                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
+                ]}
+              />
 
-          {/* 5. Quick View Modal */}
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={() => handleAction(onQuickView)}
-            activeOpacity={0.7}
-          >
-            <Eye size={17} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-              Quick View Modal
-            </Text>
-          </TouchableOpacity>
+              {/* 4. View Lead Details */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={() => handleAction(onView360)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBox}>
+                  <Eye size={18} color="#64748B" strokeWidth={2.2} />
+                </View>
+                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                  View Lead Details
+                </Text>
+              </TouchableOpacity>
 
-          {/* 6. Edit Lead */}
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={() => handleAction(onEditLead)}
-            activeOpacity={0.7}
-          >
-            <Edit3 size={17} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-              Edit Lead
-            </Text>
-          </TouchableOpacity>
+              {/* 5. Edit Lead */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={() => handleAction(onEditLead)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBox}>
+                  <Edit3 size={18} color="#D97706" strokeWidth={2.2} />
+                </View>
+                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                  Edit Lead
+                </Text>
+              </TouchableOpacity>
 
-          <View
-            style={[
-              styles.itemDivider,
-              { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-            ]}
-          />
-
-          {/* 7. Delete Lead */}
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={() => handleAction(onDeleteLead)}
-            activeOpacity={0.7}
-          >
-            <Trash2 size={17} color={isDark ? '#F87171' : '#DC2626'} strokeWidth={2} />
-            <Text
-              style={[
-                styles.actionTextDanger,
-                { color: isDark ? '#F87171' : '#DC2626' },
-              ]}
-            >
-              Delete Lead
-            </Text>
-          </TouchableOpacity>
-        </View>
+              {/* 6. Delete Lead */}
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={() => handleAction(onDeleteLead)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBox}>
+                  <Trash2 size={18} color="#DC2626" strokeWidth={2.2} />
+                </View>
+                <Text
+                  style={[
+                    styles.actionText,
+                    { color: isDark ? '#F87171' : '#DC2626' },
+                  ]}
+                >
+                  Delete Lead
+                </Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -278,37 +250,38 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    maxHeight: '75%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
     borderBottomWidth: 0,
+    maxHeight: '80%',
     overflow: 'hidden',
   },
   grabHandleRow: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
   grabHandle: {
-    width: 38,
+    width: 36,
     height: 4,
     borderRadius: 2,
   },
   modalContent: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingHorizontal: 16,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 14,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   leadName: {
     fontSize: 16,
     fontWeight: '800',
+    letterSpacing: -0.2,
   },
   leadPhone: {
     fontSize: 12,
@@ -316,42 +289,38 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionsList: {
-    paddingTop: 4,
+    paddingVertical: 6,
   },
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 13,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 4,
-    gap: 12,
+    borderRadius: 10,
+    marginVertical: 2,
+  },
+  iconBox: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   actionText: {
     fontSize: 14,
     fontWeight: '600',
   },
-  actionTextPrimary: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  actionTextSuccess: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  actionTextDanger: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   itemDivider: {
     height: 1,
-    marginVertical: 4,
+    marginVertical: 8,
+    marginHorizontal: 8,
   },
 });
+
+export default LeadActionsModal;
