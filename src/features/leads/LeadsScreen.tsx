@@ -509,10 +509,17 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     setDealModalVisible(true);
   }, []);
 
-  const handleOpenSendQuotation = useCallback((ld: CustomerLead) => {
-    setActiveQuotationLead(ld);
-    setQuotationModalVisible(true);
-  }, []);
+  const handleOpenSendQuotation = useCallback(
+    (ld: CustomerLead) => {
+      if (navigation) {
+        (navigation as any).navigate('send-quotation', { leadId: ld.id });
+      } else {
+        setActiveQuotationLead(ld);
+        setQuotationModalVisible(true);
+      }
+    },
+    [navigation]
+  );
 
   const handleOpenQuickView = useCallback((ld: CustomerLead) => {
     setActiveDetailLead(ld);
@@ -1324,8 +1331,12 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         }}
         onSendQuotation={(ld) => {
           setDetailModalVisible(false);
-          setActiveQuotationLead(ld);
-          setQuotationModalVisible(true);
+          if (navigation) {
+            (navigation as any).navigate('send-quotation', { leadId: ld.id });
+          } else {
+            setActiveQuotationLead(ld);
+            setQuotationModalVisible(true);
+          }
         }}
       />
 
@@ -1355,8 +1366,13 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
           setFollowUpModalVisible(true);
         }}
         onSendQuotation={(ld) => {
-          setActiveQuotationLead(ld);
-          setQuotationModalVisible(true);
+          setActionsModalVisible(false);
+          if (navigation) {
+            (navigation as any).navigate('send-quotation', { leadId: ld.id });
+          } else {
+            setActiveQuotationLead(ld);
+            setQuotationModalVisible(true);
+          }
         }}
         onEditLead={(ld) => {
           setEditingLead(ld);

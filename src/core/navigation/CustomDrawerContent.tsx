@@ -11,6 +11,7 @@ import {
   DrawerContentScrollView,
 } from '@react-navigation/drawer';
 import {
+  FileSpreadsheet,
   Building2,
   Car,
   IndianRupee,
@@ -37,6 +38,7 @@ export type ScreenName =
   | 'my-leads'
   | 'leads'
   | 'follow-ups'
+  | 'send-quotation'
   | 'lead-status'
   | 'lead-source'
   | 'brand'
@@ -60,6 +62,7 @@ const MENU_ICONS: Record<
   'my-leads': UserCheck,
   leads: Kanban,
   'follow-ups': PhoneForwarded,
+  'send-quotation': FileSpreadsheet,
   'lead-status': ListFilter,
   'lead-source': Radio,
   brand: Building2,
@@ -74,6 +77,7 @@ const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'leads', label: 'Leads Pipeline' },
   { id: 'follow-ups', label: 'Follow-Up Call Desk', badge: 'Live' },
+  { id: 'send-quotation', label: 'Send Quotation' },
   { id: 'brand', label: 'Brand Master' },
   { id: 'model', label: 'Model Master' },
   { id: 'variant', label: 'Variant Master' },
@@ -122,6 +126,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           { id: 'dashboard' as ScreenName, label: 'Sales Dashboard' },
           { id: 'my-leads' as ScreenName, label: 'My Assigned Leads' },
           { id: 'leads' as ScreenName, label: 'Leads Pipeline' },
+          { id: 'send-quotation' as ScreenName, label: 'Send Quotation' },
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Catalogue' },
           { id: 'variant' as ScreenName, label: 'Variant & Prices' },

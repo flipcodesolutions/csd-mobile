@@ -17,6 +17,7 @@ import { LeadStatusScreen } from '../../features/masters/LeadStatusScreen';
 import { LeadSourceScreen } from '../../features/masters/LeadSourceScreen';
 import { UserMasterScreen } from '../../features/masters/UserMasterScreen';
 import { FollowUpScreen } from '../../features/followups/FollowUpScreen';
+import { SendQuotationScreen } from '../../features/quotations/SendQuotationScreen';
 import { CreateLeadScreen } from '../../features/leads/CreateLeadScreen';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -34,6 +35,7 @@ export type DrawerParamList = {
   'my-leads': undefined;
   leads: undefined;
   'follow-ups': undefined;
+  'send-quotation': { leadId?: number } | undefined;
   brand: undefined;
   model: undefined;
   variant: undefined;
@@ -58,6 +60,7 @@ const SCREEN_TITLES: Record<string, string> = {
   'my-leads': 'My Assigned Leads',
   leads: 'Customer Leads',
   'follow-ups': 'Follow-Up & Call Desk',
+  'send-quotation': 'Official Vehicle Quotation',
   brand: 'Brand Master',
   model: 'Model Master',
   variant: 'Variant & Pricing',
@@ -161,6 +164,19 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       <Drawer.Screen name="follow-ups">
         {({ navigation }) => (
           <FollowUpScreen
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateToQuotation={(leadId) => {
+              (navigation as any).navigate('send-quotation', { leadId });
+            }}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="send-quotation">
+        {({ navigation, route }) => (
+          <SendQuotationScreen
+            navigation={navigation}
+            route={route}
             onOpenDrawer={() => (navigation as any).openDrawer()}
           />
         )}
