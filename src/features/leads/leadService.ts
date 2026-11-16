@@ -99,6 +99,14 @@ export const leadApi = {
     const response = await api.delete(`/leads/${id}`);
     return response.data;
   },
+  restore: async (id: number) => {
+    const response = await api.post(`/leads/${id}/restore`);
+    return response.data;
+  },
+  bulkRestore: async (leadIds: number[]) => {
+    const response = await api.post('/leads/bulk-restore', { lead_ids: leadIds });
+    return response.data;
+  },
   bulkStatus: async (leadIds: number[], statusId: number | null, statusName?: string) => {
     try {
       const response = await api.post('/leads/bulk-status', {

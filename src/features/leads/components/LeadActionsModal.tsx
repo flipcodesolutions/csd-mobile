@@ -9,14 +9,8 @@ import {
   View,
 } from 'react-native';
 import {
-  Award,
-  Edit3,
-  Eye,
-  FileText,
   MessageCircle,
   Phone,
-  PhoneCall,
-  Trash2,
   X,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,7 +29,7 @@ interface LeadActionsModalProps {
   onLogFollowUp: (lead: CustomerLead) => void;
   onSendQuotation: (lead: CustomerLead) => void;
   onEditLead: (lead: CustomerLead) => void;
-  onDeleteLead: (lead: CustomerLead) => void;
+  onDeleteLead?: (lead: CustomerLead) => void;
 }
 
 export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
@@ -178,7 +172,7 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Actions List */}
+            {/* Actions List - Task 1: Only Call Customer & WhatsApp Chat */}
             <View style={styles.actionsList}>
               {/* 1. Direct Call */}
               <TouchableOpacity
@@ -216,124 +210,6 @@ export const LeadActionsModal: React.FC<LeadActionsModalProps> = ({
                     Send message directly
                   </Text>
                 </View>
-              </TouchableOpacity>
-
-              {/* Divider */}
-              <View
-                style={[
-                  styles.itemDivider,
-                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-                ]}
-              />
-
-              {/* 3. Log Follow-Up */}
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => handleAction(onLogFollowUp)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
-                  <PhoneCall size={17} color="#2563EB" strokeWidth={2.2} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                  Log Follow-Up
-                </Text>
-              </TouchableOpacity>
-
-              {/* 4. Send Quotation */}
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => handleAction(onSendQuotation)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconBox, { backgroundColor: '#E0F2FE' }]}>
-                  <FileText size={17} color="#0284C7" strokeWidth={2.2} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                  Send Quotation
-                </Text>
-              </TouchableOpacity>
-
-              {/* 5. Convert to Deal (Green Trophy) */}
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => handleAction(onConvertDeal)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
-                  <Award size={17} color="#16A34A" strokeWidth={2.2} />
-                </View>
-                <Text
-                  style={[
-                    styles.actionText,
-                    { color: isDark ? '#34D399' : '#15803D', fontWeight: '800' },
-                  ]}
-                >
-                  Convert to Deal
-                </Text>
-              </TouchableOpacity>
-
-              {/* Divider between deals and details */}
-              <View
-                style={[
-                  styles.itemDivider,
-                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-                ]}
-              />
-
-              {/* 6. View Lead Details */}
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => handleAction(onView360)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                  <Eye size={17} color="#64748B" strokeWidth={2.2} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                  View Lead Details
-                </Text>
-              </TouchableOpacity>
-
-              {/* 7. Edit Lead */}
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => handleAction(onEditLead)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconBox, { backgroundColor: '#FEF3C7' }]}>
-                  <Edit3 size={17} color="#D97706" strokeWidth={2.2} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                  Edit Lead
-                </Text>
-              </TouchableOpacity>
-
-              {/* Divider */}
-              <View
-                style={[
-                  styles.itemDivider,
-                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-                ]}
-              />
-
-              {/* 8. Delete Lead */}
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => handleAction(onDeleteLead)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconBox, { backgroundColor: '#FEE2E2' }]}>
-                  <Trash2 size={17} color="#DC2626" strokeWidth={2.2} />
-                </View>
-                <Text
-                  style={[
-                    styles.actionText,
-                    { color: isDark ? '#F87171' : '#DC2626', fontWeight: '700' },
-                  ]}
-                >
-                  Delete Lead
-                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

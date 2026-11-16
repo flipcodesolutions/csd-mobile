@@ -10,11 +10,12 @@ export interface QuotationItem {
   total: number;
 }
 
-export type QuotationStatus = 'sent' | 'pending' | 'print' | 'accepted' | 'rejected' | 'draft';
+export type QuotationStatus = 'pending' | 'sent' | 'print';
 
 export interface Quotation {
   id: number;
   lead_id?: number | null;
+  lead?: any;
   quotation_number?: string;
   quotation_date: string;
   customer_name: string;
@@ -31,6 +32,7 @@ export interface Quotation {
   grand_total: number;
   total_amount?: number;
   total?: number;
+  final_on_road_price?: number;
   items?: QuotationItem[];
   created_at?: string;
   updated_at?: string;
@@ -53,6 +55,7 @@ export interface QuotationPriceBreakdown {
   warranty: string;
   diffAmtCash: string;
   msReward: string;
+  msReword?: string;
 }
 
 export interface QuotationFormData {

@@ -7,9 +7,6 @@ import {
   View,
 } from 'react-native';
 import {
-  Clock,
-  Eye,
-  FileSpreadsheet,
   PhoneCall,
   X,
 } from 'lucide-react-native';
@@ -44,6 +41,7 @@ export const FollowUpActionsModal: React.FC<FollowUpActionsModalProps> = ({
 
   if (!visible || !item) return null;
 
+  // Task 2: In follow-up action menu, keep only Call Now (remove send quotation, log action, view details)
   const actions = [
     {
       id: 'call_now',
@@ -60,52 +58,6 @@ export const FollowUpActionsModal: React.FC<FollowUpActionsModalProps> = ({
           } else if (onCallAndLog) {
             onCallAndLog(item);
           }
-        }, 120);
-      },
-    },
-    {
-      id: 'log_action',
-      title: 'Log Action / Follow-Up',
-      sub: 'Record call discussion outcome, notes & next schedule',
-      icon: Clock,
-      color: colors.primary,
-      bg: isDark ? 'rgba(88, 99, 42, 0.2)' : '#F5F8EE',
-      onPress: () => {
-        onClose();
-        setTimeout(() => {
-          if (onLogAction) {
-            onLogAction(item);
-          } else if (onCallAndLog) {
-            onCallAndLog(item);
-          }
-        }, 120);
-      },
-    },
-    {
-      id: 'quotation',
-      title: 'Send Quotation',
-      sub: 'Generate official CSD proforma quotation with pricing',
-      icon: FileSpreadsheet,
-      color: '#2563EB',
-      bg: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF',
-      onPress: () => {
-        onClose();
-        setTimeout(() => {
-          onSendQuotation(item);
-        }, 120);
-      },
-    },
-    {
-      id: 'view_details',
-      title: 'View Details',
-      sub: 'Inspect customer profile, vehicle preferences & lead details',
-      icon: Eye,
-      color: '#7C3AED',
-      bg: isDark ? 'rgba(124, 58, 237, 0.15)' : '#F5F3FF',
-      onPress: () => {
-        onClose();
-        setTimeout(() => {
-          onViewProfile(item);
         }, 120);
       },
     },

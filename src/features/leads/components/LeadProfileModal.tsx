@@ -19,6 +19,7 @@ import {
   ChevronUp,
   Clock,
   Download,
+  Edit3,
   Eye,
   FileText,
   Gift,
@@ -28,6 +29,7 @@ import {
   PhoneCall,
   Shield,
   Sparkles,
+  Trash2,
   User,
   Users,
   X,
@@ -37,7 +39,9 @@ import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
 import { CustomerLead } from '../types';
 import { leadApi } from '../leadService';
-import { quotationApi } from '../../quotations/quotationService';
+import { quotationApi, quotationService } from '../../quotations/quotationService';
+import followUpService from '../../followups/followUpService';
+import { isValidFollowUpOutcome, normalizeOutcome } from '../../followups/types';
 
 interface LeadProfileModalProps {
   visible: boolean;
@@ -47,6 +51,7 @@ interface LeadProfileModalProps {
   onConvertToDeal: (lead: CustomerLead) => void;
   onLogFollowUp?: (lead: CustomerLead) => void;
   onSendQuotation?: (lead: CustomerLead) => void;
+  onEditLead?: (lead: CustomerLead) => void;
 }
 
 export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
@@ -57,6 +62,7 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
   onConvertToDeal,
   onLogFollowUp,
   onSendQuotation,
+  onEditLead,
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -72,6 +78,62 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
   const [assignments, setAssignments] = useState<any[]>([]);
   const [isLoadingSubData, setIsLoadingSubData] = useState(false);
   const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
+  const [isDeletingFollowUpId, setIsDeletingFollowUpId] = useState<number | null>(null);
+  const [isDeletingQuotationId, setIsDeletingQuotationId] = useState<number | null>(null);
+
+  const handleDeleteFollowUp = (fu: any) => {
+    triggerHaptic('notificationWarning');
+    Alert.alert(
+      'Delete Follow-Up',
+      'Are you sure you want to delete this follow-up record?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeletingFollowUpId(fu.id);
+              await followUpService.delete(fu.id);
+              setFollowUps((prev) => prev.filter((item) => item.id !== fu.id));
+              Alert.alert('Deleted', 'Follow-up interaction deleted successfully.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete follow-up.');
+            } finally {
+              setIsDeletingFollowUpId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteQuotation = (q: any) => {
+    triggerHaptic('notificationWarning');
+    Alert.alert(
+      'Delete Quotation',
+      `Are you sure you want to delete quotation #${q.quotation_number || q.id}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeletingQuotationId(q.id);
+              await quotationService.delete(q.id);
+              setQuotations((prev) => prev.filter((item) => item.id !== q.id));
+              Alert.alert('Deleted', 'Quotation deleted successfully.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete quotation.');
+            } finally {
+              setIsDeletingQuotationId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const fetchProfileDetails = useCallback(async (leadId: number) => {
     setIsLoadingSubData(true);
@@ -83,10 +145,19 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
       ]);
 
       if (fuRes.status === 'fulfilled') {
-        const list = Array.isArray(fuRes.value)
+        const rawList = Array.isArray(fuRes.value)
           ? fuRes.value
           : fuRes.value?.data || [];
-        setFollowUps(list);
+        // Only include records matching the 7 valid call outcome statuses
+        const filteredList = rawList.filter((item: any) => {
+          const outcomeStr =
+            item.outcome ||
+            item.status ||
+            item.last_call_outcome ||
+            item.call_outcome;
+          return isValidFollowUpOutcome(outcomeStr);
+        });
+        setFollowUps(filteredList);
       }
       if (qRes.status === 'fulfilled') {
         const qList = Array.isArray(qRes.value)
@@ -131,13 +202,13 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
   const brandName = lead.brand_name || 'MARUTI SUZUKI';
   const modelVariant =
     lead.model_variant ||
-    `${lead.model_name || 'Brezza'} ${lead.variant_name || 'ZXi'}`.trim();
+    (`${lead.model_name || ''} ${lead.variant_name || ''}`.trim() || '-');
   const segmentShort =
     lead.vehicle_segment === '2 Wheeler' ||
     (lead as any).vehicle_segment_display === '2W'
       ? '2W'
       : '4W';
-  const assignedRep = lead.assigned_user_name || 'Admin User (Super Admin)';
+  const assignedRep = lead.assigned_user_name || 'Unassigned';
   const budgetText =
     lead.budget && lead.budget !== 'CSD Entitlement'
       ? typeof lead.budget === 'number'
@@ -145,10 +216,10 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
         : `₹${lead.budget}`
       : 'Not Specified';
 
-  const timelineText = lead.purchase_timeline || 'Immediate (< 7 Days)';
+  const timelineText = lead.purchase_timeline || 'Not Specified';
   const birthday = lead.birth_date || lead.birthday;
   const anniversary = lead.anniversary_date;
-  const homeTown = lead.home_town || lead.city || 'Delhi';
+  const homeTown = lead.home_town || lead.city || '-';
   const posting = lead.posting || 'Not Specified';
 
   // Use clean status directly from DB/API, mapping Deal Won to 'Deal & Booking'
@@ -300,41 +371,60 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
               },
             ]}
           >
-            <TouchableOpacity
-              style={[styles.actionBtnHeader, { backgroundColor: '#2563EB' }]}
-              onPress={() => {
-                triggerHaptic('selection');
-                onClose();
-                onLogFollowUp?.(lead);
-              }}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickActionsScroll}
             >
-              <PhoneCall size={12} color="#FFFFFF" strokeWidth={2.2} />
-              <Text style={styles.actionBtnHeaderText}>Log Follow-Up</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtnHeader, { backgroundColor: '#2563EB' }]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                  onLogFollowUp?.(lead);
+                }}
+              >
+                <PhoneCall size={12} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.actionBtnHeaderText}>Log Follow-Up</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionBtnHeader, { backgroundColor: '#0284C7' }]}
-              onPress={() => {
-                triggerHaptic('selection');
-                onClose();
-                onSendQuotation?.(lead);
-              }}
-            >
-              <FileText size={12} color="#FFFFFF" strokeWidth={2.2} />
-              <Text style={styles.actionBtnHeaderText}>Create Quotation</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtnHeader, { backgroundColor: '#0284C7' }]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                  onSendQuotation?.(lead);
+                }}
+              >
+                <FileText size={12} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.actionBtnHeaderText}>Create Quotation</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionBtnHeader, { backgroundColor: '#16A34A' }]}
-              onPress={() => {
-                triggerHaptic('selection');
-                onClose();
-                onConvertToDeal(lead);
-              }}
-            >
-              <Award size={12} color="#FFFFFF" strokeWidth={2.2} />
-              <Text style={styles.actionBtnHeaderText}>Convert Deal</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtnHeader, { backgroundColor: '#16A34A' }]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                  onConvertToDeal(lead);
+                }}
+              >
+                <Award size={12} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.actionBtnHeaderText}>Convert Deal</Text>
+              </TouchableOpacity>
+
+              {/* Task 1: Lead Edit button next to Convert to Deal */}
+              <TouchableOpacity
+                style={[styles.actionBtnHeader, { backgroundColor: '#D97706' }]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                  onEditLead?.(lead);
+                }}
+              >
+                <Edit3 size={12} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.actionBtnHeaderText}>Edit Lead</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
 
           {/* Scrollable Content with large bottom padding for smooth scroll-up */}
@@ -609,24 +699,48 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
                         ]}
                       >
                         <View style={styles.tlHeaderRow}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, flexWrap: 'wrap' }}>
                             <Text style={[styles.tlType, { color: colors.primary }]}>
                               {fu.type || 'Phone Call'}
                             </Text>
                             <Text style={[styles.tlDot, { color: colors.borderSubtle }]}>•</Text>
                             <Text style={[styles.tlDate, { color: colors.textSecondary }]}>
-                              {fu.follow_up_date || fu.created_at?.split('T')[0]}
+                              {fu.follow_up_date || fu.created_at?.split('T')[0]} {fu.follow_up_time ? `at ${fu.follow_up_time}` : ''}
                             </Text>
                           </View>
-                          <View
-                            style={[
-                              styles.outcomeBadge,
-                              { backgroundColor: isDark ? '#1E293B' : '#EFF6FF' },
-                            ]}
-                          >
-                            <Text style={styles.outcomeBadgeText}>
-                              {fu.outcome || fu.status || 'Completed'}
-                            </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View
+                              style={[
+                                styles.outcomeBadge,
+                                { backgroundColor: isDark ? '#1E293B' : '#EFF6FF' },
+                              ]}
+                            >
+                              <Text style={styles.outcomeBadgeText}>
+                                {normalizeOutcome(
+                                  fu.outcome || fu.status || fu.last_call_outcome
+                                ) ||
+                                  fu.outcome ||
+                                  fu.status ||
+                                  'Interested / Call Back'}
+                              </Text>
+                            </View>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.trashIconBtn,
+                                { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2' },
+                              ]}
+                              onPress={() => handleDeleteFollowUp(fu)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              disabled={isDeletingFollowUpId === fu.id}
+                              activeOpacity={0.7}
+                            >
+                              {isDeletingFollowUpId === fu.id ? (
+                                <ActivityIndicator size="small" color="#DC2626" />
+                              ) : (
+                                <Trash2 size={13} color="#DC2626" strokeWidth={2.2} />
+                              )}
+                            </TouchableOpacity>
                           </View>
                         </View>
 
@@ -711,7 +825,7 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
                             </Text>
                           </View>
                           <Text style={[styles.qTotal, { color: colors.primary }]}>
-                            ₹{Number(q.grand_total || q.total_amount || 0).toLocaleString('en-IN')}
+                            ₹{Number(q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0).toLocaleString('en-IN')}
                           </Text>
                         </View>
 
@@ -731,6 +845,25 @@ export const LeadProfileModal: React.FC<LeadProfileModalProps> = ({
                               <>
                                 <Download size={12} color="#0284C7" />
                                 <Text style={styles.pdfBtnText}>Download PDF</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.deleteQuotationBtn,
+                              { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2' },
+                            ]}
+                            onPress={() => handleDeleteQuotation(q)}
+                            disabled={isDeletingQuotationId === q.id}
+                            activeOpacity={0.7}
+                          >
+                            {isDeletingQuotationId === q.id ? (
+                              <ActivityIndicator size="small" color="#DC2626" />
+                            ) : (
+                              <>
+                                <Trash2 size={12} color="#DC2626" strokeWidth={2.2} />
+                                <Text style={styles.deleteQuotationBtnText}>Delete</Text>
                               </>
                             )}
                           </TouchableOpacity>
@@ -922,18 +1055,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   quickActionsBar: {
+    borderBottomWidth: 1,
+    paddingVertical: 8,
+  },
+  quickActionsScroll: {
     flexDirection: 'row',
     paddingHorizontal: 14,
-    paddingVertical: 8,
     gap: 8,
-    borderBottomWidth: 1,
   },
   actionBtnHeader: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 8,
     gap: 5,
   },
@@ -1119,6 +1254,27 @@ const styles = StyleSheet.create({
   },
   pdfBtnText: {
     color: '#0284C7',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  trashIconBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteQuotationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  deleteQuotationBtnText: {
+    color: '#DC2626',
     fontSize: 10,
     fontWeight: '700',
   },

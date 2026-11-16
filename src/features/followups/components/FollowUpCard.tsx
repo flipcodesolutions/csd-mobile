@@ -14,15 +14,18 @@ import {
   MapPin,
   MoreVertical,
   Phone,
+  RotateCcw,
   User,
   XCircle,
 } from 'lucide-react-native';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
-import { FollowUpItem } from '../types';
+import { FollowUpItem, normalizeOutcome } from '../types';
 
 interface FollowUpCardProps {
   item: FollowUpItem;
+  isTrashView?: boolean;
+  onRestore?: (item: FollowUpItem) => void;
   onCall: (phone: string) => void;
   onLogNext?: (item: FollowUpItem) => void;
   onSendQuotation?: (item: FollowUpItem) => void;
@@ -33,6 +36,8 @@ interface FollowUpCardProps {
 
 export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
   item,
+  isTrashView = false,
+  onRestore,
   onCall,
   onViewProfile,
   onOpenActions,
@@ -239,20 +244,53 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
       {/* 3. Last Call Outcome & Discount Row */}
       <View style={styles.outcomeRow}>
         {/* Outcome Badge */}
-        <View
-          style={[
-            styles.outcomeChip,
-            {
-              backgroundColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
-              borderColor: isDark ? '#D97706' : '#FDE68A',
-            },
-          ]}
-        >
-          <Phone size={10} color="#D97706" strokeWidth={2.5} style={{ marginRight: 4 }} />
-          <Text style={styles.outcomeChipText}>
-            {item.status || 'Interested / Call Back'}
-          </Text>
-        </View>
+        {(() => {
+          const canonical = normalizeOutcome(item.status) || item.status || 'Interested / Call Back';
+          const isQuotationSent = canonical === 'Quotation Sent';
+          const isQuotationReq = canonical === 'Quotation Requested';
+          const isWon = canonical === 'Deal Won';
+          const isLost = canonical === 'Lost to Competitor';
+          const isInterested = canonical === 'Interested / Call Back';
+          const isNegotiation = canonical === 'Price Negotiation';
+
+          const chipColor = isQuotationSent
+            ? '#7C3AED'
+            : isQuotationReq
+            ? '#D97706'
+            : isWon
+            ? '#16A34A'
+            : isLost
+            ? '#DC2626'
+            : isInterested
+            ? '#2563EB'
+            : isNegotiation
+            ? '#CA8A04'
+            : '#64748B';
+
+          return (
+            <View
+              style={[
+                styles.outcomeChip,
+                {
+                  backgroundColor: isDark
+                    ? `${chipColor}20`
+                    : `${chipColor}15`,
+                  borderColor: isDark ? `${chipColor}40` : `${chipColor}30`,
+                },
+              ]}
+            >
+              <Phone
+                size={10}
+                color={chipColor}
+                strokeWidth={2.5}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[styles.outcomeChipText, { color: chipColor }]}>
+                {canonical}
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* Real-time Discount Badges (Pending / Approved) */}
         {item.is_discount_requested && item.discount_amount != null ? (
@@ -370,7 +408,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
             ]}
             numberOfLines={1}
           >
-            {item.rep || 'Admin User (Super Admin)'}
+            {item.rep || 'Unassigned'}
           </Text>
         </View>
 
@@ -405,6 +443,23 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
           </Text>
         </View>
       </View>
+
+      {/* Trash View Restore Button */}
+      {isTrashView && onRestore && (
+        <View style={styles.restoreRow}>
+          <TouchableOpacity
+            style={styles.restoreBtn}
+            onPress={() => {
+              triggerHaptic('impactMedium');
+              onRestore(item);
+            }}
+            activeOpacity={0.8}
+          >
+            <RotateCcw size={14} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.restoreBtnText}>Restore Follow-Up</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 });
@@ -615,6 +670,28 @@ const styles = StyleSheet.create({
   },
   urgencyText: {
     fontSize: 10.5,
+    fontWeight: '700',
+  },
+  restoreRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#FEE2E2',
+    paddingTop: 10,
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  restoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#16A34A',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  restoreBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
   },
 });

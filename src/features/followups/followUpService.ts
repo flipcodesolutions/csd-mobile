@@ -1,93 +1,6 @@
 import { api } from '../../core/api/client';
 import { CreateFollowUpPayload, FollowUpItem, FollowUpStats } from './types';
 
-export const MOCK_FOLLOW_UPS: FollowUpItem[] = [
-  {
-    id: 53,
-    lead_id: 53,
-    customer_name: 'jinal pujara',
-    calls_count: 2,
-    phone: '9316130308',
-    city: 'Surendranagar',
-    vehicle: 'Mercedes-AMG GT GT 55 4MATIC+',
-    brand_name: 'Mercedes-Benz',
-    type: 'Phone Call',
-    status: 'Interested / Call Back',
-    notes: 'discount',
-    follow_up_date: '02 Nov 2026',
-    follow_up_time: '02:51 PM',
-    next_follow_up_date: '05 Nov 2026',
-    next_follow_up_time: '10:00 AM',
-    is_discount_requested: true,
-    discount_amount: 5000,
-    discount_status: 'pending',
-    rep: 'Admin User (Super Admin)',
-    priority: 'Hot',
-  },
-  {
-    id: 34,
-    lead_id: 34,
-    customer_name: 'vikash',
-    calls_count: 2,
-    phone: '7777777777',
-    city: 'pune',
-    vehicle: 'Brezza',
-    brand_name: 'Maruti Suzuki',
-    type: 'Phone Call',
-    status: 'Interested / call back',
-    notes: 'vikash',
-    follow_up_date: '15 Oct 2026',
-    follow_up_time: '11:12 AM',
-    next_follow_up_date: '20 Oct 2026',
-    next_follow_up_time: '10:00 AM',
-    is_discount_requested: true,
-    discount_amount: 20,
-    discount_status: 'approved',
-    rep: 'Admin User (Super Admin)',
-    priority: 'Hot',
-  },
-  {
-    id: 22,
-    lead_id: 22,
-    customer_name: 'Quote Test User',
-    calls_count: 2,
-    phone: '9822334466',
-    city: 'Ahmedabad',
-    vehicle: 'Nexon EV Empowered',
-    brand_name: 'Tata Motors',
-    type: 'Phone Call',
-    status: 'Interested / call back',
-    notes: 'test',
-    follow_up_date: '05 Oct 2026',
-    follow_up_time: '03:29 PM',
-    next_follow_up_date: '08 Oct 2026',
-    next_follow_up_time: '10:00 AM',
-    is_discount_requested: false,
-    rep: 'Admin User (Super Admin)',
-    priority: 'Hot',
-  },
-  {
-    id: 15,
-    lead_id: 15,
-    customer_name: 'meet rameshbhai patel',
-    calls_count: 3,
-    phone: '9510600150',
-    city: 'surendranagar',
-    vehicle: 'maruti',
-    brand_name: 'Maruti Suzuki',
-    type: 'Phone Call',
-    status: 'Interested / call back',
-    notes: '',
-    follow_up_date: '29 Sept 2026',
-    follow_up_time: '05:32 PM',
-    next_follow_up_date: '29 Sept 2026',
-    next_follow_up_time: '06:00 PM',
-    is_discount_requested: false,
-    rep: 'Alexander Vance (Super Admin)',
-    priority: 'Hot',
-  },
-];
-
 export const normalizeFollowUpItem = (raw: any, idx = 0): FollowUpItem => {
   const lead = raw.lead || {};
   const user = raw.user || {};
@@ -207,7 +120,7 @@ export const normalizeFollowUpItem = (raw: any, idx = 0): FollowUpItem => {
       user.name ||
       raw.assigned_user_name ||
       lead.assigned_user_name ||
-      'Admin User (Super Admin)',
+      '',
     priority: (raw.priority || raw.urgency || lead.priority || 'Hot') as any,
     lead: raw.lead || undefined,
     created_at: raw.created_at || undefined,
@@ -228,26 +141,14 @@ export const followUpService = {
         return response.data;
       }
     } catch (err) {
-      console.log('Using calculated stats fallback:', err);
+      console.log('followUpService.getStats error:', err);
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    let overdue = 0;
-    let dueToday = 0;
-    let upcoming = 0;
-
-    MOCK_FOLLOW_UPS.forEach((item) => {
-      const due = item.next_follow_up_date || item.follow_up_date;
-      if (due < todayStr) overdue++;
-      else if (due === todayStr) dueToday++;
-      else upcoming++;
-    });
-
     return {
-      overdue,
-      due_today: dueToday,
-      upcoming,
-      total: MOCK_FOLLOW_UPS.length,
+      overdue: 0,
+      due_today: 0,
+      upcoming: 0,
+      total: 0,
     };
   },
 
@@ -258,6 +159,8 @@ export const followUpService = {
     from_date?: string;
     to_date?: string;
     tab?: string;
+    status?: string;
+    trash?: boolean;
   }): Promise<{
     data: FollowUpItem[];
     kpis: FollowUpStats;
@@ -269,7 +172,11 @@ export const followUpService = {
     };
   }> => {
     try {
-      const response = await api.get('/follow-ups', { params });
+      const apiParams: any = { ...params };
+      if (params?.trash || params?.status === 'deleted') {
+        apiParams.status = 'deleted';
+      }
+      const response = await api.get('/follow-ups', { params: apiParams });
       const res = response?.data;
       let rawList: any[] | null = null;
 
@@ -283,7 +190,7 @@ export const followUpService = {
         rawList = res.follow_ups;
       }
 
-      if (rawList && rawList.length > 0) {
+      if (rawList) {
         const normalized = rawList.map((item, idx) => normalizeFollowUpItem(item, idx));
         return {
           data: normalized,
@@ -302,43 +209,7 @@ export const followUpService = {
         };
       }
     } catch (err) {
-      console.log('Using MOCK_FOLLOW_UPS fallback:', err);
-    }
-
-    // Client-side filtering fallback using verified dynamic mock data
-    let filtered = [...MOCK_FOLLOW_UPS];
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    if (params?.tab === 'overdue') {
-      filtered = filtered.filter(
-        (i) => (i.next_follow_up_date || i.follow_up_date) < todayStr
-      );
-    } else if (params?.tab === 'today') {
-      filtered = filtered.filter(
-        (i) => (i.next_follow_up_date || i.follow_up_date) === todayStr
-      );
-    } else if (params?.tab === 'upcoming') {
-      filtered = filtered.filter(
-        (i) => (i.next_follow_up_date || i.follow_up_date) > todayStr
-      );
-    }
-
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (i) =>
-          i.customer_name.toLowerCase().includes(q) ||
-          i.phone.includes(q) ||
-          (i.vehicle && i.vehicle.toLowerCase().includes(q)) ||
-          (i.city && i.city.toLowerCase().includes(q))
-      );
-    }
-
-    if (params?.from_date) {
-      filtered = filtered.filter((i) => i.follow_up_date >= params.from_date!);
-    }
-    if (params?.to_date) {
-      filtered = filtered.filter((i) => i.follow_up_date <= params.to_date!);
+      console.log('followUpService.getAll error:', err);
     }
 
     const stats = await followUpService.getStats({
@@ -347,19 +218,29 @@ export const followUpService = {
     });
 
     return {
-      data: filtered,
+      data: [],
       kpis: stats,
       pagination: {
         current_page: params?.page || 1,
-        last_page: Math.ceil(filtered.length / (params?.per_page || 10)) || 1,
-        per_page: params?.per_page || 10,
-        total: filtered.length,
+        last_page: 1,
+        per_page: params?.per_page || 50,
+        total: 0,
       },
     };
   },
 
   create: async (payload: CreateFollowUpPayload): Promise<any> => {
     const response = await api.post('/follow-ups', payload);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<any> => {
+    const response = await api.delete(`/follow-ups/${id}`);
+    return response.data;
+  },
+
+  restore: async (id: number): Promise<any> => {
+    const response = await api.post(`/follow-ups/${id}/restore`);
     return response.data;
   },
 };

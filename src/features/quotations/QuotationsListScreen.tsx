@@ -36,27 +36,27 @@ import { EmailQuotationModal } from './components/EmailQuotationModal';
 interface QuotationsListScreenProps {
   onNavigateToCreate?: () => void;
   onOpenDrawer?: () => void;
+  onSelectLead?: (leadId: number) => void;
 }
 
+// Task 1: Only 3 statuses allowed - Default is pending
 const STATUS_FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'sent', label: 'Sent' },
   { key: 'pending', label: 'Pending' },
+  { key: 'sent', label: 'Email Sent' },
   { key: 'print', label: 'Print' },
-  { key: 'accepted', label: 'Accepted' },
-  { key: 'rejected', label: 'Rejected' },
 ];
 
 export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
   onNavigateToCreate,
   onOpenDrawer,
+  onSelectLead,
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // Search & Filter States
+  // Search & Filter States (Default activeStatus is 'pending')
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeStatus, setActiveStatus] = useState('all');
+  const [activeStatus, setActiveStatus] = useState('pending');
   const [isTrashView, setIsTrashView] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -157,7 +157,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         q.customer_phone || '',
         q.subject || `${q.brand_name || ''} ${q.model_name || ''}`,
         q.quotation_date || q.created_at?.slice(0, 10) || '',
-        q.grand_total || q.total_amount || q.total || 0,
+        Number(q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0),
         q.status || 'Sent',
       ]);
 
@@ -196,8 +196,8 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       sheetCarTitle: q.brand_name || firstItem?.item_name?.split('–')[0]?.trim() || '',
       sheetModelTitle: q.model_name || firstItem?.item_name?.split('–')[1]?.trim() || '',
       fuelType: 'PETROL',
-      executiveName: q.executive_name || 'ADMIN USER',
-      executivePhone: q.executive_phone || '+91 98000 11112',
+      executiveName: q.executive_name || '',
+      executivePhone: q.executive_phone || '',
       breakdown: {
         csdPrice: String(firstItem?.unit_price || q.subtotal || 0),
         gjRto: getVal('gujarat') || getVal('rto'),
@@ -209,7 +209,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         diffAmtCash: getVal('difference') || getVal('cash'),
         msReward: getVal('reward') || getVal('discount'),
       },
-      grandTotal: q.grand_total || q.total_amount || q.total || 0,
+      grandTotal: Number(
+        q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0
+      ),
     };
   };
 
@@ -224,6 +226,11 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       showSuccessToast('Downloading...', 'Initiating Quotation PDF download.');
       const path = await quotationService.downloadPdf(q.id, q.quotation_number);
       showSuccessToast('Downloaded', `Saved to ${path}`);
+      // Task 1: Update status to 'print' on PDF download/print
+      await quotationService.updateStatus(q.id, 'print').catch(() => {});
+      setQuotations((prev) =>
+        prev.map((item) => (item.id === q.id ? { ...item, status: 'print' } : item))
+      );
     } catch (err: any) {
       showErrorToast('Download Failed', err?.message || 'Could not download PDF.');
     }
@@ -502,8 +509,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
               isTrashView={isTrashView}
               onView={handleView}
               onDownload={handleDownload}
-              onDelete={handleDelete}
+              onDelete={isTrashView ? handleDelete : undefined}
               onRestore={handleRestore}
+              onSelectLead={onSelectLead}
             />
           )}
           ListEmptyComponent={
@@ -585,7 +593,17 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
           initialEmail={emailQuote.customer_email}
           vehicleName={emailQuote.brand_name || 'Selected Vehicle'}
           onClose={() => setEmailQuote(null)}
-          onSuccess={() => setEmailQuote(null)}
+          onSuccess={() => {
+            const sentId = emailQuote.id;
+            setEmailQuote(null);
+            // Task 1: Update status to 'sent' on successful email dispatch
+            quotationService.updateStatus(sentId, 'sent').catch(() => {});
+            setQuotations((prev) =>
+              prev.map((item) =>
+                item.id === sentId ? { ...item, status: 'sent' } : item
+              )
+            );
+          }}
         />
       )}
     </View>

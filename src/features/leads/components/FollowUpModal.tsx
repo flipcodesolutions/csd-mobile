@@ -42,10 +42,11 @@ export const INTERACTION_TYPES = [
 export const CALL_OUTCOMES = [
   'Interested / Call Back',
   'Quotation Requested',
-  'Negotiation / Price Discussion',
+  'Quotation Sent',
+  'Price Negotiation',
   'Not Reachable / Busy',
-  'Lost to Competitor / Lost of Lead',
-  'Deal Won / Booking',
+  'Deal Won',
+  'Lost to Competitor',
 ] as const;
 
 interface FollowUpModalProps {

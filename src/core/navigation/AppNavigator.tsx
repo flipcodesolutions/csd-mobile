@@ -164,6 +164,7 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       <Drawer.Screen name="follow-ups">
         {({ navigation }) => (
           <FollowUpScreen
+            navigation={navigation}
             onOpenDrawer={() => (navigation as any).openDrawer()}
             onNavigateToQuotation={(leadId) => {
               (navigation as any).navigate('send-quotation', { leadId });

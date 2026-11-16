@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { StartAlignedInput } from '../../../shared';
 import { quotationApi } from '../../quotations/quotationService';
+import { appStorage } from '../../../core/storage/storage';
 import { BrandItem, CustomerLead, ModelItem, VariantItem } from '../types';
 
 interface SendQuotationModalProps {
@@ -53,33 +54,51 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
   const [sheetCarTitle, setSheetCarTitle] = useState('');
   const [sheetModelTitle, setSheetModelTitle] = useState('');
 
-  // Executive Details
-  const [execName, setExecName] = useState('ADMIN USER');
-  const [execPhone, setExecPhone] = useState('+91 98000 11111');
+  // Executive Details (dynamically loaded from user profile)
+  const [execName, setExecName] = useState('');
+  const [execPhone, setExecPhone] = useState('');
 
   // Price Parameters
-  const [csdPrice, setCsdPrice] = useState('1149000');
-  const [gjRto, setGjRto] = useState('68940');
-  const [insurance, setInsurance] = useState('43662');
-  const [accessories, setAccessories] = useState('0');
-  const [warranty, setWarranty] = useState('0');
-  const [msReword, setMsReword] = useState('0');
-  const [diffCash, setDiffCash] = useState('0');
+  const [csdPrice, setCsdPrice] = useState('');
+  const [gjRto, setGjRto] = useState('');
+  const [insurance, setInsurance] = useState('');
+  const [accessories, setAccessories] = useState('');
+  const [warranty, setWarranty] = useState('');
+  const [msReword, setMsReword] = useState('');
+  const [diffCash, setDiffCash] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load current user profile for executive info
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const u = await appStorage.getUserProfile();
+        if (u) {
+          if (!execName && u.name) setExecName(u.name);
+          if (!execPhone && u.phone) setExecPhone(u.phone);
+        }
+      } catch (e) {
+        console.log('Error loading user profile in SendQuotationModal:', e);
+      }
+    };
+    loadUser();
+  }, []);
 
   // Auto-Fill when lead changes
   useEffect(() => {
     if (lead) {
       setClientName(lead.name || '');
       setClientMobile(lead.phone || '');
-      setCity(lead.city || 'pune');
+      setCity(lead.city || lead.home_town || '');
       setQuotationDate(
         lead.created_at
           ? lead.created_at.split('T')[0]
           : new Date().toISOString().split('T')[0]
       );
-      setExecName(lead.assigned_user_name || 'ADMIN USER');
+      if (lead.assigned_user_name) {
+        setExecName(lead.assigned_user_name);
+      }
 
       const brand = brands.find(
         (b) => b.id === lead.brand_id || b.name === lead.brand_name
@@ -127,17 +146,17 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
     return variants.filter((v) => v.model_id === selectedModelId);
   }, [variants, selectedModelId]);
 
-  // Estimated On-Road Price Calculation
+  // Estimated On-Road Price Calculation (Warranty excluded, M.S Reword subtracted)
   const estimatedOnRoadPrice = useMemo(() => {
     const csd = parseFloat(csdPrice) || 0;
     const rto = parseFloat(gjRto) || 0;
     const ins = parseFloat(insurance) || 0;
     const acc = parseFloat(accessories) || 0;
-    const war = parseFloat(warranty) || 0;
+    // Warranty is tenure - NOT counted in total
     const rew = parseFloat(msReword) || 0;
     const diff = parseFloat(diffCash) || 0;
-    return Math.max(0, csd + rto + ins + acc + war + diff - rew);
-  }, [csdPrice, gjRto, insurance, accessories, warranty, msReword, diffCash]);
+    return Math.max(0, csd + rto + ins + acc + diff - rew);
+  }, [csdPrice, gjRto, insurance, accessories, msReword, diffCash]);
 
   const handleSaveQuotation = async () => {
     try {
@@ -151,11 +170,13 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
         rto_charges: parseFloat(gjRto) || 0,
         insurance_charges: parseFloat(insurance) || 0,
         accessories_charges: parseFloat(accessories) || 0,
-        extended_warranty: parseFloat(warranty) || 0,
+        extended_warranty: warranty.trim() || undefined,
+        warranty_tenure: warranty.trim() || undefined,
         discount_amount: parseFloat(msReword) || 0,
         final_on_road_price: estimatedOnRoadPrice,
         fuel_type: fuelTag,
         quotation_date: quotationDate,
+        status: 'pending',
       };
 
       await quotationApi.create(payload);
@@ -604,7 +625,7 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                   <View style={styles.formGrid}>
                     <View style={styles.gridField}>
                       <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                        WARRANTY
+                        WARRANTY (Tenure, e.g. 1 Year, 2 Years)
                       </Text>
                       <StartAlignedInput
                         style={[
@@ -617,7 +638,8 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                         ]}
                         value={warranty}
                         onChangeText={setWarranty}
-                        keyboardType="numeric"
+                        placeholder="e.g. 1 Year, 2 Years"
+                        placeholderTextColor="#94A3B8"
                       />
                     </View>
 

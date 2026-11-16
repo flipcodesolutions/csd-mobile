@@ -17,6 +17,7 @@ import {
   Phone,
   Radio,
   Repeat,
+  RotateCcw,
   Snowflake,
   Sun,
   Tag,
@@ -47,6 +48,8 @@ const THEME = {
 interface LeadCardProps {
   item: CustomerLead;
   isSelected?: boolean;
+  isTrashView?: boolean;
+  onRestore?: (item: CustomerLead) => void;
   onToggleSelect?: (id: number) => void;
   onCall?: (phone: string) => void;
   onOpenFollowUp?: (item: CustomerLead) => void;
@@ -62,6 +65,8 @@ interface LeadCardProps {
 export const LeadCard: React.FC<LeadCardProps> = React.memo(({
   item,
   isSelected = false,
+  isTrashView = false,
+  onRestore,
   onToggleSelect,
   onCall,
   onOpenFollowUp,
@@ -347,6 +352,23 @@ export const LeadCard: React.FC<LeadCardProps> = React.memo(({
           <Text style={styles.metaText}>{formattedDate}</Text>
         </View>
       </View>
+
+      {/* Trash View Restore Button */}
+      {isTrashView && onRestore && (
+        <View style={styles.restoreRow}>
+          <TouchableOpacity
+            style={styles.restoreBtn}
+            onPress={() => {
+              triggerHaptic('impactMedium');
+              onRestore(item);
+            }}
+            activeOpacity={0.8}
+          >
+            <RotateCcw size={14} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.restoreBtnText}>Restore Lead</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 });
@@ -613,5 +635,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: THEME.info,
+  },
+  restoreRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#FEE2E2',
+    paddingTop: 10,
+    marginTop: 2,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  restoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#16A34A',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  restoreBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

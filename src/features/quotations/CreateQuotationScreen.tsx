@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   ScrollView,
@@ -35,6 +36,7 @@ import { showErrorToast, showSuccessToast } from '../../core/utils/toast';
 import { brandApi, modelApi, variantApi } from '../masters/masterService';
 import { leadApi } from '../leads/leadService';
 import { quotationService } from './quotationService';
+import { appStorage } from '../../core/storage/storage';
 import { QuotationFormData, QuotationPriceBreakdown } from './types';
 import { QuotationSheetView } from './components/QuotationSheetView';
 import { EmailQuotationModal } from './components/EmailQuotationModal';
@@ -54,6 +56,7 @@ const DEFAULT_BREAKDOWN: QuotationPriceBreakdown = {
   warranty: '',
   diffAmtCash: '',
   msReward: '',
+  msReword: '',
 };
 
 export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
@@ -86,9 +89,9 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
   const [sheetModelTitle, setSheetModelTitle] = useState('');
   const [fuelType, setFuelType] = useState('PETROL');
 
-  // Executive State
-  const [executiveName, setExecutiveName] = useState('ADMIN USER');
-  const [executivePhone, setExecutivePhone] = useState('+91 98000 11112');
+  // Executive State (dynamically populated from logged-in session)
+  const [executiveName, setExecutiveName] = useState('');
+  const [executivePhone, setExecutivePhone] = useState('');
 
   // Price Breakdown State
   const [breakdown, setBreakdown] = useState<QuotationPriceBreakdown>(DEFAULT_BREAKDOWN);
@@ -110,8 +113,20 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
-  // Load initial dropdown masters
+  // Load initial dropdown masters and current user profile
   useEffect(() => {
+    const loadLoggedInUser = async () => {
+      try {
+        const user = await appStorage.getUserProfile();
+        if (user) {
+          if (user.name) setExecutiveName(user.name);
+          if (user.phone) setExecutivePhone(user.phone);
+        }
+      } catch (e) {
+        console.log('Error loading user profile in quotation builder:', e);
+      }
+    };
+    loadLoggedInUser();
     loadBrands();
     loadLeads();
   }, []);
@@ -290,24 +305,37 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     return isNaN(num) ? 0 : num;
   };
 
-  // Live Grand Total Calculation
+  // Live Grand Total Calculation (Task 2: Warranty NOT counted, M.S Reward subtracted directly from Total)
   const grandTotal = useMemo(() => {
     const csd = parseNum(breakdown.csdPrice);
-    const rto = parseNum(breakdown.gjRto) || parseNum(breakdown.bhRto);
+    const gjRto = parseNum(breakdown.gjRto);
+    const bhRto = parseNum(breakdown.bhRto);
     const crtm = parseNum(breakdown.crtm);
     const insurance = parseNum(breakdown.insurance);
     const accessories = parseNum(breakdown.accessories);
-    const warranty = parseNum(breakdown.warranty);
+    // Task 2: WARRANTY is tenure (e.g. 1 Year, 2 Years) - NOT counted into total!
     const diff = parseNum(breakdown.diffAmtCash);
-    const discount = parseNum(breakdown.msReward);
+    const rawDisc = breakdown.msReward || (breakdown as any).msReword || '';
+    const discount = Math.abs(parseNum(rawDisc));
 
-    const total = csd + rto + crtm + insurance + accessories + warranty + diff - discount;
+    const total = csd + gjRto + bhRto + crtm + insurance + accessories + diff - discount;
     return Math.max(0, total);
-  }, [breakdown]);
+  }, [
+    breakdown.csdPrice,
+    breakdown.gjRto,
+    breakdown.bhRto,
+    breakdown.crtm,
+    breakdown.insurance,
+    breakdown.accessories,
+    breakdown.diffAmtCash,
+    breakdown.msReward,
+    (breakdown as any).msReword,
+    breakdown,
+  ]);
 
   const formatInr = (val: number | string) => {
     const num = typeof val === 'number' ? val : parseNum(val);
-    return '₹ ' + num.toLocaleString('en-IN');
+    return '₹' + num.toLocaleString('en-IN');
   };
 
   const handleResetSheet = () => {
@@ -344,141 +372,182 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
 
     try {
       const carName = sheetCarTitle.trim() || selectedBrand?.name || 'VEHICLE';
-      const modelName = sheetModelTitle.trim() || selectedVariant?.name || selectedModel?.name || '';
+      const modelName = sheetModelTitle.trim() || selectedVariant?.name || selectedModel?.name || 'Standard';
       const subject = `Official Vehicle Quotation – ${carName} (${modelName})`;
 
-      // Construct itemized line items as expected by backend
-      const items: any[] = [];
-
-      if (breakdown.csdPrice) {
-        items.push({
-          item_name: `${carName} – ${modelName}`,
-          description: `Fuel: ${fuelType}`,
-          quantity: 1,
-          unit_price: parseNum(breakdown.csdPrice),
-          discount: 0,
-          tax: 0,
-          total: parseNum(breakdown.csdPrice),
-        });
+      // Format date to ISO YYYY-MM-DD required by Laravel backend API
+      let formattedDate = new Date().toISOString().split('T')[0];
+      if (quotationDate && quotationDate.includes('.')) {
+        const parts = quotationDate.split('.');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+          formattedDate = `${year}-${month}-${day}`;
+        }
+      } else if (quotationDate && quotationDate.includes('-')) {
+        const parts = quotationDate.split('-');
+        if (parts.length === 3 && parts[0].length === 2) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+          formattedDate = `${year}-${month}-${day}`;
+        } else if (parts.length === 3 && parts[0].length === 4) {
+          formattedDate = quotationDate;
+        }
       }
 
-      if (breakdown.gjRto) {
+      // Construct itemized line items as expected by backend (matching csd-front)
+      const items: any[] = [];
+      const discountAmt = Math.abs(parseNum(breakdown.msReward || (breakdown as any).msReword)) || 0;
+      const csdBase = parseNum(breakdown.csdPrice);
+
+      // Primary Vehicle Line Item (unconditional, so items is never empty)
+      items.push({
+        item_name: `${carName} – ${modelName}`,
+        description: `Fuel: ${fuelType}`,
+        quantity: 1,
+        unit_price: csdBase,
+        price: csdBase,
+        discount: discountAmt,
+        tax: 0,
+        total: Math.max(0, csdBase - discountAmt),
+      });
+
+      if (parseNum(breakdown.gjRto) > 0) {
         items.push({
           item_name: 'Gujarat State RTO & Registration',
-          description: 'Official registration',
+          description: 'Official vehicle registration and road tax',
           quantity: 1,
           unit_price: parseNum(breakdown.gjRto),
+          price: parseNum(breakdown.gjRto),
           discount: 0,
           tax: 0,
           total: parseNum(breakdown.gjRto),
         });
       }
 
-      if (breakdown.bhRto) {
+      if (parseNum(breakdown.bhRto) > 0) {
         items.push({
           item_name: 'BH Series RTO * Approx',
           description: 'BH registration estimate',
           quantity: 1,
           unit_price: parseNum(breakdown.bhRto),
+          price: parseNum(breakdown.bhRto),
           discount: 0,
           tax: 0,
           total: parseNum(breakdown.bhRto),
         });
       }
 
-      if (breakdown.crtm) {
+      if (parseNum(breakdown.crtm) > 0) {
         items.push({
           item_name: 'CRTM Charges',
           description: 'Temporary permit / CRTM',
           quantity: 1,
           unit_price: parseNum(breakdown.crtm),
+          price: parseNum(breakdown.crtm),
           discount: 0,
           tax: 0,
           total: parseNum(breakdown.crtm),
         });
       }
 
-      if (breakdown.insurance) {
+      if (parseNum(breakdown.insurance) > 0) {
         items.push({
           item_name: 'Comprehensive Zero-Dep Insurance (1+3 Yrs)',
           description: 'Full accidental cover',
           quantity: 1,
           unit_price: parseNum(breakdown.insurance),
+          price: parseNum(breakdown.insurance),
           discount: 0,
           tax: 0,
           total: parseNum(breakdown.insurance),
         });
       }
 
-      if (breakdown.accessories) {
+      if (parseNum(breakdown.accessories) > 0) {
         items.push({
           item_name: 'Genuine Dealership Accessories Pack',
           description: 'Accessories',
           quantity: 1,
           unit_price: parseNum(breakdown.accessories),
+          price: parseNum(breakdown.accessories),
           discount: 0,
           tax: 0,
           total: parseNum(breakdown.accessories),
         });
       }
 
-      if (breakdown.warranty) {
-        items.push({
-          item_name: 'Extended Warranty Shield',
-          description: 'Manufacturer warranty',
-          quantity: 1,
-          unit_price: parseNum(breakdown.warranty),
-          discount: 0,
-          tax: 0,
-          total: parseNum(breakdown.warranty),
-        });
-      }
-
-      if (breakdown.diffAmtCash) {
+      if (parseNum(breakdown.diffAmtCash) > 0) {
         items.push({
           item_name: 'Difference / Cash Adjustment',
           description: 'Cash difference',
           quantity: 1,
           unit_price: parseNum(breakdown.diffAmtCash),
+          price: parseNum(breakdown.diffAmtCash),
           discount: 0,
           tax: 0,
           total: parseNum(breakdown.diffAmtCash),
         });
       }
 
-      if (breakdown.msReward) {
-        items.push({
-          item_name: 'M.S Reward / Special Deal Discount',
-          description: 'Subtracted discount',
-          quantity: 1,
-          unit_price: -parseNum(breakdown.msReward),
-          discount: parseNum(breakdown.msReward),
-          tax: 0,
-          total: -parseNum(breakdown.msReward),
-        });
-      }
+      const calculatedSubtotal = items.reduce(
+        (acc, it) => acc + (Number(it.unit_price) || 0) * (Number(it.quantity) || 1),
+        0
+      );
+      const calculatedGrandTotal = items.reduce(
+        (acc, it) => acc + (Number(it.total) || 0),
+        0
+      );
+      const effectiveTotal = calculatedGrandTotal > 0 ? calculatedGrandTotal : grandTotal;
 
-      const payload = {
-        lead_id: leadId,
-        quotation_date: quotationDate,
+      const payload: Record<string, any> = {
+        lead_id: leadId ? Number(leadId) : null,
+        quotation_date: formattedDate,
         customer_name: clientName.trim(),
-        customer_phone: clientMobile.trim(),
-        customer_email: clientEmail.trim(),
-        customer_address: cityJurisdiction.trim(),
+        customer_phone: clientMobile.trim() || null,
+        customer_email: clientEmail.trim() || null,
+        customer_address: cityJurisdiction.trim() || 'Ahmedabad',
         subject,
-        description: 'Official Defence Autolink CSD Price Breakdown.',
-        payment_terms: 'Booking advance as applicable.',
-        delivery_terms: 'Subject to stock allocation.',
+        description: `Official Price breakdown for ${clientName.trim()}${executiveName ? ` prepared by ${executiveName}` : ''}.`,
+        payment_terms: 'Booking advance as applicable, balance prior to vehicle delivery and RTO clearance.',
+        delivery_terms: 'Vehicle delivery subject to manufacturer allocation and receipt of full payment.',
         notes: '* Prices prevailing at time of delivery will be applicable. Road tax as per RTO norms.',
-        status: 'sent',
-        subtotal: parseNum(breakdown.csdPrice),
-        grand_total: grandTotal,
-        total_amount: grandTotal,
-        total: grandTotal,
+        status: 'pending', // Task 1: Default status is 'pending'
+
+        // Vehicle details
+        brand_id: selectedBrand?.id ? Number(selectedBrand.id) : null,
+        model_id: selectedModel?.id ? Number(selectedModel.id) : null,
+        variant_id: selectedVariant?.id ? Number(selectedVariant.id) : null,
+        brand_name: selectedBrand?.name || carName,
+        model_name: selectedModel?.name || modelName,
+        variant_name: selectedVariant?.name || modelName,
+
+        // Financial totals & breakdown
+        ex_showroom_price: csdBase,
+        csd_base_price: csdBase,
+        rto_charges: (parseNum(breakdown.gjRto) || 0) + (parseNum(breakdown.bhRto) || 0),
+        insurance_charges: parseNum(breakdown.insurance) || 0,
+        accessories_charges: parseNum(breakdown.accessories) || 0,
+        discount_amount: discountAmt,
+        final_on_road_price: effectiveTotal,
+        subtotal: calculatedSubtotal > 0 ? calculatedSubtotal : csdBase,
+        grand_total: effectiveTotal,
+        total_amount: effectiveTotal,
+        total: effectiveTotal,
+
+        // Specific breakdown parameters
+        gj_rto: parseNum(breakdown.gjRto) || 0,
+        bh_rto: parseNum(breakdown.bhRto) || 0,
+        crtm: parseNum(breakdown.crtm) || 0,
+        diff_amt_cash: parseNum(breakdown.diffAmtCash) || 0,
+        extended_warranty: breakdown.warranty.trim() || null,
+        warranty_tenure: breakdown.warranty.trim() || null,
+        warranty: breakdown.warranty.trim() || null,
+        fuel_type: fuelType,
+
         items,
-        brand_name: selectedBrand?.name,
-        model_name: selectedModel?.name,
-        variant_name: selectedVariant?.name,
       };
 
       const res = await quotationService.create(payload);
@@ -490,14 +559,29 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
 
       showSuccessToast(
         'Quotation Saved!',
-        `Saved successfully to CRM Pipeline. Grand Total: ${formatInr(grandTotal)}`
+        `Saved successfully to CRM Pipeline. Grand Total: ${formatInr(effectiveTotal)}`
       );
+
+      // Task: Redirect to Saved Pipeline (archive) view immediately on save
+      if (onNavigateToArchive) {
+        setTimeout(() => {
+          onNavigateToArchive();
+        }, 500);
+      }
     } catch (err: any) {
-      console.log('Error saving quotation:', err);
-      showErrorToast(
-        'Save Failed',
-        err?.response?.data?.message || err.message || 'Could not save quotation.'
-      );
+      console.log('Error saving quotation:', err, err?.response?.data);
+      const backendErrors = err?.response?.data?.errors
+        ? Object.entries(err.response.data.errors)
+          .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+          .join('\n')
+        : null;
+      const errorMsg =
+        backendErrors ||
+        err?.response?.data?.message ||
+        err.message ||
+        'Could not save quotation.';
+      Alert.alert('Save Failed', errorMsg);
+      showErrorToast('Save Failed', errorMsg);
     } finally {
       setSaving(false);
     }
@@ -1139,12 +1223,11 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
           <View style={styles.inputGrid}>
             <View style={styles.inputCol}>
               <Text style={[styles.label, { color: isDark ? '#CBD5E1' : '#334155' }]}>
-                WARRANTY (Shield)
+                WARRANTY (Tenure, e.g. 1 Year, 2 Years)
               </Text>
               <TextInput
                 style={[
                   styles.input,
-                  styles.numericInput,
                   {
                     backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
                     color: isDark ? '#FFFFFF' : '#0F172A',
@@ -1153,15 +1236,17 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                 ]}
                 value={breakdown.warranty}
                 onChangeText={(t) => setBreakdown((p) => ({ ...p, warranty: t }))}
-                placeholder="15000"
+                placeholder="e.g. 1 Year, 2 Years"
                 placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
               />
+              <Text style={{ fontSize: 10, color: '#64748B', marginTop: 3 }}>
+                Tenure only • Not counted in total
+              </Text>
             </View>
 
             <View style={styles.inputCol}>
               <Text style={[styles.label, { color: isDark ? '#CBD5E1' : '#334155' }]}>
-                M.S REWARD (Disc)
+                M.S REWORD (Disc)
               </Text>
               <TextInput
                 style={[
@@ -1173,16 +1258,19 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                     borderColor: isDark ? '#334155' : '#CBD5E1',
                   },
                 ]}
-                value={breakdown.msReward}
-                onChangeText={(t) => setBreakdown((p) => ({ ...p, msReward: t }))}
+                value={breakdown.msReward || (breakdown as any).msReword || ''}
+                onChangeText={(t) => setBreakdown((p) => ({ ...p, msReward: t, msReword: t }))}
                 placeholder="Discount amount"
                 placeholderTextColor="#94A3B8"
                 keyboardType="numeric"
               />
+              <Text style={{ fontSize: 10, color: '#059669', marginTop: 3 }}>
+                Subtracted from Total
+              </Text>
             </View>
           </View>
 
-          {/* Row: Difference Amt Cash */}
+          {/* Row 5: DIFFERENCE AMT CASH & ESTIMATED TOTAL (Net After M.S Reword Disc) - EXACT MATCH TO WEB */}
           <View style={[styles.inputGrid, { marginTop: 4 }]}>
             <View style={styles.inputCol}>
               <Text style={[styles.label, { color: isDark ? '#CBD5E1' : '#334155' }]}>
@@ -1205,26 +1293,54 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                 keyboardType="numeric"
               />
             </View>
-          </View>
-        </View>
 
-        {/* Live Calculation Card Summary */}
-        <View
-          style={[
-            styles.liveTotalCard,
-            {
-              backgroundColor: isDark ? '#1E293B' : '#FEF2F2',
-              borderColor: '#B91C1C',
-            },
-          ]}
-        >
-          <View style={styles.liveTotalLeft}>
-            <Text style={styles.liveTotalLabel}>ESTIMATED ON-ROAD PRICE</Text>
-            <Text style={styles.liveTotalFormula}>
-              CSD + RTO + Insurance + Accessories + Warranty + Diff - Reward
-            </Text>
+            <View style={styles.inputCol}>
+              <Text style={[styles.label, { color: isDark ? '#CBD5E1' : '#334155' }]} numberOfLines={1}>
+                ESTIMATED TOTAL (₹) (Net After M.S Reword Disc)
+              </Text>
+              <View
+                style={[
+                  styles.input,
+                  styles.estimatedTotalBox,
+                  {
+                    backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                    borderColor: isDark ? '#334155' : '#CBD5E1',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.estimatedTotalValue,
+                    { color: isDark ? '#4ADE80' : '#16A34A' },
+                  ]}
+                >
+                  {formatInr(grandTotal)}
+                </Text>
+                <View style={styles.liveTotalPill}>
+                  <Text style={styles.liveTotalPillText}>Live Total</Text>
+                </View>
+              </View>
+            </View>
           </View>
-          <Text style={styles.liveTotalAmount}>{formatInr(grandTotal)}</Text>
+
+          {/* Direct Section Save Button matching web screenshot */}
+          <TouchableOpacity
+            style={[styles.webSaveBtn, saving && { opacity: 0.7 }]}
+            onPress={handleSaveQuotation}
+            disabled={saving}
+            activeOpacity={0.8}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Save size={16} color="#FFFFFF" strokeWidth={2.4} />
+                <Text style={styles.webSaveBtnText}>
+                  Save to CRM Pipeline (Total: {formatInr(grandTotal)})
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -1302,10 +1418,10 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                 {pickerType === 'lead'
                   ? 'Choose Lead from Pipeline'
                   : pickerType === 'brand'
-                  ? 'Select Brand'
-                  : pickerType === 'model'
-                  ? 'Select Model'
-                  : 'Select Variant'}
+                    ? 'Select Brand'
+                    : pickerType === 'model'
+                      ? 'Select Model'
+                      : 'Select Variant'}
               </Text>
               <TouchableOpacity
                 onPress={() => setPickerType(null)}
@@ -1350,10 +1466,10 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                   pickerType === 'lead'
                     ? item.id === leadId
                     : pickerType === 'brand'
-                    ? item.id === selectedBrand?.id
-                    : pickerType === 'model'
-                    ? item.id === selectedModel?.id
-                    : item.id === selectedVariant?.id;
+                      ? item.id === selectedBrand?.id
+                      : pickerType === 'model'
+                        ? item.id === selectedModel?.id
+                        : item.id === selectedVariant?.id;
 
                 return (
                   <TouchableOpacity
@@ -1577,6 +1693,43 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  estimatedTotalBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  estimatedTotalValue: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  liveTotalPill: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  liveTotalPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  webSaveBtn: {
+    backgroundColor: '#58632A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 14,
+  },
+  webSaveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   liveTotalCard: {
     flexDirection: 'row',

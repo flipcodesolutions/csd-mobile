@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import {
   Calendar,
+  ChevronRight,
   Download,
   Eye,
   Phone,
@@ -14,16 +15,20 @@ import {
   Trash2,
   User,
 } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Quotation } from '../types';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { triggerHaptic } from '../../../core/utils/haptics';
+import { showErrorToast } from '../../../core/utils/toast';
 
 interface QuotationCardProps {
   quotation: Quotation;
   isTrashView?: boolean;
   onView: (quotation: Quotation) => void;
   onDownload: (quotation: Quotation) => void;
-  onDelete: (quotation: Quotation) => void;
+  onDelete?: (quotation: Quotation) => void;
   onRestore?: (quotation: Quotation) => void;
+  onSelectLead?: (leadId: number) => void;
 }
 
 export const QuotationCard: React.FC<QuotationCardProps> = ({
@@ -33,33 +38,56 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
   onDownload,
   onDelete,
   onRestore,
+  onSelectLead,
 }) => {
   const { colors, isDark } = useTheme();
+  const navigation = useNavigation<any>();
 
   const formatInr = (val?: number | string) => {
     const num = Number(val || 0);
     return '₹ ' + num.toLocaleString('en-IN');
   };
 
+  // Task 1: Strictly 3 statuses: Pending (default), Email Sent, Print
   const getStatusBadge = (status?: string) => {
-    const s = (status || 'sent').toLowerCase();
+    const s = (status || 'pending').toLowerCase();
     switch (s) {
-      case 'accepted':
-        return { bg: '#DCFCE7', text: '#15803D', label: 'Accepted' };
-      case 'rejected':
-        return { bg: '#FEE2E2', text: '#B91C1C', label: 'Rejected' };
-      case 'pending':
-        return { bg: '#FEF3C7', text: '#B45309', label: 'Pending' };
       case 'print':
+      case 'printed':
         return { bg: '#EDE9FE', text: '#6D28D9', label: 'Print' };
       case 'sent':
+      case 'email_sent':
+      case 'email send':
+        return { bg: '#E0F2FE', text: '#0369A1', label: 'Email Sent' };
+      case 'pending':
       default:
-        return { bg: '#E0F2FE', text: '#0369A1', label: 'Sent' };
+        return { bg: '#FEF3C7', text: '#B45309', label: 'Pending' };
     }
   };
 
   const statusBadge = getStatusBadge(quotation.status);
-  const totalAmount = quotation.grand_total || quotation.total_amount || quotation.total || 0;
+  const totalAmount = Number(
+    quotation.final_on_road_price ||
+      quotation.grand_total ||
+      quotation.total_amount ||
+      quotation.total ||
+      0
+  );
+  const leadId = quotation.lead_id || (quotation as any).lead?.id;
+
+  // Task 3: Open Lead Detail Screen on Customer Name Click
+  const handleCustomerPress = () => {
+    triggerHaptic();
+    if (leadId) {
+      if (onSelectLead) {
+        onSelectLead(Number(leadId));
+      } else {
+        navigation.navigate('LeadDetail', { leadId: Number(leadId) });
+      }
+    } else {
+      showErrorToast('No Lead Linked', 'No linked lead record found for this quotation.');
+    }
+  };
 
   return (
     <View
@@ -86,13 +114,28 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
         </View>
       </View>
 
-      {/* Customer Info */}
-      <View style={styles.row}>
-        <User size={15} color={isDark ? '#94A3B8' : '#64748B'} />
-        <Text style={[styles.customerName, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+      {/* Customer Info (Task 3: Click to open Lead Detail) */}
+      <TouchableOpacity
+        style={styles.customerRow}
+        onPress={handleCustomerPress}
+        activeOpacity={0.7}
+      >
+        <User size={15} color={isDark ? '#60A5FA' : '#1E3A8A'} />
+        <Text
+          style={[
+            styles.customerName,
+            {
+              color: isDark ? '#60A5FA' : '#1E3A8A',
+              textDecorationLine: leadId ? 'underline' : 'none',
+            },
+          ]}
+        >
           {quotation.customer_name || 'Walk-in Customer'}
         </Text>
-      </View>
+        {leadId ? (
+          <ChevronRight size={14} color={isDark ? '#60A5FA' : '#1E3A8A'} strokeWidth={2.5} />
+        ) : null}
+      </TouchableOpacity>
 
       {quotation.customer_phone ? (
         <View style={[styles.row, { marginTop: 3 }]}>
@@ -132,7 +175,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
         </View>
       </View>
 
-      {/* Card Action Buttons Toolbar (Task 3: View, PDF, Delete/Restore) */}
+      {/* Card Action Buttons Toolbar (View, PDF, Delete/Restore) */}
       <View style={[styles.actionsBar, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
         <TouchableOpacity
           style={styles.actionBtn}
@@ -152,7 +195,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
           <Text style={[styles.actionBtnText, { color: '#059669' }]}>PDF</Text>
         </TouchableOpacity>
 
-        {isTrashView && onRestore ? (
+        {isTrashView && onRestore && (
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => onRestore(quotation)}
@@ -161,7 +204,9 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
             <RotateCcw size={16} color="#2563EB" />
             <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Restore</Text>
           </TouchableOpacity>
-        ) : (
+        )}
+
+        {isTrashView && onDelete && (
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => onDelete(quotation)}
@@ -212,6 +257,13 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
   },
   row: {
     flexDirection: 'row',

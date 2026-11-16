@@ -204,8 +204,8 @@ export const quotationApi = {
             <td class="col-value">${b.accessories ? formatInr(b.accessories) : '-'}</td>
           </tr>
           <tr>
-            <td class="col-label">WARRANTY</td>
-            <td class="col-value">${b.warranty ? formatInr(b.warranty) : '-'}</td>
+            <td class="col-label">WARRANTY (TENURE)</td>
+            <td class="col-value">${b.warranty || '-'}</td>
           </tr>
           <tr>
             <td class="col-label">M.S REWORD (DISCOUNT)</td>
@@ -216,15 +216,15 @@ export const quotationApi = {
             <td class="col-value">${formatInr(b.diffAmtCash)}</td>
           </tr>
           <tr class="highlight-row">
-            <td class="col-label" style="color: #b91c1c;">ESTIMATED ON-ROAD PRICE</td>
+            <td class="col-label" style="color: #b91c1c;">ESTIMATED TOTAL (NET AFTER DISC)</td>
             <td class="col-value" style="color: #b91c1c; font-size: 15px;">${formatInr(data.grandTotal)}</td>
           </tr>
         </table>
 
         <div class="footer-section">
           <div class="exec-info">
-            <div>Executive: <strong>${data.executiveName || 'ADMIN USER'}</strong></div>
-            <div>Contact: ${data.executivePhone || '+91 98000 11112'}</div>
+            <div>Executive: <strong>${data.executiveName || '-'}</strong></div>
+            <div>Contact: ${data.executivePhone || '-'}</div>
             <div class="disclaimer">* Prices prevailing at the time of delivery will be applicable. Road tax as per RTO norms.</div>
           </div>
           <div class="signatory">

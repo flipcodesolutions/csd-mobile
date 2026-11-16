@@ -14,7 +14,25 @@ import {
   View,
 } from 'react-native';
 import { colors } from '../../core/theme/colors';
-import { salesExecutiveApi } from './leadService';
+import { leadApi, salesExecutiveApi } from './leadService';
+import { dealApi } from '../deals/dealService';
+import followUpService from '../followups/followUpService';
+import { Award, Download, Edit3, Eye, FileText, Plus, Trash2 } from 'lucide-react-native';
+import { quotationApi, quotationService } from '../quotations/quotationService';
+import {
+  brandApi,
+  leadSourceApi,
+  leadStatusApi,
+  modelApi,
+  userApi,
+  variantApi,
+} from '../masters/masterService';
+import { SendQuotationModal } from './components/SendQuotationModal';
+import { EditProspectModal } from './components/EditProspectModal';
+import { ConvertToDealModal } from './components/ConvertToDealModal';
+import { QuotationSheetView } from '../quotations/components/QuotationSheetView';
+import { QuotationFormData } from '../quotations/types';
+import { SourceItem, StatusItem, UserItem } from './types';
 
 interface Props {
   leadId: number;
@@ -35,8 +53,21 @@ const LEAD_STATUS_OPTIONS = [
 export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack }) => {
   const [lead, setLead] = useState<any>(null);
   const [followUps, setFollowUps] = useState<any[]>([]);
+  const [quotations, setQuotations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [selectedQuotationForPreview, setSelectedQuotationForPreview] = useState<any | null>(null);
+  const [isDownloadingPdfId, setIsDownloadingPdfId] = useState<number | null>(null);
+  const [isDeletingQuotationId, setIsDeletingQuotationId] = useState<number | null>(null);
+  const [brandsList, setBrandsList] = useState<any[]>([]);
+  const [modelsList, setModelsList] = useState<any[]>([]);
+  const [variantsList, setVariantsList] = useState<any[]>([]);
+  const [sourcesList, setSourcesList] = useState<SourceItem[]>([]);
+  const [statusesList, setStatusesList] = useState<StatusItem[]>([]);
+  const [usersList, setUsersList] = useState<UserItem[]>([]);
+  const [showEditLeadModal, setShowEditLeadModal] = useState(false);
+  const [showDealModal, setShowDealModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
@@ -53,9 +84,10 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
   const fetchDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [leadRes, historyRes] = await Promise.all([
+      const [leadRes, historyRes, quoteRes] = await Promise.all([
         salesExecutiveApi.getLeadDetails(leadId),
         salesExecutiveApi.getFollowUps(leadId).catch(() => ({ data: [] })),
+        quotationApi.getAll({ lead_id: leadId }).catch(() => ({ data: [] })),
       ]);
 
       if (leadRes && leadRes.status && leadRes.data) {
@@ -68,6 +100,9 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
       if (historyRes && historyRes.status) {
         setFollowUps(historyRes.data || []);
       }
+
+      const qItems = Array.isArray(quoteRes) ? quoteRes : quoteRes?.data || [];
+      setQuotations(Array.isArray(qItems) ? qItems : []);
     } catch (error: any) {
       console.log('Error fetching lead details:', error);
       Alert.alert('Error', error?.response?.data?.message || 'Unable to load lead details.', [
@@ -78,9 +113,60 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
     }
   }, [leadId, onBack]);
 
+  const loadMasters = useCallback(async () => {
+    try {
+      const [bRes, mRes, vRes, sRes, stRes, uRes] = await Promise.all([
+        brandApi.getAll({ per_page: 100 }).catch(() => ({ data: [] })),
+        modelApi.getAll({ per_page: 100 }).catch(() => ({ data: [] })),
+        variantApi.getAll({ per_page: 100 }).catch(() => ({ data: [] })),
+        leadSourceApi.getAll().catch(() => ({ data: [] })),
+        leadStatusApi.getAll().catch(() => ({ data: [] })),
+        userApi.getAll().catch(() => ({ data: [] })),
+      ]);
+      setBrandsList(Array.isArray(bRes?.data) ? bRes.data : bRes?.data?.data || []);
+      setModelsList(Array.isArray(mRes?.data) ? mRes.data : mRes?.data?.data || []);
+      setVariantsList(Array.isArray(vRes?.data) ? vRes.data : vRes?.data?.data || []);
+      setSourcesList(Array.isArray(sRes?.data) ? sRes.data : Array.isArray(sRes) ? sRes : (sRes as any)?.data?.data || []);
+      setStatusesList(Array.isArray(stRes?.data) ? stRes.data : Array.isArray(stRes) ? stRes : (stRes as any)?.data?.data || []);
+      setUsersList(Array.isArray(uRes?.data) ? uRes.data : Array.isArray(uRes) ? uRes : (uRes as any)?.data?.data || []);
+    } catch (e) {
+      console.log('Error loading masters for quotation modal:', e);
+    }
+  }, []);
+
+  const handleSaveEditedLead = async (formData: any) => {
+    if (!lead?.id) return;
+    try {
+      await leadApi.update(lead.id, formData);
+      setShowEditLeadModal(false);
+      Alert.alert('Success', 'Lead details updated successfully.');
+      fetchDetails();
+    } catch (err: any) {
+      Alert.alert(
+        'Update Failed',
+        err?.response?.data?.message || err?.message || 'Could not update lead.'
+      );
+    }
+  };
+
+  const handleConvertToDeal = async (dealData: any) => {
+    try {
+      await dealApi.create(dealData);
+      setShowDealModal(false);
+      Alert.alert('Deal Created!', 'Lead converted to deal dossier successfully.');
+      fetchDetails();
+    } catch (err: any) {
+      Alert.alert(
+        'Conversion Failed',
+        err?.response?.data?.message || err?.message || 'Failed to convert lead to deal.'
+      );
+    }
+  };
+
   useEffect(() => {
     fetchDetails();
-  }, [fetchDetails]);
+    loadMasters();
+  }, [fetchDetails, loadMasters]);
 
   const handleCall = (phone: string) => {
     if (!phone) return;
@@ -135,6 +221,67 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
       Alert.alert('Error', error?.response?.data?.message || 'Failed to save follow-up.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteFollowUp = (item: any) => {
+    Alert.alert(
+      'Delete Follow-Up',
+      'Are you sure you want to delete this follow-up record?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await followUpService.delete(item.id);
+              setFollowUps((prev) => prev.filter((f) => f.id !== item.id));
+              Alert.alert('Deleted', 'Follow-up deleted successfully.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete follow-up.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteQuotation = (q: any) => {
+    Alert.alert(
+      'Delete Quotation',
+      `Are you sure you want to delete quotation #${q.quotation_number || q.id}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeletingQuotationId(q.id);
+              await quotationService.delete(q.id);
+              setQuotations((prev) => prev.filter((item) => item.id !== q.id));
+              Alert.alert('Deleted', 'Quotation deleted successfully.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete quotation.');
+            } finally {
+              setIsDeletingQuotationId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDownloadPdf = async (quotationId: number, quotationNo?: string) => {
+    try {
+      setIsDownloadingPdfId(quotationId);
+      await quotationService.downloadPdf(quotationId, quotationNo);
+      Alert.alert('Success', `Quotation #${quotationNo || quotationId} PDF downloaded.`);
+    } catch (err: any) {
+      Alert.alert('Download Error', err?.message || 'Could not download PDF.');
+    } finally {
+      setIsDownloadingPdfId(null);
     }
   };
 
@@ -193,6 +340,66 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
     lead.latest_follow_up?.next_follow_up_time ||
     (followUps.length > 0 && followUps[0]?.next_follow_up_time);
 
+  const previewFormData: QuotationFormData | null = selectedQuotationForPreview
+    ? {
+        leadId: lead?.id || null,
+        clientName: lead?.name || selectedQuotationForPreview.customer_name || '',
+        clientMobile: lead?.phone || selectedQuotationForPreview.customer_phone || '',
+        clientEmail: lead?.email || selectedQuotationForPreview.customer_email || '',
+        cityJurisdiction: lead?.city || selectedQuotationForPreview.customer_address || '',
+        quotationDate:
+          selectedQuotationForPreview.quotation_date ||
+          (selectedQuotationForPreview.created_at
+            ? selectedQuotationForPreview.created_at.split('T')[0]
+            : ''),
+        brandId: selectedQuotationForPreview.brand_id || null,
+        brandName: selectedQuotationForPreview.brand_name || lead?.brand_name || '',
+        modelId: selectedQuotationForPreview.model_id || null,
+        modelName: selectedQuotationForPreview.model_name || lead?.model_name || '',
+        variantId: selectedQuotationForPreview.variant_id || null,
+        variantName: selectedQuotationForPreview.variant_name || lead?.variant_name || '',
+        sheetCarTitle: selectedQuotationForPreview.brand_name || lead?.brand_name || '',
+        sheetModelTitle:
+          selectedQuotationForPreview.variant_name ||
+          selectedQuotationForPreview.model_name ||
+          lead?.model_variant ||
+          '',
+        fuelType: selectedQuotationForPreview.fuel_type || 'PETROL',
+        executiveName: selectedQuotationForPreview.executive_name || lead?.assigned_user_name || '',
+        executivePhone: selectedQuotationForPreview.executive_phone || '',
+        breakdown: {
+          csdPrice: String(
+            selectedQuotationForPreview.csd_base_price ||
+              selectedQuotationForPreview.ex_showroom_price ||
+              ''
+          ),
+          gjRto: String(
+            selectedQuotationForPreview.gj_rto ||
+              selectedQuotationForPreview.rto_charges ||
+              ''
+          ),
+          bhRto: String(selectedQuotationForPreview.bh_rto || ''),
+          crtm: String(selectedQuotationForPreview.crtm || ''),
+          insurance: String(selectedQuotationForPreview.insurance_charges || ''),
+          accessories: String(selectedQuotationForPreview.accessories_charges || ''),
+          warranty: String(
+            selectedQuotationForPreview.warranty ||
+              selectedQuotationForPreview.extended_warranty ||
+              ''
+          ),
+          diffAmtCash: String(selectedQuotationForPreview.diff_amt_cash || ''),
+          msReward: String(selectedQuotationForPreview.discount_amount || ''),
+        },
+        grandTotal: Number(
+          selectedQuotationForPreview.final_on_road_price ||
+            selectedQuotationForPreview.grand_total ||
+            selectedQuotationForPreview.total_amount ||
+            selectedQuotationForPreview.total ||
+            0
+        ),
+      }
+    : null;
+
   return (
     <View style={styles.container}>
       {/* 1. Sub-Header Navigation */}
@@ -202,8 +409,30 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
           <Text style={styles.backLabel}>My Leads</Text>
         </TouchableOpacity>
 
-        <View style={styles.leadIdBadge}>
-          <Text style={styles.leadIdText}>Lead #{lead.id}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={styles.leadIdBadge}>
+            <Text style={styles.leadIdText}>Lead #{lead.id}</Text>
+          </View>
+
+          {/* Edit Lead Button directly on Lead Detail Page */}
+          <TouchableOpacity
+            style={styles.editLeadTopBtn}
+            onPress={() => setShowEditLeadModal(true)}
+            activeOpacity={0.8}
+          >
+            <Edit3 size={13} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.editLeadTopBtnText}>Edit Lead</Text>
+          </TouchableOpacity>
+
+          {/* Convert to Deal Button next to Edit Lead */}
+          <TouchableOpacity
+            style={[styles.editLeadTopBtn, { backgroundColor: '#16A34A' }]}
+            onPress={() => setShowDealModal(true)}
+            activeOpacity={0.8}
+          >
+            <Award size={13} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.editLeadTopBtnText}>Convert to Deal</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -253,6 +482,24 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
             <TouchableOpacity style={styles.quickCallBtn} onPress={() => handleCall(lead.phone)}>
               <Text style={styles.quickActionIcon}>📞</Text>
               <Text style={styles.quickCallText}>Call {lead.phone}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickEditBtn}
+              onPress={() => setShowEditLeadModal(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.quickActionIcon}>✏️</Text>
+              <Text style={styles.quickEditText}>Edit Lead</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickEditBtn, { backgroundColor: '#DCFCE7', borderColor: '#16A34A' }]}
+              onPress={() => setShowDealModal(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.quickActionIcon}>🏆</Text>
+              <Text style={[styles.quickEditText, { color: '#16A34A' }]}>Convert Deal</Text>
             </TouchableOpacity>
 
             {lead.email && (
@@ -352,9 +599,17 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
                           : item.type}
                       </Text>
                     </View>
-                    <Text style={styles.timelineDate}>
-                      {item.follow_up_date} {item.follow_up_time ? `• ${item.follow_up_time}` : ''}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.timelineDate}>
+                        {item.follow_up_date} {item.follow_up_time ? `• ${item.follow_up_time}` : ''}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteFollowUp(item)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Trash2 size={13} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   {item.notes ? (
@@ -375,6 +630,150 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
                     <Text style={styles.loggedByText}>
                       By: {item.user_name || 'Executive'}
                     </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* 5. Quotations Sent Section (Matches dev.defenceautolink.com/admin/leads/:id) */}
+        <View style={styles.sectionCard}>
+          <View style={styles.historyHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <FileText size={16} color="#0284C7" />
+              <Text style={styles.sectionTitle}>
+                Quotations Sent ({quotations.length})
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.generateQuoteBtn}
+              onPress={() => setShowQuotationModal(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.generateQuoteBtnText}>+ Generate New Quotation</Text>
+            </TouchableOpacity>
+          </View>
+
+          {quotations.length === 0 ? (
+            <View style={styles.emptyHistoryBox}>
+              <Text style={styles.emptyHistoryIcon}>📄</Text>
+              <Text style={styles.emptyHistoryText}>No quotations sent for this lead yet.</Text>
+              <TouchableOpacity
+                style={styles.addFirstBtn}
+                onPress={() => setShowQuotationModal(true)}
+              >
+                <Text style={styles.addFirstBtnText}>+ Create First Quotation</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.timelineList}>
+              {quotations.map((q, idx) => (
+                <View key={q.id || idx} style={styles.quotationCard}>
+                  {/* Row 1: Quotation # & Status Badge */}
+                  <View style={styles.qTopRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.qIndexText}>#{idx + 1}</Text>
+                      <Text style={styles.qNumberText}>
+                        {q.quotation_number || `QT-${q.id}`}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.qStatusBadge,
+                        {
+                          backgroundColor:
+                            q.status === 'accepted'
+                              ? 'rgba(34, 197, 94, 0.15)'
+                              : q.status === 'sent'
+                              ? 'rgba(59, 130, 246, 0.15)'
+                              : q.status === 'print'
+                              ? 'rgba(168, 85, 247, 0.15)'
+                              : 'rgba(245, 158, 11, 0.15)',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.qStatusText,
+                          {
+                            color:
+                              q.status === 'accepted'
+                                ? '#16A34A'
+                                : q.status === 'sent'
+                                ? '#2563EB'
+                                : q.status === 'print'
+                                ? '#9333EA'
+                                : '#D97706',
+                          },
+                        ]}
+                      >
+                        {q.status || 'pending'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Row 2: Date & Vehicle */}
+                  <View style={styles.qMetaRow}>
+                    <Text style={styles.qDateText}>
+                      📅 {q.quotation_date || (q.created_at ? q.created_at.split('T')[0] : 'Recent')}
+                    </Text>
+                    <Text style={styles.qVehicleText} numberOfLines={1}>
+                      🚗 {q.variant_name || q.model_name || lead?.model_variant || 'Vehicle'}
+                    </Text>
+                  </View>
+
+                  {/* Row 3: Total Amount & Action Buttons */}
+                  <View style={styles.qBottomRow}>
+                    <View>
+                      <Text style={styles.qAmountLabel}>Total Amount</Text>
+                      <Text style={styles.qAmountText}>
+                        ₹{Number(q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+
+                    <View style={styles.qActionBtns}>
+                      {/* PDF Download Button */}
+                      <TouchableOpacity
+                        style={styles.qActionBtnPdf}
+                        onPress={() => handleDownloadPdf(q.id, q.quotation_number)}
+                        disabled={isDownloadingPdfId === q.id}
+                        activeOpacity={0.7}
+                      >
+                        {isDownloadingPdfId === q.id ? (
+                          <ActivityIndicator size="small" color="#DC2626" />
+                        ) : (
+                          <>
+                            <Download size={13} color="#DC2626" />
+                            <Text style={styles.qActionBtnPdfText}>PDF</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* View Button */}
+                      <TouchableOpacity
+                        style={styles.qActionBtnView}
+                        onPress={() => setSelectedQuotationForPreview(q)}
+                        activeOpacity={0.7}
+                      >
+                        <Eye size={13} color="#0284C7" />
+                        <Text style={styles.qActionBtnViewText}>View</Text>
+                      </TouchableOpacity>
+
+                      {/* Delete Button */}
+                      <TouchableOpacity
+                        style={styles.qActionBtnDelete}
+                        onPress={() => handleDeleteQuotation(q)}
+                        disabled={isDeletingQuotationId === q.id}
+                        activeOpacity={0.7}
+                      >
+                        {isDeletingQuotationId === q.id ? (
+                          <ActivityIndicator size="small" color="#DC2626" />
+                        ) : (
+                          <Trash2 size={13} color="#DC2626" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               ))}
@@ -585,6 +984,53 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Send Quotation Modal */}
+      <SendQuotationModal
+        visible={showQuotationModal}
+        lead={lead}
+        brands={brandsList}
+        models={modelsList}
+        variants={variantsList}
+        onClose={() => setShowQuotationModal(false)}
+        onSuccess={() => {
+          setShowQuotationModal(false);
+          fetchDetails();
+        }}
+      />
+
+      {/* Edit Prospect Modal for Lead Detail Screen */}
+      <EditProspectModal
+        visible={showEditLeadModal}
+        lead={lead}
+        brands={brandsList}
+        models={modelsList}
+        variants={variantsList}
+        sources={sourcesList}
+        statuses={statusesList}
+        users={usersList}
+        onClose={() => setShowEditLeadModal(false)}
+        onSubmit={handleSaveEditedLead}
+      />
+
+      {/* Convert to Deal Modal for Lead Detail Screen */}
+      <ConvertToDealModal
+        visible={showDealModal}
+        lead={lead}
+        onClose={() => setShowDealModal(false)}
+        onSubmit={handleConvertToDeal}
+      />
+
+      {/* Quotation Sheet Preview Modal */}
+      {previewFormData && (
+        <QuotationSheetView
+          visible={selectedQuotationForPreview !== null}
+          data={previewFormData}
+          quotationId={selectedQuotationForPreview?.id}
+          quotationNo={selectedQuotationForPreview?.quotation_number}
+          onClose={() => setSelectedQuotationForPreview(null)}
+        />
+      )}
     </View>
   );
 };
@@ -629,6 +1075,22 @@ const styles = StyleSheet.create({
   },
   leadIdText: {
     color: colors.headerTitle,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  editLeadTopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#58632A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#7A8842',
+  },
+  editLeadTopBtnText: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -721,6 +1183,22 @@ const styles = StyleSheet.create({
   },
   quickCallText: {
     color: colors.secondary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  quickEditBtn: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(88, 99, 42, 0.1)',
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#58632A',
+  },
+  quickEditText: {
+    color: '#58632A',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1131,6 +1609,132 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  generateQuoteBtn: {
+    backgroundColor: '#58632A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  generateQuoteBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  quotationCard: {
+    backgroundColor: colors.inputBg,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 8,
+  },
+  qTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  qIndexText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  qNumberText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0284C7',
+  },
+  qStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  qStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  qMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  qDateText: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  qVehicleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 8,
+  },
+  qBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  qAmountLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  qAmountText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#16A34A',
+  },
+  qActionBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  qActionBtnPdf: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+  },
+  qActionBtnPdfText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  qActionBtnView: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    backgroundColor: '#F0F9FF',
+  },
+  qActionBtnViewText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  qActionBtnDelete: {
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

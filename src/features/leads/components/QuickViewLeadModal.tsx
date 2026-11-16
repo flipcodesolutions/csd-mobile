@@ -306,7 +306,7 @@ export const QuickViewLeadModal: React.FC<QuickViewLeadModalProps> = ({
                   <Text
                     style={[styles.assignValue, { color: colors.textPrimary }]}
                   >
-                    👤 {lead.assigned_user_name || 'Admin User'}
+                    👤 {lead.assigned_user_name || 'Unassigned'}
                   </Text>
                 </View>
               </View>

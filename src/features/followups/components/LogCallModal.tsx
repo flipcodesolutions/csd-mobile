@@ -42,10 +42,11 @@ import {
 export const OUTCOME_OPTIONS: OutcomeStatus[] = [
   'Interested / Call Back',
   'Quotation Requested',
+  'Quotation Sent',
   'Negotiation / Price Discussion',
   'Not Reachable / Busy',
-  'Lost to Competitor / Lost of Lead',
-  'Deal Won / Booking',
+  'Deal Won',
+  'Lost to Competitor',
 ];
 
 export const INTERACTION_TYPES: InteractionType[] = [

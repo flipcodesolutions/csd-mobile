@@ -40,6 +40,10 @@ export const SendQuotationScreen: React.FC<SendQuotationScreenProps> = ({
         <QuotationsListScreen
           onNavigateToCreate={() => setActiveView('builder')}
           onOpenDrawer={onOpenDrawer}
+          onSelectLead={(leadId) => {
+            (navigation?.getParent() as any)?.navigate('LeadDetail', { leadId }) ||
+              navigation?.navigate('LeadDetail', { leadId });
+          }}
         />
       )}
     </View>

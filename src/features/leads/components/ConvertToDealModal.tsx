@@ -35,6 +35,7 @@ import { StartAlignedInput } from '../../../shared';
 import { CustomerLead, INSURANCE_TYPE_OPTIONS, REMINDER_DAYS_OPTIONS } from '../types';
 import { ConvertLeadDealPayload } from '../../deals/dealService';
 import { quotationApi } from '../../quotations/quotationService';
+import { appStorage } from '../../../core/storage/storage';
 import { DatePickerModal } from './DatePickerModal';
 
 // Indian Number to Words Helper
@@ -125,12 +126,12 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
   const [showDeliveryDatePicker, setShowDeliveryDatePicker] = useState(false);
 
   // Section 3: Initial Payment (Token Advance)
-  const [advanceAmount, setAdvanceAmount] = useState('51000');
+  const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentType, setPaymentType] = useState<string>('Token Advance');
   const [paymentMode, setPaymentMode] = useState<string>('UPI / QR Code');
   const [transactionRef, setTransactionRef] = useState('');
   const [bankName, setBankName] = useState('');
-  const [receivedBy, setReceivedBy] = useState('Admin User');
+  const [receivedBy, setReceivedBy] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
 
   // Insurance Sub-Modal States
@@ -138,7 +139,7 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
   const [insCompany, setInsCompany] = useState('');
   const [insPolicyNumber, setInsPolicyNumber] = useState('');
   const [insType, setInsType] = useState<string>('Comprehensive (1+3 Years)');
-  const [insPremium, setInsPremium] = useState('24500');
+  const [insPremium, setInsPremium] = useState('');
   const [insVehicleNumber, setInsVehicleNumber] = useState('');
   const [insStartDate, setInsStartDate] = useState('');
   const [insExpiryDate, setInsExpiryDate] = useState('');
@@ -190,7 +191,13 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
       setPaymentMode('UPI / QR Code');
       setTransactionRef('');
       setBankName('');
-      setReceivedBy('Admin User');
+      if (lead.assigned_user_name) {
+        setReceivedBy(lead.assigned_user_name);
+      } else {
+        appStorage.getUserProfile().then((u) => {
+          if (u?.name) setReceivedBy(u.name);
+        }).catch(() => {});
+      }
       setPaymentNotes('');
 
       // Initial insurance default dates
@@ -225,7 +232,7 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
   const handleSelectQuotation = (q: any) => {
     triggerHaptic('selection');
     setSelectedQuotationId(q.id);
-    const grand = q.grand_total || q.total_amount;
+    const grand = q.final_on_road_price || q.grand_total || q.total_amount || q.total;
     if (grand) setTotalAmount(String(grand));
   };
 
@@ -475,7 +482,7 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
                           {isSel && <Check size={12} color="#3B82F6" strokeWidth={3} />}
                         </View>
                         <Text style={[styles.qCardAmount, { color: colors.primary }]}>
-                          ₹{Number(q.grand_total || q.total_amount || 0).toLocaleString('en-IN')}
+                          ₹{Number(q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0).toLocaleString('en-IN')}
                         </Text>
                         <Text style={[styles.qCardDate, { color: colors.textSecondary }]}>
                           {q.created_at ? q.created_at.split('T')[0] : 'Recent'}
@@ -886,7 +893,7 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
                   ]}
                   value={receivedBy}
                   onChangeText={setReceivedBy}
-                  placeholder="Admin User"
+                  placeholder="Executive Name"
                   placeholderTextColor={colors.textMuted}
                 />
               </View>

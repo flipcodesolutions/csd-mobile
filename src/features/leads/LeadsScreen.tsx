@@ -20,9 +20,11 @@ import {
   Menu,
   Moon,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   Sun,
+  Trash2,
   X,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -171,6 +173,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
 
   // Filter Modal State
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [isTrashView, setIsTrashView] = useState(false);
 
   // 3. Selection & Bulk Action States
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -250,6 +253,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         search: search.trim() || undefined,
         priority: priorityFilter !== 'All' ? priorityFilter : undefined,
         vehicle_segment: segmentFilter !== 'All' ? segmentFilter : undefined,
+        status: isTrashView ? 'deleted' : undefined,
       });
       console.log("this leads", res)
 
@@ -282,6 +286,10 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       setIsLoadingMore(false);
     }
   };
+
+  useEffect(() => {
+    fetchLeads(1, false);
+  }, [isTrashView]);
 
   const fetchMasters = async () => {
     try {
@@ -565,6 +573,31 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     );
   }, []);
 
+  const handleRestoreLead = useCallback((lead: CustomerLead) => {
+    triggerHaptic('notificationWarning');
+    Alert.alert(
+      'Restore Lead',
+      `Are you sure you want to restore lead #${lead.id} (${lead.name})?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'default',
+          onPress: async () => {
+            try {
+              await leadApi.restore(lead.id);
+              setLeads((prev) => prev.filter((l) => l.id !== lead.id));
+              setSelectedIds((prev) => prev.filter((item) => item !== lead.id));
+              Alert.alert('Restored', `Lead #${lead.id} restored successfully.`);
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to restore lead.');
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
   // Save / Update Lead
   const handleSaveLead = async (formData: any) => {
     if (editingLead) {
@@ -728,6 +761,8 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       <LeadCard
         item={item}
         isSelected={selectedIds.includes(item.id)}
+        isTrashView={isTrashView}
+        onRestore={handleRestoreLead}
         onToggleSelect={toggleSelect}
         onCall={handleCall}
         onOpenFollowUp={handleOpenFollowUp}
@@ -742,6 +777,8 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     ),
     [
       selectedIds,
+      isTrashView,
+      handleRestoreLead,
       toggleSelect,
       handleCall,
       handleOpenFollowUp,
@@ -916,6 +953,36 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                 </Text>
               </TouchableOpacity>
 
+              {/* Trash View Toggle Button */}
+              <TouchableOpacity
+                style={[
+                  styles.trashTriggerBtn,
+                  {
+                    backgroundColor: isTrashView
+                      ? '#EF4444'
+                      : isDark
+                      ? '#131B2E'
+                      : '#FFFFFF',
+                    borderColor: isTrashView
+                      ? '#DC2626'
+                      : isDark
+                      ? '#1E293B'
+                      : '#CBD5E1',
+                  },
+                ]}
+                onPress={() => {
+                  triggerHaptic('impactMedium');
+                  setIsTrashView(!isTrashView);
+                }}
+                activeOpacity={0.8}
+              >
+                <Trash2
+                  size={14}
+                  color={isTrashView ? '#FFFFFF' : '#EF4444'}
+                  strokeWidth={2.2}
+                />
+              </TouchableOpacity>
+
               {/* + New Lead Button */}
               <TouchableOpacity
                 style={[
@@ -929,6 +996,35 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                 <Text style={[styles.newLeadText, { marginLeft: 3 }]}>New</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Trash Mode Banner */}
+            {isTrashView && (
+              <View
+                style={[
+                  styles.trashBanner,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                    borderColor: '#EF4444',
+                  },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Trash2 size={14} color="#DC2626" strokeWidth={2.4} />
+                  <Text style={styles.trashBannerText}>
+                    Trash Folder — Viewing Deleted Leads
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setIsTrashView(false);
+                  }}
+                  style={styles.exitTrashBtn}
+                >
+                  <Text style={styles.exitTrashBtnText}>Exit Trash</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             
             {/* Active Filters Pill Strip (Only shown when filters are applied) */}
@@ -1337,6 +1433,10 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             setActiveQuotationLead(ld);
             setQuotationModalVisible(true);
           }
+        }}
+        onEditLead={(ld) => {
+          setDetailModalVisible(false);
+          handleOpenEdit(ld);
         }}
       />
 
@@ -2030,6 +2130,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     includeFontPadding: false,
+  },
+  trashTriggerBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    width: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  trashBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  trashBannerText: {
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  exitTrashBtn: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  exitTrashBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   newLeadBtn: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
   Hourglass,
   PhoneCall,
   Plus,
+  Trash2,
   User,
   X,
   XCircle,
@@ -22,8 +24,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
-import { FollowUpItem } from '../types';
+import { FollowUpItem, isValidFollowUpOutcome, normalizeOutcome } from '../types';
 import { leadApi } from '../../leads/leadService';
+import followUpService from '../followUpService';
 
 export interface FollowUpHistoryModalProps {
   visible: boolean;
@@ -56,19 +59,57 @@ export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
       if (leadId) {
         const res = await leadApi.getFollowUps(leadId);
         const list = Array.isArray(res) ? res : res?.data || [];
-        if (list.length > 0) {
-          setHistoryList(list);
-          onHistoryCountFetched?.(leadId, list.length);
+        const filtered = list.filter((fu: any) =>
+          isValidFollowUpOutcome(
+            fu.outcome || fu.status || fu.last_call_outcome || fu.call_outcome
+          )
+        );
+        if (filtered.length > 0) {
+          setHistoryList(filtered);
+          onHistoryCountFetched?.(leadId, filtered.length);
           return;
         }
       }
-      setHistoryList([item]);
+      if (
+        item &&
+        isValidFollowUpOutcome(
+          item.status || (item as any).outcome || (item as any).last_call_outcome
+        )
+      ) {
+        setHistoryList([item]);
+      } else {
+        setHistoryList([]);
+      }
     } catch {
       setHistoryList([item]);
     } finally {
       setLoading(false);
     }
   }, [item]);
+
+  const handleDeleteInteraction = (fuId: number) => {
+    triggerHaptic('notificationWarning');
+    Alert.alert(
+      'Delete Follow-Up',
+      'Are you sure you want to delete this interaction record?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await followUpService.delete(fuId);
+              setHistoryList((prev) => prev.filter((entry) => entry.id !== fuId));
+              Alert.alert('Deleted', 'Follow-up interaction deleted.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Could not delete follow-up.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     if (visible && item) {
@@ -214,8 +255,15 @@ export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
             ) : (
               <View style={styles.timelineList}>
                 {historyList.map((entry, idx) => {
+                  const rawOutcome =
+                    entry.outcome ||
+                    entry.status ||
+                    entry.last_call_outcome ||
+                    entry.call_outcome;
                   const outcomeText =
-                    entry.outcome || entry.status || entry.last_call_outcome || 'Interested / Call Back';
+                    normalizeOutcome(rawOutcome) ||
+                    rawOutcome ||
+                    'Interested / Call Back';
                   const dateStr =
                     entry.follow_up_date ||
                     entry.date ||
@@ -228,7 +276,7 @@ export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
                     entry.user?.name ||
                     entry.assigned_user_name ||
                     item.rep ||
-                    'Admin User';
+                    'Unassigned';
 
                   const isDiscountReq = Boolean(
                     entry.is_discount_requested ||
@@ -272,17 +320,37 @@ export const FollowUpHistoryModal: React.FC<FollowUpHistoryModalProps> = ({
                           </Text>
                         </View>
 
-                        {/* Outcome Pill */}
-                        <View
-                          style={[
-                            styles.outcomePill,
-                            {
-                              backgroundColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
-                              borderColor: isDark ? '#D97706' : '#FDE68A',
-                            },
-                          ]}
-                        >
-                          <Text style={styles.outcomePillText}>{outcomeText}</Text>
+                        {/* Outcome Pill & Delete Button */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View
+                            style={[
+                              styles.outcomePill,
+                              {
+                                backgroundColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
+                                borderColor: isDark ? '#D97706' : '#FDE68A',
+                              },
+                            ]}
+                          >
+                            <Text style={styles.outcomePillText}>{outcomeText}</Text>
+                          </View>
+
+                          {entry.id && (
+                            <TouchableOpacity
+                              style={{
+                                width: 26,
+                                height: 26,
+                                borderRadius: 6,
+                                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              onPress={() => handleDeleteInteraction(entry.id)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              activeOpacity={0.7}
+                            >
+                              <Trash2 size={13} color="#DC2626" strokeWidth={2.2} />
+                            </TouchableOpacity>
+                          )}
                         </View>
                       </View>
 

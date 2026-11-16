@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,8 @@ import {
   Plus,
   RotateCcw,
   Search,
+  SlidersHorizontal,
+  Trash2,
   X,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,27 +30,53 @@ import { exportCsvToFile } from '../../core/utils/csvExporter';
 import { DatePickerModal } from '../leads/components/DatePickerModal';
 import { FabSpeedDial } from '../../shared';
 import { leadApi } from '../leads/leadService';
-import { CustomerLead } from '../leads/types';
+import { dealApi } from '../deals/dealService';
+import {
+  brandApi,
+  leadSourceApi,
+  leadStatusApi,
+  modelApi,
+  userApi,
+  variantApi,
+} from '../masters/masterService';
+import {
+  BrandItem,
+  CustomerLead,
+  ModelItem,
+  SourceItem,
+  StatusItem,
+  UserItem,
+  VariantItem,
+} from '../leads/types';
 import { LeadProfileModal } from '../leads/components/LeadProfileModal';
+import { FollowUpModal } from '../leads/components/FollowUpModal';
+import { SendQuotationModal } from '../leads/components/SendQuotationModal';
+import { ConvertToDealModal } from '../leads/components/ConvertToDealModal';
+import { EditProspectModal } from '../leads/components/EditProspectModal';
 import { followUpService } from './followUpService';
 import {
   CreateFollowUpPayload,
   FollowUpItem,
   FollowUpStats,
   FollowUpTab,
+  isValidFollowUpOutcome,
+  normalizeOutcome,
 } from './types';
-import { FollowUpKpiDeck } from './components/FollowUpKpiDeck';
+import { FollowUpStatusDeck } from './components/FollowUpStatusDeck';
+import { FollowUpsFilterModal } from './components/FollowUpsFilterModal';
 import { FollowUpCard } from './components/FollowUpCard';
 import { LogCallModal } from './components/LogCallModal';
 import { FollowUpActionsModal } from './components/FollowUpActionsModal';
 import { FollowUpHistoryModal } from './components/FollowUpHistoryModal';
 
 interface FollowUpScreenProps {
+  navigation?: any;
   onOpenDrawer?: () => void;
   onNavigateToQuotation?: (leadId?: number) => void;
 }
 
 export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
+  navigation,
   onOpenDrawer,
   onNavigateToQuotation,
 }) => {
@@ -69,10 +97,12 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
 
   // Filters & Tabs
   const [activeTab, setActiveTab] = useState<FollowUpTab>('all');
+  const [selectedOutcome, setSelectedOutcome] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [showDateFilters, setShowDateFilters] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [isTrashView, setIsTrashView] = useState(false);
   const [datePickerTarget, setDatePickerTarget] = useState<'from' | 'to' | null>(null);
 
   // Modals
@@ -87,6 +117,114 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [activeProfileLead, setActiveProfileLead] = useState<CustomerLead | null>(null);
+
+  // Modals for actions inside LeadProfileModal
+  const [dealModalVisible, setDealModalVisible] = useState(false);
+  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(null);
+
+  const [leadFollowUpModalVisible, setLeadFollowUpModalVisible] = useState(false);
+  const [activeLeadForFollowUp, setActiveLeadForFollowUp] = useState<CustomerLead | null>(null);
+
+  const [quotationModalVisible, setQuotationModalVisible] = useState(false);
+  const [activeQuotationLead, setActiveQuotationLead] = useState<CustomerLead | null>(null);
+
+  const [editLeadModalVisible, setEditLeadModalVisible] = useState(false);
+  const [editingLead, setEditingLead] = useState<CustomerLead | null>(null);
+
+  const [brandsList, setBrandsList] = useState<BrandItem[]>([]);
+  const [modelsList, setModelsList] = useState<ModelItem[]>([]);
+  const [variantsList, setVariantsList] = useState<VariantItem[]>([]);
+  const [sourcesList, setSourcesList] = useState<SourceItem[]>([]);
+  const [statusesList, setStatusesList] = useState<StatusItem[]>([]);
+  const [usersList, setUsersList] = useState<UserItem[]>([]);
+
+  // Fetch masters for in-modal quotation and edit lead
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const [bRes, mRes, vRes, sRes, stRes, uRes] = await Promise.allSettled([
+          brandApi.getAll({ per_page: 100 }),
+          modelApi.getAll({ per_page: 100 }),
+          variantApi.getAll({ per_page: 100 }),
+          leadSourceApi.getAll(),
+          leadStatusApi.getAll(),
+          userApi.getAll(),
+        ]);
+        if (bRes.status === 'fulfilled') {
+          const val: any = bRes.value;
+          setBrandsList(Array.isArray(val?.data) ? val.data : val?.data?.data || []);
+        }
+        if (mRes.status === 'fulfilled') {
+          const val: any = mRes.value;
+          setModelsList(Array.isArray(val?.data) ? val.data : val?.data?.data || []);
+        }
+        if (vRes.status === 'fulfilled') {
+          const val: any = vRes.value;
+          setVariantsList(Array.isArray(val?.data) ? val.data : val?.data?.data || []);
+        }
+        if (sRes.status === 'fulfilled') {
+          const val: any = sRes.value;
+          setSourcesList(Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
+        }
+        if (stRes.status === 'fulfilled') {
+          const val: any = stRes.value;
+          setStatusesList(Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
+        }
+        if (uRes.status === 'fulfilled') {
+          const val: any = uRes.value;
+          setUsersList(Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
+        }
+      } catch (e) {
+        console.log('Error fetching masters in FollowUpScreen:', e);
+      }
+    };
+    fetchMasters();
+  }, []);
+
+  // Synchronize history counts
+  const handleHistoryCountFetched = useCallback((leadId: number, count: number) => {
+    setHistoryCounts((prev) => ({ ...prev, [leadId]: count }));
+    setItems((prev) =>
+      prev.map((it) => (it.lead_id === leadId ? { ...it, calls_count: count } : it))
+    );
+  }, []);
+
+  // Calculate live counts for the 8 Status Cards
+  const outcomeCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: items.length,
+      'Interested / Call Back': 0,
+      'Quotation Requested': 0,
+      'Quotation Sent': 0,
+      'Price Negotiation': 0,
+      'Not Reachable / Busy': 0,
+      'Deal Won': 0,
+      'Lost to Competitor': 0,
+    };
+
+    items.forEach((item) => {
+      const canonical = normalizeOutcome(item.status);
+      if (canonical && counts[canonical] !== undefined) {
+        counts[canonical] += 1;
+      }
+    });
+
+    return counts;
+  }, [items]);
+
+  // Filter items by selected call outcome
+  const displayedItems = useMemo(() => {
+    if (selectedOutcome === 'all') return items;
+    return items.filter(
+      (item) => normalizeOutcome(item.status) === selectedOutcome
+    );
+  }, [items, selectedOutcome]);
+
+  // Active filters count for badge
+  const activeFiltersCount =
+    (activeTab !== 'all' ? 1 : 0) +
+    (selectedOutcome !== 'all' ? 1 : 0) +
+    (startDate || endDate ? 1 : 0);
 
   // Fetch Leads for Dropdown Selection
   const loadLeads = useCallback(async () => {
@@ -110,6 +248,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         from_date: startDate || undefined,
         to_date: endDate || undefined,
         per_page: 50,
+        status: isTrashView ? 'deleted' : undefined,
       });
 
       setItems(res.data);
@@ -122,7 +261,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTab, searchTerm, startDate, endDate]);
+  }, [activeTab, searchTerm, startDate, endDate, isTrashView]);
 
   useEffect(() => {
     loadLeads();
@@ -201,13 +340,13 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
           id: item.lead_id || item.id,
           name: item.customer_name,
           phone: item.phone,
-          city: item.city || 'Surendranagar',
+          city: item.city || '',
           vehicle_segment: '4 Wheeler',
-          model_variant: item.vehicle || 'CSD Entitlement',
-          brand_name: item.brand_name || 'Maruti Suzuki',
+          model_variant: item.vehicle || '',
+          brand_name: item.brand_name || '',
           priority: item.priority || 'Hot',
           status_name: item.status,
-          assigned_user_name: item.rep || 'Admin User (Super Admin)',
+          assigned_user_name: item.rep || '',
           notes: item.notes,
         };
         setActiveProfileLead(syntheticLead);
@@ -231,6 +370,30 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     },
     [onNavigateToQuotation]
   );
+
+  const handleRestoreFollowUp = useCallback(async (item: FollowUpItem) => {
+    triggerHaptic('notificationWarning');
+    Alert.alert(
+      'Restore Follow-Up',
+      `Are you sure you want to restore the follow-up record for ${item.customer_name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'default',
+          onPress: async () => {
+            try {
+              await followUpService.restore(item.id);
+              setItems((prev) => prev.filter((i) => i.id !== item.id));
+              Alert.alert('Restored', 'Follow-up interaction restored successfully.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to restore follow-up.');
+            }
+          },
+        },
+      ]
+    );
+  }, []);
 
   const handleSaveCallInteraction = async (payload: CreateFollowUpPayload) => {
     try {
@@ -267,6 +430,62 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     });
   };
 
+  // Handlers for action buttons inside LeadProfileModal (View Details)
+  const handleConvertToDeal = async (dealData: any) => {
+    try {
+      await dealApi.create(dealData);
+      setDealModalVisible(false);
+      Alert.alert('Deal Created!', 'Lead converted to deal dossier successfully.');
+      loadFollowUps();
+    } catch (err: any) {
+      Alert.alert(
+        'Conversion Failed',
+        err?.response?.data?.message || err?.message || 'Failed to convert lead to deal.'
+      );
+    }
+  };
+
+  const handleSaveFollowUpForLead = async (leadId: number, followUpData: any) => {
+    try {
+      await leadApi.addFollowUp(leadId, followUpData);
+      setLeadFollowUpModalVisible(false);
+      Alert.alert('Logged', 'Follow-up interaction logged successfully.');
+      loadFollowUps();
+    } catch (err: any) {
+      Alert.alert(
+        'Follow-Up Error',
+        err?.response?.data?.message || err?.message || 'Failed to log follow-up.'
+      );
+    }
+  };
+
+  const handleSendQuotationForLead = (lead: CustomerLead) => {
+    setProfileModalVisible(false);
+    if (onNavigateToQuotation) {
+      onNavigateToQuotation(lead.id);
+    } else if (navigation) {
+      (navigation as any).navigate('send-quotation', { leadId: lead.id });
+    } else {
+      setActiveQuotationLead(lead);
+      setQuotationModalVisible(true);
+    }
+  };
+
+  const handleSaveEditedLead = async (formData: any) => {
+    if (!editingLead?.id) return;
+    try {
+      await leadApi.update(editingLead.id, formData);
+      setEditLeadModalVisible(false);
+      Alert.alert('Success', 'Lead details updated successfully.');
+      loadFollowUps();
+    } catch (err: any) {
+      Alert.alert(
+        'Update Failed',
+        err?.response?.data?.message || err?.message || 'Failed to update lead.'
+      );
+    }
+  };
+
   const tabs: { id: FollowUpTab; label: string; count: number }[] = [
     { id: 'all', label: 'All Follow-ups', count: stats.total },
     { id: 'overdue', label: 'Overdue', count: stats.overdue },
@@ -282,18 +501,26 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
       ]}
     >
       <FlatList
-        data={items}
+        data={displayedItems}
         keyExtractor={(item) => `followup-${item.id}`}
-        renderItem={({ item }) => (
-          <FollowUpCard
-            item={item}
-            onCall={handleCall}
-            onLogNext={handleOpenLogNext}
-            onSendQuotation={handleSendQuotation}
-            onViewProfile={handleViewProfile}
-            onOpenActions={handleOpenActions}
-          />
-        )}
+        renderItem={({ item }) => {
+          const syncCount =
+            historyCounts[item.lead_id || item.id] || item.calls_count || 1;
+          const enhancedItem = { ...item, calls_count: syncCount };
+          return (
+            <FollowUpCard
+              item={enhancedItem}
+              isTrashView={isTrashView}
+              onRestore={handleRestoreFollowUp}
+              onCall={handleCall}
+              onLogNext={handleOpenLogNext}
+              onSendQuotation={handleSendQuotation}
+              onViewProfile={handleViewProfile}
+              onOpenActions={handleOpenActions}
+              onOpenHistory={handleOpenHistory}
+            />
+          );
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -307,13 +534,11 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         }}
         ListHeaderComponent={
           <>
-            {/* 2. KPI Summary Deck */}
-            <FollowUpKpiDeck
-              stats={stats}
-              activeTab={activeTab}
-              onSelectTab={(tab) => {
-                setActiveTab(tab);
-              }}
+            {/* 2. 8 Status Cards Deck */}
+            <FollowUpStatusDeck
+              counts={outcomeCounts}
+              selectedStatus={selectedOutcome}
+              onSelectStatus={(status) => setSelectedOutcome(status)}
             />
 
             {/* 3. Search & Filter Bar */}
@@ -357,237 +582,230 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                   ) : null}
                 </View>
 
-                {/* Date Filter Toggle */}
+                {/* Leads-Style Filter Trigger Button */}
                 <TouchableOpacity
                   style={[
-                    styles.dateToggleBtn,
+                    styles.filterTriggerBtn,
                     {
                       backgroundColor:
-                        startDate || endDate || showDateFilters
-                          ? isDark
-                            ? 'rgba(88, 99, 42, 0.25)'
-                            : '#F5F8EE'
+                        activeFiltersCount > 0
+                          ? colors.primary
                           : isDark
                           ? '#101726'
                           : '#FFFFFF',
                       borderColor:
-                        startDate || endDate
-                          ? colors.primary
+                        activeFiltersCount > 0
+                          ? colors.primaryDark
                           : isDark
                           ? '#1E293B'
                           : '#CBD5E1',
                     },
                   ]}
-                  onPress={() => { triggerHaptic('selection'); setShowDateFilters(!showDateFilters); }}
-                  activeOpacity={0.7}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setFilterModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
                 >
-                  <Calendar
+                  <SlidersHorizontal
                     size={14}
-                    color={startDate || endDate ? colors.primary : colors.textPrimary}
-                    strokeWidth={2}
+                    color={activeFiltersCount > 0 ? '#FFFFFF' : colors.textPrimary}
+                    strokeWidth={2.2}
+                  />
+                  <Text
+                    style={[
+                      styles.filterTriggerText,
+                      {
+                        color:
+                          activeFiltersCount > 0
+                            ? '#FFFFFF'
+                            : colors.textPrimary,
+                        marginLeft: 5,
+                      },
+                    ]}
+                  >
+                    {activeFiltersCount > 0
+                      ? `Filter (${activeFiltersCount})`
+                      : 'Filter'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Trash View Toggle Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.trashTriggerBtn,
+                    {
+                      backgroundColor: isTrashView
+                        ? '#EF4444'
+                        : isDark
+                        ? '#101726'
+                        : '#FFFFFF',
+                      borderColor: isTrashView
+                        ? '#DC2626'
+                        : isDark
+                        ? '#1E293B'
+                        : '#CBD5E1',
+                    },
+                  ]}
+                  onPress={() => {
+                    triggerHaptic('impactMedium');
+                    setIsTrashView(!isTrashView);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Trash2
+                    size={15}
+                    color={isTrashView ? '#FFFFFF' : '#EF4444'}
+                    strokeWidth={2.2}
                   />
                 </TouchableOpacity>
               </View>
 
-              
-              {/* Active Date Filter Chip */}
-              {(startDate || endDate) && (
-                <View style={styles.activeDateChipRow}>
-                  <View style={[styles.activeDateChip, { backgroundColor: isDark ? 'rgba(88, 99, 42, 0.25)' : '#F5F8EE', borderColor: colors.primary }]}>
-                    <Calendar size={12} color={colors.primary} />
-                    <Text style={[styles.activeDateText, { color: colors.primary }]}>
-                      Filtered: {startDate} {endDate && endDate !== startDate ? 'to ' + endDate : ''}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        triggerHaptic('selection');
-                        setStartDate('');
-                        setEndDate('');
-                      }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <X size={12} color={colors.primary} strokeWidth={2.5} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {/* Collapsible Date Range Picker */}
-              {showDateFilters && (
+              {/* Trash Mode Banner */}
+              {isTrashView && (
                 <View
                   style={[
-                    styles.dateRangeBox,
+                    styles.trashBanner,
                     {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                      borderColor: isDark ? '#1E293B' : '#E2E8F0',
+                      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                      borderColor: '#EF4444',
                     },
                   ]}
                 >
-                  <View style={styles.dateInputsRow}>
-                    <View style={styles.dateCol}>
-                      <Text
-                        style={[
-                          styles.dateLabel,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        FROM DATE
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.datePickerBtn,
-                          {
-                            backgroundColor: isDark ? '#162030' : '#F8FAFC',
-                            borderColor: startDate ? colors.primary : isDark ? '#1E293B' : '#CBD5E1',
-                          },
-                        ]}
-                        onPress={() => {
-                          triggerHaptic('selection');
-                          setDatePickerTarget('from');
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.datePickerBtnText,
-                            { color: startDate ? colors.textPrimary : colors.textMuted },
-                          ]}
-                        >
-                          {startDate || 'Select Date'}
-                        </Text>
-                        <Calendar size={13} color={startDate ? colors.primary : colors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.dateCol}>
-                      <Text
-                        style={[
-                          styles.dateLabel,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        TO DATE
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.datePickerBtn,
-                          {
-                            backgroundColor: isDark ? '#162030' : '#F8FAFC',
-                            borderColor: endDate ? colors.primary : isDark ? '#1E293B' : '#CBD5E1',
-                          },
-                        ]}
-                        onPress={() => {
-                          triggerHaptic('selection');
-                          setDatePickerTarget('to');
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.datePickerBtnText,
-                            { color: endDate ? colors.textPrimary : colors.textMuted },
-                          ]}
-                        >
-                          {endDate || 'Select Date'}
-                        </Text>
-                        <Calendar size={13} color={endDate ? colors.primary : colors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                    <Trash2 size={14} color="#DC2626" strokeWidth={2.4} />
+                    <Text style={styles.trashBannerText}>
+                      Trash Folder — Viewing Deleted Follow-Ups
+                    </Text>
                   </View>
-
-                  {(startDate || endDate) && (
-                    <TouchableOpacity
-                      style={styles.clearDatesBtn}
-                      onPress={() => {
-                        setStartDate('');
-                        setEndDate('');
-                      }}
-                    >
-                      <RotateCcw size={11} color={colors.primary} />
-                      <Text
-                        style={[styles.clearDatesText, { color: colors.primary }]}
-                      >
-                        Reset Date Filters
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setIsTrashView(false);
+                    }}
+                    style={styles.exitTrashBtn}
+                  >
+                    <Text style={styles.exitTrashBtnText}>Exit Trash</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
-              {/* 4. Tab Selector Pills */}
-              <View style={styles.tabsRow}>
-                {tabs.map((t) => {
-                  const isActive = activeTab === t.id;
-                  return (
-                    <TouchableOpacity
-                      key={t.id}
+              {/* Active Filter Chips */}
+              {activeFiltersCount > 0 && (
+                <View style={styles.activeFilterChipsRow}>
+                  {selectedOutcome !== 'all' && (
+                    <View
                       style={[
-                        styles.tabPill,
+                        styles.activeFilterChip,
                         {
-                          backgroundColor: isActive
-                            ? colors.primary
-                            : isDark
-                            ? '#101726'
-                            : '#FFFFFF',
-                          borderColor: isActive
-                            ? colors.primaryDark
-                            : isDark
-                            ? '#1E293B'
-                            : '#CBD5E1',
+                          backgroundColor: isDark
+                            ? 'rgba(88, 99, 42, 0.25)'
+                            : '#F5F8EE',
+                          borderColor: colors.primary,
                         },
                       ]}
-                      onPress={() => {
-                        triggerHaptic('selection');
-                        setActiveTab(t.id);
-                      }}
-                      activeOpacity={0.7}
                     >
                       <Text
                         style={[
-                          styles.tabText,
-                          {
-                            color: isActive
-                              ? '#FFFFFF'
-                              : isDark
-                              ? '#CBD5E1'
-                              : '#475569',
-                            fontWeight: isActive ? '800' : '600',
-                          },
+                          styles.activeFilterChipText,
+                          { color: colors.primary },
                         ]}
                       >
-                        {t.label}
+                        Status: {selectedOutcome}
                       </Text>
-                      <View
+                      <TouchableOpacity
+                        onPress={() => setSelectedOutcome('all')}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <X size={12} color={colors.primary} strokeWidth={2.5} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {activeTab !== 'all' && (
+                    <View
+                      style={[
+                        styles.activeFilterChip,
+                        {
+                          backgroundColor: isDark
+                            ? 'rgba(88, 99, 42, 0.25)'
+                            : '#F5F8EE',
+                          borderColor: colors.primary,
+                        },
+                      ]}
+                    >
+                      <Text
                         style={[
-                          styles.countBadge,
-                          {
-                            backgroundColor: isActive
-                              ? '#FFFFFF'
-                              : isDark
-                              ? '#1E293B'
-                              : '#F1F5F9',
-                          },
+                          styles.activeFilterChipText,
+                          { color: colors.primary },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.countBadgeText,
-                            {
-                              color: isActive
-                                ? colors.primaryDark
-                                : isDark
-                                ? '#CBD5E1'
-                                : '#64748B',
-                            },
-                          ]}
-                        >
-                          {t.count}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                        Due: {activeTab.toUpperCase()}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setActiveTab('all')}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <X size={12} color={colors.primary} strokeWidth={2.5} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {(startDate || endDate) && (
+                    <View
+                      style={[
+                        styles.activeFilterChip,
+                        {
+                          backgroundColor: isDark
+                            ? 'rgba(88, 99, 42, 0.25)'
+                            : '#F5F8EE',
+                          borderColor: colors.primary,
+                        },
+                      ]}
+                    >
+                      <Calendar size={11} color={colors.primary} />
+                      <Text
+                        style={[
+                          styles.activeFilterChipText,
+                          { color: colors.primary },
+                        ]}
+                      >
+                        {startDate} {endDate && endDate !== startDate ? `to ${endDate}` : ''}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setStartDate('');
+                          setEndDate('');
+                        }}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <X size={12} color={colors.primary} strokeWidth={2.5} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      triggerHaptic('impactLight');
+                      setSelectedOutcome('all');
+                      setActiveTab('all');
+                      setStartDate('');
+                      setEndDate('');
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={styles.clearAllFilterBtn}
+                  >
+                    <Text
+                      style={[
+                        styles.clearAllFilterText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Reset
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </>
         }
@@ -662,6 +880,32 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
           setHistoryModalVisible(false);
           handleOpenLogNext(item);
         }}
+        onHistoryCountFetched={handleHistoryCountFetched}
+      />
+
+      <FollowUpsFilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        selectedOutcome={selectedOutcome}
+        setSelectedOutcome={setSelectedOutcome}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        timingStats={stats}
+        outcomeCounts={outcomeCounts}
+        activeFiltersCount={activeFiltersCount}
+        onReset={() => {
+          setActiveTab('all');
+          setSelectedOutcome('all');
+          setStartDate('');
+          setEndDate('');
+        }}
+        onApply={() => {
+          setFilterModalVisible(false);
+        }}
       />
 
       <LeadProfileModal
@@ -669,13 +913,64 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         lead={activeProfileLead}
         onClose={() => setProfileModalVisible(false)}
         onCall={handleCall}
-        onConvertToDeal={() => {
+        onConvertToDeal={(ld) => {
           setProfileModalVisible(false);
-          Alert.alert(
-            'Convert to Deal',
-            'To convert this lead into an official deal dossier, open the Leads Pipeline workbench.'
-          );
+          setActiveDealLead(ld);
+          setDealModalVisible(true);
         }}
+        onLogFollowUp={(ld) => {
+          setProfileModalVisible(false);
+          setActiveLeadForFollowUp(ld);
+          setLeadFollowUpModalVisible(true);
+        }}
+        onSendQuotation={(ld) => {
+          handleSendQuotationForLead(ld);
+        }}
+        onEditLead={(ld) => {
+          setProfileModalVisible(false);
+          setEditingLead(ld);
+          setEditLeadModalVisible(true);
+        }}
+      />
+
+      <EditProspectModal
+        visible={editLeadModalVisible}
+        lead={editingLead}
+        brands={brandsList}
+        models={modelsList}
+        variants={variantsList}
+        sources={sourcesList}
+        statuses={statusesList}
+        users={usersList}
+        onClose={() => setEditLeadModalVisible(false)}
+        onSubmit={handleSaveEditedLead}
+      />
+
+      <FollowUpModal
+        visible={leadFollowUpModalVisible}
+        lead={activeLeadForFollowUp}
+        onClose={() => setLeadFollowUpModalVisible(false)}
+        onSubmit={handleSaveFollowUpForLead}
+      />
+
+      <SendQuotationModal
+        visible={quotationModalVisible}
+        lead={activeQuotationLead}
+        brands={brandsList}
+        models={modelsList}
+        variants={variantsList}
+        onClose={() => setQuotationModalVisible(false)}
+        onSuccess={() => {
+          setQuotationModalVisible(false);
+          loadFollowUps();
+        }}
+      />
+
+      <ConvertToDealModal
+        visible={dealModalVisible}
+        lead={activeDealLead}
+        onClose={() => setDealModalVisible(false)}
+        onSubmit={handleConvertToDeal}
       />
 
       {/* Material 3 Expressive FAB Menu */}
@@ -785,6 +1080,50 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '500',
     height: '100%',
+  },
+  filterTriggerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 4,
+  },
+  filterTriggerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    includeFontPadding: false,
+  },
+  activeFilterChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  activeFilterChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  clearAllFilterBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  clearAllFilterText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   activeDateChipRow: {
     marginHorizontal: 16,
@@ -902,5 +1241,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  trashTriggerBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    width: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  trashBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  trashBannerText: {
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  exitTrashBtn: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  exitTrashBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

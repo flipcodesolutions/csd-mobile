@@ -206,20 +206,20 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                 </View>
               </View>
 
-              {/* Row 8: Warranty */}
+              {/* Row 8: Warranty (Tenure) */}
               <View style={styles.tableRow}>
                 <View style={[styles.cell, styles.colLeft]}>
-                  <Text style={styles.rowLabel}>WARRANTY</Text>
+                  <Text style={styles.rowLabel}>WARRANTY (TENURE)</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{b.warranty ? formatInr(b.warranty) : '-'}</Text>
+                  <Text style={styles.rowValue}>{b.warranty || '-'}</Text>
                 </View>
               </View>
 
               {/* Row 9: M.S Reward / Discount */}
               <View style={styles.tableRow}>
                 <View style={[styles.cell, styles.colLeft]}>
-                  <Text style={styles.rowLabel}>M.S REWORD</Text>
+                  <Text style={styles.rowLabel}>M.S REWORD (DISC)</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
                   <Text
@@ -243,10 +243,10 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                 </View>
               </View>
 
-              {/* Row 11: Estimated On-Road Price */}
+              {/* Row 11: Estimated Total Price */}
               <View style={[styles.tableRow, styles.grandTotalRow]}>
                 <View style={[styles.cell, styles.colLeft, styles.grandTotalCell]}>
-                  <Text style={styles.grandTotalLabel}>ESTIMATED ON-ROAD PRICE</Text>
+                  <Text style={styles.grandTotalLabel}>ESTIMATED TOTAL (NET AFTER DISC)</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight, styles.grandTotalCell]}>
                   <Text style={styles.grandTotalValue}>{formatInr(data.grandTotal)}</Text>
@@ -258,10 +258,10 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
             <View style={styles.sheetFooter}>
               <View style={styles.execSection}>
                 <Text style={styles.execLine}>
-                  Executive: <Text style={styles.execName}>{data.executiveName || 'ADMIN USER'}</Text>
+                  Executive: <Text style={styles.execName}>{data.executiveName || '-'}</Text>
                 </Text>
                 <Text style={styles.execContact}>
-                  Contact: {data.executivePhone || '+91 98000 11112'}
+                  Contact: {data.executivePhone || '-'}
                 </Text>
                 <Text style={styles.disclaimerText}>
                   * Prices prevailing at the time of delivery will be applicable. Road tax as per RTO norms.
