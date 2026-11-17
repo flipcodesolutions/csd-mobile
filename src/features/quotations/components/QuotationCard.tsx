@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import {
   Calendar,
+  CheckCircle2,
   ChevronRight,
   Download,
   Eye,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Quotation } from '../types';
+import { leadApi } from '../../leads/leadService';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
 import { showErrorToast } from '../../../core/utils/toast';
@@ -28,7 +30,8 @@ interface QuotationCardProps {
   onDownload: (quotation: Quotation) => void;
   onDelete?: (quotation: Quotation) => void;
   onRestore?: (quotation: Quotation) => void;
-  onSelectLead?: (leadId: number) => void;
+  onSelectLead?: (leadId: number, quotation: Quotation) => void;
+  onConvertToDeal?: (quotation: Quotation) => void;
 }
 
 export const QuotationCard: React.FC<QuotationCardProps> = ({
@@ -39,6 +42,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
   onDelete,
   onRestore,
   onSelectLead,
+  onConvertToDeal,
 }) => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
@@ -75,17 +79,45 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
   );
   const leadId = quotation.lead_id || (quotation as any).lead?.id;
 
-  // Task 3: Open Lead Detail Screen on Customer Name Click
-  const handleCustomerPress = () => {
+  // Task 1: Open Lead Detail Screen on Customer Name Click
+  const handleCustomerPress = async () => {
     triggerHaptic();
-    if (leadId) {
-      if (onSelectLead) {
-        onSelectLead(Number(leadId));
-      } else {
-        navigation.navigate('LeadDetail', { leadId: Number(leadId) });
+    let targetLeadId =
+      leadId ||
+      (quotation as any).leadId ||
+      (quotation as any).customer_id;
+
+    if (!targetLeadId && (quotation.customer_phone || quotation.customer_name)) {
+      try {
+        const phone = quotation.customer_phone?.replace(/[^\d]/g, '');
+        const res = await leadApi.getAll({
+          search: phone || quotation.customer_name,
+          per_page: 5,
+        });
+        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        const matched = items.find(
+          (l: any) =>
+            (phone && l.phone && String(l.phone).includes(phone)) ||
+            (l.name && l.name.toLowerCase() === quotation.customer_name?.toLowerCase())
+        );
+        if (matched?.id) {
+          targetLeadId = matched.id;
+        }
+      } catch (e) {
+        console.log('Error looking up lead for quotation customer:', e);
       }
+    }
+
+    const finalLeadId = Number(targetLeadId || quotation.lead_id || quotation.id);
+    if (onSelectLead) {
+      onSelectLead(finalLeadId, quotation);
     } else {
-      showErrorToast('No Lead Linked', 'No linked lead record found for this quotation.');
+      const parentNav = navigation.getParent?.();
+      if (parentNav) {
+        parentNav.navigate('LeadDetail', { leadId: finalLeadId });
+      } else {
+        navigation.navigate('LeadDetail', { leadId: finalLeadId });
+      }
     }
   };
 
@@ -99,13 +131,21 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
         },
       ]}
     >
-      {/* Header Row: Quote No & Status */}
+      {/* Header Row: Quote No (Click to Open View Modal) & Status */}
       <View style={styles.headerRow}>
-        <View style={styles.quoteNoBox}>
+        <TouchableOpacity
+          style={styles.quoteNoBox}
+          onPress={() => {
+            triggerHaptic();
+            onView(quotation);
+          }}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Text style={[styles.quoteNo, { color: isDark ? '#60A5FA' : '#1E3A8A' }]}>
             {quotation.quotation_number || `QT-${quotation.id}`}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={[styles.badge, { backgroundColor: statusBadge.bg }]}>
           <Text style={[styles.badgeText, { color: statusBadge.text }]}>
@@ -114,11 +154,12 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
         </View>
       </View>
 
-      {/* Customer Info (Task 3: Click to open Lead Detail) */}
+      {/* Customer Info (Click to open Lead Detail) */}
       <TouchableOpacity
         style={styles.customerRow}
         onPress={handleCustomerPress}
         activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <User size={15} color={isDark ? '#60A5FA' : '#1E3A8A'} />
         <Text
@@ -126,15 +167,13 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
             styles.customerName,
             {
               color: isDark ? '#60A5FA' : '#1E3A8A',
-              textDecorationLine: leadId ? 'underline' : 'none',
+              textDecorationLine: 'underline',
             },
           ]}
         >
           {quotation.customer_name || 'Walk-in Customer'}
         </Text>
-        {leadId ? (
-          <ChevronRight size={14} color={isDark ? '#60A5FA' : '#1E3A8A'} strokeWidth={2.5} />
-        ) : null}
+        <ChevronRight size={14} color={isDark ? '#60A5FA' : '#1E3A8A'} strokeWidth={2.5} />
       </TouchableOpacity>
 
       {quotation.customer_phone ? (
@@ -194,6 +233,19 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
           <Download size={16} color="#059669" />
           <Text style={[styles.actionBtnText, { color: '#059669' }]}>PDF</Text>
         </TouchableOpacity>
+
+        {!isTrashView && onConvertToDeal && (
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => onConvertToDeal(quotation)}
+            activeOpacity={0.7}
+          >
+            <CheckCircle2 size={16} color="#EE6800" />
+            <Text style={[styles.actionBtnText, { color: '#EE6800', fontWeight: '800' }]}>
+              Convert to Deal
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {isTrashView && onRestore && (
           <TouchableOpacity

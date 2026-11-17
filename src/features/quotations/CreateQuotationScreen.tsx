@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  ArrowLeftRight,
   Building2,
   Calendar,
   Car,
@@ -102,6 +103,10 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
   const [modelsList, setModelsList] = useState<any[]>([]);
   const [variantsList, setVariantsList] = useState<any[]>([]);
 
+  // Task 2: Comparable & Alternative Models Catalog
+  const [allVariantsCatalog, setAllVariantsCatalog] = useState<any[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
   // Picker Modal State (matching CreateLeadScreen pattern)
   const [pickerType, setPickerType] = useState<'lead' | 'brand' | 'model' | 'variant' | null>(null);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -129,6 +134,7 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     loadLoggedInUser();
     loadBrands();
     loadLeads();
+    loadVariantsCatalog();
   }, []);
 
   // When prefilledLeadId is provided, auto-load that lead
@@ -167,6 +173,21 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
       setLeadsList(Array.isArray(items) ? items : []);
     } catch (err) {
       console.log('Error loading leads:', err);
+    }
+  };
+
+  const loadVariantsCatalog = async () => {
+    try {
+      setCatalogLoading(true);
+      const res = await variantApi.getAll({ per_page: 250 });
+      const items = res?.data?.data || res?.data || [];
+      if (Array.isArray(items) && items.length > 0) {
+        setAllVariantsCatalog(items);
+      }
+    } catch (err) {
+      console.log('Error loading variants catalog:', err);
+    } finally {
+      setCatalogLoading(false);
     }
   };
 
@@ -209,6 +230,26 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     };
     fetchVariants();
   }, [selectedModel]);
+
+  // Sync model-specific variants into overall catalog
+  useEffect(() => {
+    if (variantsList.length > 0) {
+      setAllVariantsCatalog((prev) => {
+        const map = new Map<number, any>();
+        prev.forEach((item) => map.set(item.id, item));
+        variantsList.forEach((item) => {
+          map.set(item.id, {
+            ...item,
+            brand_name: selectedBrand?.name || item.brand_name,
+            brand_id: selectedBrand?.id || item.brand_id,
+            model_name: selectedModel?.name || item.model_name,
+            model_id: selectedModel?.id || item.model_id,
+          });
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [variantsList, selectedBrand, selectedModel]);
 
   // When variant changes, auto-populate CSD price and Sheet titles
   useEffect(() => {
@@ -336,6 +377,121 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
   const formatInr = (val: number | string) => {
     const num = typeof val === 'number' ? val : parseNum(val);
     return '₹' + num.toLocaleString('en-IN');
+  };
+
+  // Task 2: Comparable & Alternative Models Logic (± ₹1,00,000 Range)
+  const getVariantPrice = useCallback((v: any): number => {
+    if (!v) return 0;
+    const raw = v.price || v.csd_base_price || v.csd_price || v.ex_showroom_price || 0;
+    return typeof raw === 'number' ? raw : parseNum(raw);
+  }, []);
+
+  const currentVariantPrice = useMemo(() => {
+    const fromBreakdown = parseNum(breakdown.csdPrice);
+    if (fromBreakdown > 0) return fromBreakdown;
+    if (selectedVariant?.price) return Number(selectedVariant.price);
+    return 0;
+  }, [breakdown.csdPrice, selectedVariant]);
+
+  const minPrice = useMemo(
+    () => Math.max(0, currentVariantPrice - 100000),
+    [currentVariantPrice]
+  );
+  const maxPrice = useMemo(
+    () => currentVariantPrice + 100000,
+    [currentVariantPrice]
+  );
+
+  const comparableVariants = useMemo(() => {
+    if (currentVariantPrice <= 0) return [];
+
+    const matches: any[] = [];
+    const seenIds = new Set<number>();
+
+    // 1. Current Match First
+    if (selectedVariant) {
+      matches.push({
+        id: selectedVariant.id,
+        name: selectedVariant.name,
+        price: currentVariantPrice,
+        brand_name: selectedBrand?.name || sheetCarTitle || 'VEHICLE',
+        model_name: selectedModel?.name || 'Standard',
+        isCurrent: true,
+      });
+      if (selectedVariant.id) seenIds.add(selectedVariant.id);
+    }
+
+    // 2. Matching Alternatives in [minPrice, maxPrice]
+    allVariantsCatalog.forEach((item) => {
+      if (seenIds.has(item.id)) return;
+      const p = getVariantPrice(item);
+      if (p >= minPrice && p <= maxPrice) {
+        seenIds.add(item.id);
+        matches.push({
+          ...item,
+          price: p,
+          brand_name:
+            item.brand_name ||
+            item.brand?.name ||
+            item.model?.brand?.name ||
+            selectedBrand?.name ||
+            'VEHICLE',
+          model_name:
+            item.model_name ||
+            item.model?.name ||
+            selectedModel?.name ||
+            'Standard',
+          isCurrent: false,
+        });
+      }
+    });
+
+    return matches;
+  }, [
+    currentVariantPrice,
+    minPrice,
+    maxPrice,
+    selectedVariant,
+    selectedBrand,
+    selectedModel,
+    sheetCarTitle,
+    allVariantsCatalog,
+    getVariantPrice,
+  ]);
+
+  const handleSelectAlternativeVariant = (altVariant: any) => {
+    triggerHaptic();
+    const altPrice = getVariantPrice(altVariant);
+
+    setSelectedVariant({
+      id: altVariant.id,
+      name: altVariant.name,
+      price: altPrice,
+    });
+    setSheetModelTitle(altVariant.name);
+
+    if (altPrice > 0) {
+      setBreakdown((prev) => ({ ...prev, csdPrice: String(altPrice) }));
+    }
+
+    const mId = altVariant.model_id || altVariant.model?.id;
+    const mName = altVariant.model_name || altVariant.model?.name;
+    if (mId && mName) {
+      setSelectedModel({ id: mId, name: mName });
+    }
+
+    const bId = altVariant.brand_id || altVariant.brand?.id || altVariant.model?.brand_id;
+    const bName =
+      altVariant.brand_name || altVariant.brand?.name || altVariant.model?.brand?.name;
+    if (bId && bName) {
+      setSelectedBrand({ id: bId, name: bName });
+      setSheetCarTitle(bName);
+    }
+
+    showSuccessToast(
+      'Variant Switched',
+      `${altVariant.name} (${formatInr(altPrice)}) selected for quotation.`
+    );
   };
 
   const handleResetSheet = () => {
@@ -489,6 +645,32 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
           discount: 0,
           tax: 0,
           total: parseNum(breakdown.diffAmtCash),
+        });
+      }
+
+      if (breakdown.warranty && breakdown.warranty.trim() !== '') {
+        items.push({
+          item_name: 'WARRANTY',
+          description: 'Warranty tenure',
+          quantity: 1,
+          unit_price: parseNum(breakdown.warranty),
+          price: parseNum(breakdown.warranty),
+          discount: 0,
+          tax: 0,
+          total: parseNum(breakdown.warranty),
+        });
+      }
+
+      if (parseNum(breakdown.msReward || (breakdown as any).msReword) > 0) {
+        items.push({
+          item_name: 'M.S REWORD',
+          description: 'M.S Reward / Discount',
+          quantity: 1,
+          unit_price: parseNum(breakdown.msReward || (breakdown as any).msReword),
+          price: parseNum(breakdown.msReward || (breakdown as any).msReword),
+          discount: 0,
+          tax: 0,
+          total: parseNum(breakdown.msReward || (breakdown as any).msReword),
         });
       }
 
@@ -1342,6 +1524,154 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
             )}
           </TouchableOpacity>
         </View>
+
+        {/* ========================================================= */}
+        {/* TASK 2: COMPARABLE & ALTERNATIVE MODELS (± ₹1,00,000 Range) */}
+        {/* Placed below Price Breakdown & Save to CRM Pipeline       */}
+        {/* ========================================================= */}
+        <View
+          style={[
+            styles.cardSection,
+            styles.compSection,
+            {
+              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+              borderColor: isDark ? '#334155' : '#E2E8F0',
+            },
+          ]}
+        >
+          {/* Header Row */}
+          <View style={styles.compHeaderRow}>
+            <View style={styles.compHeaderLeft}>
+              <ArrowLeftRight size={16} color="#0284C7" strokeWidth={2.4} />
+              <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+                Comparable & Alternative Models
+              </Text>
+              <View style={styles.rangePill}>
+                <Text style={styles.rangePillText}>± ₹1,00,000 Range</Text>
+              </View>
+            </View>
+
+            {comparableVariants.length > 0 && (
+              <View style={styles.countPill}>
+                <Text style={styles.countPillText}>
+                  {comparableVariants.length} Alternative(s) Found
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Subtitle with Selected Price and Range */}
+          {currentVariantPrice > 0 ? (
+            <Text style={[styles.compSubTitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+              Selected Variant Price:{' '}
+              <Text style={{ fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' }}>
+                {formatInr(currentVariantPrice)}
+              </Text>{' '}
+              • Matching Range:{' '}
+              <Text style={{ fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' }}>
+                {formatInr(minPrice)} to {formatInr(maxPrice)}
+              </Text>
+            </Text>
+          ) : (
+            <Text style={[styles.compSubTitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+              Select a vehicle variant or enter CSD Price to view alternative models within ± ₹1,00,000 range.
+            </Text>
+          )}
+
+          {/* Cards Carousel */}
+          {currentVariantPrice > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.compScrollContent}
+            >
+              {comparableVariants.map((item) => {
+                const isCurrent =
+                  item.isCurrent ||
+                  (selectedVariant &&
+                    item.id === selectedVariant.id &&
+                    item.name === selectedVariant.name);
+                const itemPrice = item.price || getVariantPrice(item);
+                const brand = item.brand_name || 'VEHICLE';
+                const model = item.model_name || 'Standard';
+
+                return (
+                  <View
+                    key={`${item.id}-${item.name}`}
+                    style={[
+                      styles.compCard,
+                      {
+                        backgroundColor: isCurrent
+                          ? isDark
+                            ? '#172554'
+                            : '#EFF6FF'
+                          : isDark
+                          ? '#0F172A'
+                          : '#F8FAFC',
+                        borderColor: isCurrent
+                          ? '#3B82F6'
+                          : isDark
+                          ? '#334155'
+                          : '#E2E8F0',
+                      },
+                    ]}
+                  >
+                    {/* Top Badges Row */}
+                    <View style={styles.compCardTopRow}>
+                      <View style={styles.brandTag}>
+                        <Text style={styles.brandTagText}>{brand.toUpperCase()}</Text>
+                      </View>
+                      {isCurrent ? (
+                        <View style={styles.currentMatchBadge}>
+                          <Text style={styles.currentMatchText}>Current Match</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.altBadge}>
+                          <Text style={styles.altBadgeText}>Alternative</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Variant & Model Name */}
+                    <Text
+                      style={[styles.compVariantName, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
+                      numberOfLines={1}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text style={styles.compModelSub} numberOfLines={1}>
+                      Model: {model}
+                    </Text>
+
+                    {/* Price Section */}
+                    <View style={styles.compPriceBox}>
+                      <Text style={styles.compPriceLabel}>CSD PRICE</Text>
+                      <Text style={[styles.compPriceValue, { color: isDark ? '#60A5FA' : '#1E3A8A' }]}>
+                        {formatInr(itemPrice)}
+                      </Text>
+                    </View>
+
+                    {/* Action Button: Selected vs Select */}
+                    {isCurrent ? (
+                      <View style={styles.compSelectedBtn}>
+                        <Check size={14} color="#64748B" strokeWidth={2.5} />
+                        <Text style={styles.compSelectedBtnText}>✓ Selected</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.compSelectBtn}
+                        onPress={() => handleSelectAlternativeVariant(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.compSelectBtnText}>Select</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
       </ScrollView>
 
       {/* Sticky Bottom Actions Bar */}
@@ -1898,5 +2228,157 @@ const styles = StyleSheet.create({
   pickerEmptyText: {
     fontSize: 13,
     color: '#94A3B8',
+  },
+  // Task 2: Comparable Models Styles
+  compSection: {
+    paddingBottom: 16,
+  },
+  compHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  compHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  rangePill: {
+    backgroundColor: 'rgba(2, 132, 199, 0.1)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(2, 132, 199, 0.25)',
+  },
+  rangePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  countPill: {
+    backgroundColor: 'rgba(30, 58, 138, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  countPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1E3A8A',
+  },
+  compSubTitle: {
+    fontSize: 11,
+    marginBottom: 12,
+    lineHeight: 16,
+  },
+  compScrollContent: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  compCard: {
+    width: 250,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+  },
+  compCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  brandTag: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 4,
+  },
+  brandTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  currentMatchBadge: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 4,
+  },
+  currentMatchText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  altBadge: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 4,
+  },
+  altBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  compVariantName: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  compModelSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 10,
+  },
+  compPriceBox: {
+    marginBottom: 12,
+  },
+  compPriceLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  compPriceValue: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  compSelectedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: '#E2E8F0',
+    paddingVertical: 8,
+    borderRadius: 7,
+  },
+  compSelectedBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  compSelectBtn: {
+    backgroundColor: '#1E3A8A',
+    paddingVertical: 8,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compSelectBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

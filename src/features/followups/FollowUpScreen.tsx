@@ -357,18 +357,95 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   );
 
   const handleSendQuotation = useCallback(
-    (item: FollowUpItem) => {
+    async (item: FollowUpItem) => {
       triggerHaptic('selection');
       if (onNavigateToQuotation) {
         onNavigateToQuotation(item.lead_id || undefined);
+        return;
+      }
+      if (navigation) {
+        (navigation as any).navigate('send-quotation', { leadId: item.lead_id });
+        return;
+      }
+      if (item.lead_id) {
+        try {
+          const res = await leadApi.getById(item.lead_id);
+          const fullLead = res?.data || res;
+          if (fullLead && (fullLead.name || fullLead.id)) {
+            setActiveQuotationLead(fullLead);
+            setQuotationModalVisible(true);
+            return;
+          }
+        } catch (e) {
+          console.log('Error fetching lead for quotation modal:', e);
+        }
+      }
+
+      const matched = item.lead || leadsList.find((l) => l.id === item.lead_id);
+      if (matched) {
+        setActiveQuotationLead(matched);
+        setQuotationModalVisible(true);
       } else {
-        Alert.alert(
-          'CSD Quotation Engine',
-          `Generating formal quotation dossier for ${item.customer_name} (${item.vehicle || 'Vehicle'}). Redirecting to quotation desk...`
-        );
+        const syntheticLead: CustomerLead = {
+          id: item.lead_id || item.id,
+          name: item.customer_name,
+          phone: item.phone,
+          city: item.city || '',
+          vehicle_segment: '4 Wheeler',
+          model_variant: item.vehicle || '',
+          brand_name: item.brand_name || '',
+          priority: item.priority || 'Hot',
+          status_name: item.status,
+          assigned_user_name: item.rep || '',
+          notes: item.notes,
+        };
+        setActiveQuotationLead(syntheticLead);
+        setQuotationModalVisible(true);
       }
     },
-    [onNavigateToQuotation]
+    [onNavigateToQuotation, navigation, leadsList]
+  );
+
+  const handleOpenDealWon = useCallback(
+    async (item: FollowUpItem) => {
+      triggerHaptic('impactMedium');
+      if (item.lead_id) {
+        try {
+          const res = await leadApi.getById(item.lead_id);
+          const fullLead = res?.data || res;
+          if (fullLead && (fullLead.name || fullLead.id)) {
+            setActiveDealLead(fullLead);
+            setDealModalVisible(true);
+            return;
+          }
+        } catch (e) {
+          console.log('Error fetching lead for deal modal:', e);
+        }
+      }
+
+      const matched = item.lead || leadsList.find((l) => l.id === item.lead_id);
+      if (matched) {
+        setActiveDealLead(matched);
+        setDealModalVisible(true);
+      } else {
+        const syntheticLead: CustomerLead = {
+          id: item.lead_id || item.id,
+          name: item.customer_name,
+          phone: item.phone,
+          city: item.city || '',
+          vehicle_segment: '4 Wheeler',
+          model_variant: item.vehicle || '',
+          brand_name: item.brand_name || '',
+          priority: item.priority || 'Hot',
+          status_name: item.status,
+          assigned_user_name: item.rep || '',
+          notes: item.notes,
+        };
+        setActiveDealLead(syntheticLead);
+        setDealModalVisible(true);
+      }
+    },
+    [leadsList]
   );
 
   const handleRestoreFollowUp = useCallback(async (item: FollowUpItem) => {
@@ -515,6 +592,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
               onCall={handleCall}
               onLogNext={handleOpenLogNext}
               onSendQuotation={handleSendQuotation}
+              onConvertToDeal={handleOpenDealWon}
               onViewProfile={handleViewProfile}
               onOpenActions={handleOpenActions}
               onOpenHistory={handleOpenHistory}

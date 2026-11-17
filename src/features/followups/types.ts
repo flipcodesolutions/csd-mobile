@@ -44,10 +44,20 @@ export const OUTCOME_SUBTITLES: Record<CanonicalOutcome, string> = {
 export const normalizeOutcome = (raw?: string | null): CanonicalOutcome | null => {
   if (!raw || typeof raw !== 'string') return null;
   const s = raw.toLowerCase().trim();
-  if (s.includes('quotation sent') || s === 'quotation send' || s.includes('quote sent')) {
+  if (
+    s.includes('quotation sent') ||
+    s.includes('quotation send') ||
+    s.includes('quote sent') ||
+    s.includes('quote send')
+  ) {
     return 'Quotation Sent';
   }
-  if (s.includes('quotation req') || s.includes('quote req')) {
+  if (
+    s.includes('quotation req') ||
+    s.includes('quote req') ||
+    s.includes('quotation request') ||
+    s.includes('quotation requested')
+  ) {
     return 'Quotation Requested';
   }
   if (s.includes('interested') || s.includes('call back') || s.includes('callback')) {

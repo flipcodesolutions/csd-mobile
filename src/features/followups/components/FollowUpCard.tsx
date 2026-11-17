@@ -9,6 +9,7 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  FileText,
   Flame,
   Hourglass,
   MapPin,
@@ -29,6 +30,7 @@ interface FollowUpCardProps {
   onCall: (phone: string) => void;
   onLogNext?: (item: FollowUpItem) => void;
   onSendQuotation?: (item: FollowUpItem) => void;
+  onConvertToDeal?: (item: FollowUpItem) => void;
   onViewProfile: (item: FollowUpItem) => void;
   onOpenActions: (item: FollowUpItem) => void;
   onOpenHistory?: (item: FollowUpItem) => void;
@@ -39,6 +41,8 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
   isTrashView = false,
   onRestore,
   onCall,
+  onSendQuotation,
+  onConvertToDeal,
   onViewProfile,
   onOpenActions,
   onOpenHistory,
@@ -57,6 +61,30 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
 
   const isHot = item.priority === 'Hot' || !item.priority;
   const callsCount = item.calls_count || 1;
+
+  const canonicalOutcome =
+    normalizeOutcome(item.status) ||
+    (item.lead?.status_name ? normalizeOutcome(item.lead.status_name) : null);
+
+  const statusLower = (item.status || '').toLowerCase().trim();
+  const leadStatusLower = (item.lead?.status_name || '').toLowerCase().trim();
+
+  const isQuotationReq =
+    canonicalOutcome === 'Quotation Requested' ||
+    statusLower.includes('quotation req') ||
+    statusLower.includes('quote req') ||
+    statusLower.includes('quotation request') ||
+    leadStatusLower.includes('quotation req') ||
+    leadStatusLower.includes('quote req');
+
+  const isQuotationSent =
+    canonicalOutcome === 'Quotation Sent' ||
+    statusLower.includes('quotation sent') ||
+    statusLower.includes('quotation send') ||
+    statusLower.includes('quote sent') ||
+    statusLower.includes('quote send') ||
+    leadStatusLower.includes('quotation sent') ||
+    leadStatusLower.includes('quotation send');
 
   return (
     <View
@@ -362,7 +390,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
         </Text>
       ) : null}
 
-      {/* 5. Date Tracking Row (Follow-Up Date & Next Date) */}
+      {/* 5. Date Tracking Row (Follow-Up Date & Next Date) & Dynamic Status Action Button */}
       <View
         style={[
           styles.metaTrackingRow,
@@ -372,28 +400,68 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
           },
         ]}
       >
-        <View style={styles.dateBlock}>
-          <Calendar size={11} color={isDark ? '#94A3B8' : '#475569'} strokeWidth={2} />
-          <Text
-            style={[
-              styles.dateMetaText,
-              { color: isDark ? '#CBD5E1' : '#334155', marginLeft: 4 },
-            ]}
-          >
-            {item.follow_up_date || 'N/A'}{' '}
-            {item.follow_up_time ? `• ${item.follow_up_time}` : ''}
-          </Text>
-        </View>
-
-        {/* Next Due Highlight */}
-        {item.next_follow_up_date ? (
-          <View style={styles.nextDateBlock}>
-            <Clock size={11} color="#D97706" strokeWidth={2.2} />
-            <Text style={styles.nextDueText}>
-              Next: {item.next_follow_up_date}{' '}
-              {item.next_follow_up_time || '10:00 AM'}
+        <View style={styles.dateBlockWrap}>
+          <View style={styles.dateBlock}>
+            <Calendar size={11} color={isDark ? '#94A3B8' : '#475569'} strokeWidth={2} />
+            <Text
+              style={[
+                styles.dateMetaText,
+                { color: isDark ? '#CBD5E1' : '#334155', marginLeft: 4 },
+              ]}
+            >
+              {item.follow_up_date || 'N/A'}{' '}
+              {item.follow_up_time ? `• ${item.follow_up_time}` : ''}
             </Text>
           </View>
+
+          {item.next_follow_up_date ? (
+            <View style={styles.nextDateBlock}>
+              <Clock size={10} color="#D97706" strokeWidth={2.2} />
+              <Text style={styles.nextDueText}>
+                Next: {item.next_follow_up_date}{' '}
+                {item.next_follow_up_time || '10:00 AM'}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Dynamic Action Button beside Date/Time: Quotation Send (when quotation req) or Deal Won (when quotation sent) */}
+        {isQuotationReq ? (
+          <TouchableOpacity
+            style={[
+              styles.actionBadgeBtn,
+              {
+                backgroundColor: colors.accentOrange || '#EE6800',
+              },
+            ]}
+            onPress={() => {
+              triggerHaptic('impactMedium');
+              onSendQuotation?.(item);
+            }}
+            activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <FileText size={11} color="#FFFFFF" strokeWidth={2.4} style={{ marginRight: 4 }} />
+            <Text style={styles.actionBadgeBtnText}>Quotation Send</Text>
+          </TouchableOpacity>
+        ) : isQuotationSent ? (
+          <TouchableOpacity
+            style={[
+              styles.actionBadgeBtn,
+              {
+                backgroundColor: colors.emerald || '#16A34A',
+              },
+            ]}
+            onPress={() => {
+              triggerHaptic('impactMedium');
+              onConvertToDeal?.(item);
+            }}
+            activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <CheckCircle size={11} color="#FFFFFF" strokeWidth={2.4} style={{ marginRight: 4 }} />
+            <Text style={styles.actionBadgeBtnText}>Deal Won</Text>
+          </TouchableOpacity>
         ) : null}
       </View>
 
@@ -618,12 +686,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
     marginTop: 10,
+    gap: 8,
+  },
+  dateBlockWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
+    marginRight: 4,
   },
   dateBlock: {
     flexDirection: 'row',
@@ -639,9 +714,28 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   nextDueText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#D97706',
+  },
+  actionBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  actionBadgeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
   repUrgencyRow: {
     flexDirection: 'row',

@@ -45,6 +45,15 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
     return '₹ ' + num.toLocaleString('en-IN') + '/-';
   };
 
+  const formatRowVal = (val: number | string | undefined | null) => {
+    if (val === undefined || val === null || val === '') return '-';
+    const str = String(val).trim();
+    if (str === '-') return '-';
+    const num = parseFloat(str.replace(/[^0-9.-]+/g, ''));
+    if (isNaN(num)) return str;
+    return num.toLocaleString('en-IN');
+  };
+
   const b = data.breakdown;
 
   const handleDownload = async () => {
@@ -118,7 +127,7 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
               </View>
             </View>
 
-            {/* Date & Quotation Badge Row */}
+            {/* Date & Quotation Badge Row & Client */}
             <View style={styles.metaRow}>
               <Text style={styles.dateText}>
                 DATE : {data.quotationDate || new Date().toLocaleDateString('en-GB')}
@@ -126,6 +135,9 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
               <View style={styles.quotationBadge}>
                 <Text style={styles.quotationBadgeText}>QUOTATION</Text>
               </View>
+              <Text style={styles.clientText}>
+                CLIENT: <Text style={styles.clientNameText}>{(data.clientName || 'CUSTOMER').toUpperCase()}</Text>
+              </Text>
             </View>
 
             {/* Main Itemized Breakdown Table */}
@@ -146,7 +158,7 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                   <Text style={styles.rowLabel}>CSD PRICE</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{formatInr(b.csdPrice)}</Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.csdPrice)}</Text>
                 </View>
               </View>
 
@@ -156,7 +168,7 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                   <Text style={styles.rowLabel}>GJ RTO</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{formatInr(b.gjRto)}</Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.gjRto)}</Text>
                 </View>
               </View>
 
@@ -166,7 +178,7 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                   <Text style={styles.rowLabel}>BH RTO * APPOROX</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{b.bhRto ? formatInr(b.bhRto) : '-'}</Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.bhRto)}</Text>
                 </View>
               </View>
 
@@ -176,7 +188,7 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                   <Text style={styles.rowLabel}>CRTM</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{formatInr(b.crtm)}</Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.crtm)}</Text>
                 </View>
               </View>
 
@@ -186,7 +198,7 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                   <Text style={styles.rowLabel}>INSURANCE</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{formatInr(b.insurance)}</Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.insurance)}</Text>
                 </View>
               </View>
 
@@ -196,40 +208,27 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                   <Text style={styles.rowLabel}>ACCESSORIES</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>
-                    {b.accessories
-                      ? isNaN(Number(b.accessories))
-                        ? b.accessories
-                        : formatInr(b.accessories)
-                      : '-'}
-                  </Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.accessories)}</Text>
                 </View>
               </View>
 
-              {/* Row 8: Warranty (Tenure) */}
+              {/* Row 8: Warranty */}
               <View style={styles.tableRow}>
                 <View style={[styles.cell, styles.colLeft]}>
-                  <Text style={styles.rowLabel}>WARRANTY (TENURE)</Text>
+                  <Text style={styles.rowLabel}>WARRANTY</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{b.warranty || '-'}</Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.warranty)}</Text>
                 </View>
               </View>
 
               {/* Row 9: M.S Reward / Discount */}
               <View style={styles.tableRow}>
                 <View style={[styles.cell, styles.colLeft]}>
-                  <Text style={styles.rowLabel}>M.S REWORD (DISC)</Text>
+                  <Text style={styles.rowLabel}>M.S REWORD</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text
-                    style={[
-                      styles.rowValue,
-                      parseAmount(b.msReward) > 0 && { color: '#059669', fontWeight: '800' },
-                    ]}
-                  >
-                    {parseAmount(b.msReward) > 0 ? `-${formatInr(b.msReward)}` : '-'}
-                  </Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.msReward)}</Text>
                 </View>
               </View>
 
@@ -239,14 +238,14 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
                   <Text style={styles.rowLabel}>DIFFERENCE AMT CASH</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight]}>
-                  <Text style={styles.rowValue}>{formatInr(b.diffAmtCash)}</Text>
+                  <Text style={styles.rowValue}>{formatRowVal(b.diffAmtCash)}</Text>
                 </View>
               </View>
 
               {/* Row 11: Estimated Total Price */}
               <View style={[styles.tableRow, styles.grandTotalRow]}>
                 <View style={[styles.cell, styles.colLeft, styles.grandTotalCell]}>
-                  <Text style={styles.grandTotalLabel}>ESTIMATED TOTAL (NET AFTER DISC)</Text>
+                  <Text style={styles.grandTotalLabel}>ESTIMATED ON-ROAD PRICE</Text>
                 </View>
                 <View style={[styles.cell, styles.colRight, styles.grandTotalCell]}>
                   <Text style={styles.grandTotalValue}>{formatInr(data.grandTotal)}</Text>
@@ -258,10 +257,10 @@ export const QuotationSheetView: React.FC<QuotationSheetViewProps> = ({
             <View style={styles.sheetFooter}>
               <View style={styles.execSection}>
                 <Text style={styles.execLine}>
-                  Executive: <Text style={styles.execName}>{data.executiveName || '-'}</Text>
+                  Executive: <Text style={styles.execName}>{data.executiveName || 'Admin User'}</Text>
                 </Text>
                 <Text style={styles.execContact}>
-                  Contact: {data.executivePhone || '-'}
+                  Contact: <Text style={{ color: '#0F172A', fontWeight: '600' }}>{data.executivePhone || '+91 98000 11111'}</Text>
                 </Text>
                 <Text style={styles.disclaimerText}>
                   * Prices prevailing at the time of delivery will be applicable. Road tax as per RTO norms.
@@ -428,6 +427,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#B91C1C',
     letterSpacing: 0.5,
+  },
+  clientText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: 'right',
+  },
+  clientNameText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0284C7',
+    textDecorationLine: 'underline',
   },
   table: {
     borderWidth: 1.5,

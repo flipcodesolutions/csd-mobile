@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Linking,
   RefreshControl,
   StyleSheet,
   Text,
@@ -32,6 +33,11 @@ import { quotationService } from './quotationService';
 import { QuotationCard } from './components/QuotationCard';
 import { QuotationSheetView } from './components/QuotationSheetView';
 import { EmailQuotationModal } from './components/EmailQuotationModal';
+import { LeadProfileModal } from '../leads/components/LeadProfileModal';
+import { ConvertToDealModal } from '../leads/components/ConvertToDealModal';
+import { CustomerLead } from '../leads/types';
+import { leadApi } from '../leads/leadService';
+import { dealApi } from '../deals/dealService';
 
 interface QuotationsListScreenProps {
   onNavigateToCreate?: () => void;
@@ -39,8 +45,9 @@ interface QuotationsListScreenProps {
   onSelectLead?: (leadId: number) => void;
 }
 
-// Task 1: Only 3 statuses allowed - Default is pending
+// Status Filters - All Status, Pending, Email Sent, Print
 const STATUS_FILTERS = [
+  { key: 'all', label: 'All Status' },
   { key: 'pending', label: 'Pending' },
   { key: 'sent', label: 'Email Sent' },
   { key: 'print', label: 'Print' },
@@ -54,9 +61,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // Search & Filter States (Default activeStatus is 'pending')
+  // Search & Filter States (Default activeStatus is 'all')
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeStatus, setActiveStatus] = useState('pending');
+  const [activeStatus, setActiveStatus] = useState('all');
   const [isTrashView, setIsTrashView] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -74,6 +81,68 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
   const [previewQuote, setPreviewQuote] = useState<Quotation | null>(null);
   const [emailQuote, setEmailQuote] = useState<Quotation | null>(null);
 
+  // Lead Profile Modal States (Matches 360° Lead Details from Leads Screen)
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [activeProfileLead, setActiveProfileLead] = useState<CustomerLead | null>(null);
+  const [dealModalVisible, setDealModalVisible] = useState(false);
+  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(null);
+
+  const handleCall = (phone: string) => {
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    if (cleaned) {
+      Linking.openURL(`tel:${cleaned}`).catch(() => {});
+    }
+  };
+
+  const handleConvertToDeal = async (dealData: any) => {
+    try {
+      await dealApi.create(dealData);
+      setDealModalVisible(false);
+      showSuccessToast('Deal Created', 'Lead converted to deal dossier successfully.');
+      fetchQuotations(1);
+    } catch (err: any) {
+      Alert.alert(
+        'Conversion Failed',
+        err?.response?.data?.message || err?.message || 'Failed to convert lead to deal.'
+      );
+    }
+  };
+
+  const handleSelectCustomerLead = async (leadId: number, q?: Quotation) => {
+    triggerHaptic();
+    if (leadId) {
+      try {
+        const res = await leadApi.getById(leadId);
+        const fullLead = res?.data || res;
+        if (fullLead && (fullLead.name || fullLead.id)) {
+          setActiveProfileLead(fullLead);
+          setProfileModalVisible(true);
+          return;
+        }
+      } catch (e) {
+        console.log('Error fetching lead details for profile modal:', e);
+      }
+    }
+
+    if (q) {
+      const syntheticLead: CustomerLead = {
+        id: leadId || q.id,
+        name: q.customer_name || 'Customer',
+        phone: q.customer_phone || '',
+        email: q.customer_email || '',
+        city: q.customer_address || '',
+        vehicle_segment: '4 Wheeler',
+        model_variant: q.variant_name || q.model_name || '',
+        brand_name: q.brand_name || '',
+        priority: 'Hot',
+        status_name: q.status || 'Active',
+        assigned_user_name: q.executive_name || '',
+      };
+      setActiveProfileLead(syntheticLead);
+      setProfileModalVisible(true);
+    }
+  };
+
   const fetchQuotations = useCallback(
     async (pageNum = 1, isRefresh = false) => {
       try {
@@ -83,7 +152,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
           page: pageNum,
           per_page: 15,
           search: searchQuery,
-          status: activeStatus,
+          status: activeStatus === 'all' ? undefined : activeStatus,
           from_date: fromDate,
           to_date: toDate,
           trash: isTrashView,
@@ -171,21 +240,103 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
   // Convert Quotation to QuotationFormData for Sheet Preview
   const buildFormDataFromQuote = (q: Quotation): QuotationFormData => {
     const items = q.items || [];
-    const getVal = (nameKeyword: string) => {
-      const match = items.find((i) =>
-        i.item_name.toLowerCase().includes(nameKeyword.toLowerCase())
-      );
-      return match ? String(match.total || match.unit_price) : '';
+    const getVal = (nameKeywords: string[]) => {
+      for (const kw of nameKeywords) {
+        const match = items.find((i) =>
+          i.item_name?.toLowerCase().includes(kw.toLowerCase())
+        );
+        if (match) {
+          const val = match.total ?? match.unit_price ?? (match as any).price;
+          if (val !== undefined && val !== null && String(val) !== '') {
+            return String(val);
+          }
+        }
+      }
+      return '';
     };
 
     const firstItem = items[0];
 
+    const clientName =
+      q.customer_name ||
+      (q as any).client_name ||
+      (q as any).lead?.name ||
+      (q as any).customer?.name ||
+      '';
+
+    const clientMobile =
+      q.customer_phone ||
+      (q as any).client_mobile ||
+      (q as any).lead?.phone ||
+      '';
+
+    const clientEmail =
+      q.customer_email ||
+      (q as any).client_email ||
+      (q as any).lead?.email ||
+      '';
+
+    const cityJurisdiction =
+      q.customer_address ||
+      (q as any).city ||
+      (q as any).lead?.city ||
+      '';
+
+    const executiveName =
+      q.executive_name ||
+      (q as any).user?.name ||
+      (q as any).created_by_name ||
+      (q as any).creator?.name ||
+      'Admin User';
+
+    const executivePhone =
+      q.executive_phone ||
+      (q as any).user?.phone ||
+      (q as any).user?.mobile ||
+      (q as any).creator?.phone ||
+      '+91 98000 11111';
+
+    const csdPriceVal =
+      String(firstItem?.unit_price || (q as any).csd_base_price || (q as any).ex_showroom_price || q.subtotal || 0);
+
+    const gjRtoVal =
+      getVal(['gujarat', 'gj rto', 'gj_rto', 'rto & registration', 'rto']) ||
+      String((q as any).gj_rto || (q as any).rto_charges || '');
+
+    const bhRtoVal =
+      getVal(['bh series', 'bh rto', 'bh_rto', 'bh']) ||
+      String((q as any).bh_rto || '');
+
+    const crtmVal =
+      getVal(['crtm']) ||
+      String((q as any).crtm || '');
+
+    const insuranceVal =
+      getVal(['insurance', 'zero-dep']) ||
+      String((q as any).insurance_charges || (q as any).insurance || '');
+
+    const accessoriesVal =
+      getVal(['accessories', 'accessory']) ||
+      String((q as any).accessories_charges || (q as any).accessories || '');
+
+    const warrantyVal =
+      getVal(['warranty', 'extended']) ||
+      String((q as any).warranty || (q as any).extended_warranty || (q as any).warranty_tenure || '');
+
+    const diffAmtCashVal =
+      getVal(['difference', 'cash adjustment', 'diff_amt_cash', 'diff', 'cash']) ||
+      String((q as any).diff_amt_cash || '');
+
+    const msRewardVal =
+      getVal(['reword', 'reward', 'discount', 'm.s']) ||
+      String((q as any).discount_amount || (q as any).ms_reward || (q as any).ms_reword || (q as any).discount || '');
+
     return {
       leadId: q.lead_id || null,
-      clientName: q.customer_name || '',
-      clientMobile: q.customer_phone || '',
-      clientEmail: q.customer_email || '',
-      cityJurisdiction: q.customer_address || '',
+      clientName,
+      clientMobile,
+      clientEmail,
+      cityJurisdiction,
       quotationDate: q.quotation_date || q.created_at?.slice(0, 10) || '',
       brandId: null,
       brandName: q.brand_name || '',
@@ -196,18 +347,18 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       sheetCarTitle: q.brand_name || firstItem?.item_name?.split('–')[0]?.trim() || '',
       sheetModelTitle: q.model_name || firstItem?.item_name?.split('–')[1]?.trim() || '',
       fuelType: 'PETROL',
-      executiveName: q.executive_name || '',
-      executivePhone: q.executive_phone || '',
+      executiveName,
+      executivePhone,
       breakdown: {
-        csdPrice: String(firstItem?.unit_price || q.subtotal || 0),
-        gjRto: getVal('gujarat') || getVal('rto'),
-        bhRto: getVal('bh series') || getVal('bh rto'),
-        crtm: getVal('crtm'),
-        insurance: getVal('insurance'),
-        accessories: getVal('accessories'),
-        warranty: getVal('warranty'),
-        diffAmtCash: getVal('difference') || getVal('cash'),
-        msReward: getVal('reward') || getVal('discount'),
+        csdPrice: csdPriceVal,
+        gjRto: gjRtoVal,
+        bhRto: bhRtoVal,
+        crtm: crtmVal,
+        insurance: insuranceVal,
+        accessories: accessoriesVal,
+        warranty: warrantyVal,
+        diffAmtCash: diffAmtCashVal,
+        msReward: msRewardVal,
       },
       grandTotal: Number(
         q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0
@@ -215,9 +366,49 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
     };
   };
 
-  const handleView = (q: Quotation) => {
+  const handleView = async (q: Quotation) => {
     triggerHaptic();
     setPreviewQuote(q);
+    try {
+      const res = await quotationService.getById(q.id);
+      const fullQuote = res?.data || res;
+      if (fullQuote && fullQuote.id === q.id) {
+        setPreviewQuote((prev) => (prev?.id === q.id ? { ...prev, ...fullQuote } : prev));
+      }
+    } catch (err) {
+      console.log('Error fetching full quotation details for preview:', err);
+    }
+  };
+
+  const handleOpenConvertDeal = async (q: Quotation) => {
+    triggerHaptic();
+    let targetLead: CustomerLead | null = null;
+    const targetLeadId = q.lead_id || (q as any).leadId || (q as any).customer_id;
+    if (targetLeadId) {
+      try {
+        const res = await leadApi.getById(targetLeadId);
+        targetLead = res?.data || res;
+      } catch (e) {
+        console.log('Error fetching lead for convert to deal:', e);
+      }
+    }
+    if (!targetLead) {
+      targetLead = {
+        id: targetLeadId || q.id,
+        name: q.customer_name || 'Customer',
+        phone: q.customer_phone || '',
+        email: q.customer_email || '',
+        city: q.customer_address || '',
+        vehicle_segment: '4 Wheeler',
+        model_variant: q.variant_name || q.model_name || '',
+        brand_name: q.brand_name || '',
+        priority: 'Hot',
+        status_name: q.status || 'Active',
+        assigned_user_name: q.executive_name || '',
+      };
+    }
+    setActiveDealLead(targetLead);
+    setDealModalVisible(true);
   };
 
   const handleDownload = async (q: Quotation) => {
@@ -511,7 +702,8 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
               onDownload={handleDownload}
               onDelete={isTrashView ? handleDelete : undefined}
               onRestore={handleRestore}
-              onSelectLead={onSelectLead}
+              onSelectLead={handleSelectCustomerLead}
+              onConvertToDeal={handleOpenConvertDeal}
             />
           )}
           ListEmptyComponent={
@@ -606,6 +798,33 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
           }}
         />
       )}
+
+      {/* Lead Profile Modal (360° Lead Details, matching Leads screen) */}
+      <LeadProfileModal
+        visible={profileModalVisible}
+        lead={activeProfileLead}
+        onClose={() => setProfileModalVisible(false)}
+        onCall={handleCall}
+        onConvertToDeal={(ld) => {
+          setProfileModalVisible(false);
+          setActiveDealLead(ld);
+          setDealModalVisible(true);
+        }}
+        onSendQuotation={() => {
+          setProfileModalVisible(false);
+          if (onNavigateToCreate) {
+            onNavigateToCreate();
+          }
+        }}
+      />
+
+      {/* Convert to Deal Modal */}
+      <ConvertToDealModal
+        visible={dealModalVisible}
+        lead={activeDealLead}
+        onClose={() => setDealModalVisible(false)}
+        onSubmit={handleConvertToDeal}
+      />
     </View>
   );
 };
