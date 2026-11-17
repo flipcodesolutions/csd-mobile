@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -247,8 +248,13 @@ export const DealsScreen: React.FC = () => {
   // List Header Component (FollowUp-style: scrolls smoothly with cards, zero fixed elements)
   const renderListHeader = () => (
     <View style={styles.listHeaderContainer}>
-      {/* 1. Four KPI Cards */}
-      <View style={styles.kpiContainer}>
+      {/* 1. Four KPI Cards - Follow-up style horizontal scrollable single line */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.kpiScrollContent}
+        style={styles.kpiContainer}
+      >
         {/* KPI 1: Total Active Deals */}
         <View
           style={[
@@ -256,18 +262,20 @@ export const DealsScreen: React.FC = () => {
             {
               backgroundColor: isDark ? '#101726' : '#FFFFFF',
               borderColor: isDark ? '#1E293B' : '#E2E8F0',
+              borderTopColor: '#58632A',
             },
           ]}
         >
           <View style={styles.kpiTop}>
-            <Text style={styles.kpiLabel}>TOTAL ACTIVE DEALS</Text>
             <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(88, 99, 42, 0.12)' }]}>
-              <Trophy size={13} color="#58632A" />
+              <Trophy size={14} color="#58632A" strokeWidth={2.4} />
             </View>
+            <Text style={styles.kpiLabel}>TOTAL ACTIVE</Text>
           </View>
           <Text style={[styles.kpiValue, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
             {stats.total_deals || deals.length} Deals
           </Text>
+          <Text style={styles.kpiSub} numberOfLines={1}>Booked & In-Progress</Text>
         </View>
 
         {/* KPI 2: Total Deal Pipeline */}
@@ -277,18 +285,20 @@ export const DealsScreen: React.FC = () => {
             {
               backgroundColor: isDark ? '#101726' : '#FFFFFF',
               borderColor: isDark ? '#1E293B' : '#E2E8F0',
+              borderTopColor: '#1E3A8A',
             },
           ]}
         >
           <View style={styles.kpiTop}>
-            <Text style={styles.kpiLabel}>TOTAL DEAL PIPELINE</Text>
-            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(30, 58, 138, 0.1)' }]}>
-              <IndianRupee size={13} color="#1E3A8A" />
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(30, 58, 138, 0.12)' }]}>
+              <IndianRupee size={14} color="#1E3A8A" strokeWidth={2.4} />
             </View>
+            <Text style={styles.kpiLabel}>TOTAL PIPELINE</Text>
           </View>
           <Text style={[styles.kpiValue, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
             {formatInr(stats.total_gross_value)}
           </Text>
+          <Text style={styles.kpiSub} numberOfLines={1}>Active Deal Value</Text>
         </View>
 
         {/* KPI 3: Payments Collected */}
@@ -298,18 +308,20 @@ export const DealsScreen: React.FC = () => {
             {
               backgroundColor: isDark ? '#101726' : '#FFFFFF',
               borderColor: isDark ? '#1E293B' : '#E2E8F0',
+              borderTopColor: '#059669',
             },
           ]}
         >
           <View style={styles.kpiTop}>
-            <Text style={styles.kpiLabel}>PAYMENTS COLLECTED</Text>
-            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(5, 150, 105, 0.1)' }]}>
-              <CheckCircle2 size={13} color="#059669" />
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(5, 150, 105, 0.12)' }]}>
+              <CheckCircle2 size={14} color="#059669" strokeWidth={2.4} />
             </View>
+            <Text style={styles.kpiLabel}>COLLECTED</Text>
           </View>
           <Text style={[styles.kpiValue, { color: '#059669' }]}>
             {formatInr(stats.total_collected)}
           </Text>
+          <Text style={styles.kpiSub} numberOfLines={1}>Cleared Receipts</Text>
         </View>
 
         {/* KPI 4: Pending Receivables */}
@@ -319,20 +331,22 @@ export const DealsScreen: React.FC = () => {
             {
               backgroundColor: isDark ? '#101726' : '#FFFFFF',
               borderColor: isDark ? '#1E293B' : '#E2E8F0',
+              borderTopColor: '#DC2626',
             },
           ]}
         >
           <View style={styles.kpiTop}>
-            <Text style={styles.kpiLabel}>PENDING RECEIVABLES</Text>
-            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(220, 38, 38, 0.1)' }]}>
-              <Clock size={13} color="#DC2626" />
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(220, 38, 38, 0.12)' }]}>
+              <Clock size={14} color="#DC2626" strokeWidth={2.4} />
             </View>
+            <Text style={styles.kpiLabel}>RECEIVABLES</Text>
           </View>
           <Text style={[styles.kpiValue, { color: '#DC2626' }]}>
             {formatInr(stats.total_pending_balance)}
           </Text>
+          <Text style={styles.kpiSub} numberOfLines={1}>Remaining Balance</Text>
         </View>
-      </View>
+      </ScrollView>
 
       {/* 2. Search & Filter Trigger Bar */}
       <View style={styles.searchFilterBar}>
@@ -604,23 +618,34 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   kpiContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    paddingVertical: 4,
+    marginBottom: 6,
+  },
+  kpiScrollContent: {
     paddingHorizontal: 12,
-    marginBottom: 10,
+    gap: 10,
   },
   kpiCard: {
-    width: '48.5%',
+    width: 154,
     borderRadius: 12,
     borderWidth: 1,
+    borderTopWidth: 3,
     padding: 10,
+    justifyContent: 'space-between',
+    minHeight: 96,
   },
   kpiTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  kpiIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   kpiLabel: {
     fontSize: 9,
@@ -628,17 +653,17 @@ const styles = StyleSheet.create({
     color: '#64748B',
     letterSpacing: 0.3,
   },
-  kpiIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   kpiValue: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.4,
     marginTop: 2,
+  },
+  kpiSub: {
+    fontSize: 9.5,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 1,
   },
   searchFilterBar: {
     flexDirection: 'row',

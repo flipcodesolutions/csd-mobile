@@ -20,6 +20,7 @@ import { FollowUpScreen } from '../../features/followups/FollowUpScreen';
 import { SendQuotationScreen } from '../../features/quotations/SendQuotationScreen';
 import { CreateLeadScreen } from '../../features/leads/CreateLeadScreen';
 import { DealsScreen } from '../../features/deals/DealsScreen';
+import { InvoiceScreen } from '../../features/invoices/InvoiceScreen';
 
 import { useTheme } from '../theme/ThemeContext';
 import { CustomDrawerContent } from './CustomDrawerContent';
@@ -38,6 +39,7 @@ export type DrawerParamList = {
   'follow-ups': undefined;
   'send-quotation': { leadId?: number } | undefined;
   deals: undefined;
+  'generate-invoice': undefined;
   brand: undefined;
   model: undefined;
   variant: undefined;
@@ -64,6 +66,7 @@ const SCREEN_TITLES: Record<string, string> = {
   'follow-ups': 'Follow-Up & Call Desk',
   'send-quotation': 'Official Vehicle Quotation',
   deals: 'Vehicle Deals & Bookings',
+  'generate-invoice': 'Vehicle Deals & Invoices Register',
   brand: 'Brand Master',
   model: 'Model Master',
   variant: 'Variant & Pricing',
@@ -187,6 +190,7 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       </Drawer.Screen>
 
       <Drawer.Screen name="deals" component={DealsScreen} />
+      <Drawer.Screen name="generate-invoice" component={InvoiceScreen} />
 
       <Drawer.Screen name="brand">
         {({ navigation }) => (
