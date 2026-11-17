@@ -24,6 +24,7 @@ import {
   Radio,
   Receipt,
   Sun,
+  Trophy,
   UserCheck,
   Users,
   X,
@@ -39,6 +40,7 @@ export type ScreenName =
   | 'leads'
   | 'follow-ups'
   | 'send-quotation'
+  | 'deals'
   | 'lead-status'
   | 'lead-source'
   | 'brand'
@@ -63,6 +65,7 @@ const MENU_ICONS: Record<
   leads: Kanban,
   'follow-ups': PhoneForwarded,
   'send-quotation': FileSpreadsheet,
+  deals: Trophy,
   'lead-status': ListFilter,
   'lead-source': Radio,
   brand: Building2,
@@ -78,6 +81,7 @@ const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'leads', label: 'Leads Pipeline' },
   { id: 'follow-ups', label: 'Follow-Up Call Desk', badge: 'Live' },
   { id: 'send-quotation', label: 'Send Quotation' },
+  { id: 'deals', label: 'Deals & Bookings' },
   { id: 'brand', label: 'Brand Master' },
   { id: 'model', label: 'Model Master' },
   { id: 'variant', label: 'Variant Master' },
@@ -126,7 +130,9 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           { id: 'dashboard' as ScreenName, label: 'Sales Dashboard' },
           { id: 'my-leads' as ScreenName, label: 'My Assigned Leads' },
           { id: 'leads' as ScreenName, label: 'Leads Pipeline' },
+          { id: 'follow-ups' as ScreenName, label: 'Follow-Up Call Desk' },
           { id: 'send-quotation' as ScreenName, label: 'Send Quotation' },
+          { id: 'deals' as ScreenName, label: 'Deals & Bookings' },
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Catalogue' },
           { id: 'variant' as ScreenName, label: 'Variant & Prices' },
@@ -136,6 +142,9 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
         return [
           { id: 'dashboard' as ScreenName, label: 'Manager Dashboard' },
           { id: 'leads' as ScreenName, label: 'Leads Pipeline' },
+          { id: 'follow-ups' as ScreenName, label: 'Follow-Up Call Desk' },
+          { id: 'send-quotation' as ScreenName, label: 'Send Quotation' },
+          { id: 'deals' as ScreenName, label: 'Deals & Bookings' },
           { id: 'users' as ScreenName, label: 'Sales Reps Team' },
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Master' },
@@ -146,6 +155,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
         return [
           { id: 'dashboard' as ScreenName, label: 'Reception Concierge' },
           { id: 'leads' as ScreenName, label: 'Leads Pipeline' },
+          { id: 'deals' as ScreenName, label: 'Deals & Bookings' },
           { id: 'brand' as ScreenName, label: 'Showroom Brands' },
           { id: 'model' as ScreenName, label: 'Vehicle Models' },
           { id: 'variant' as ScreenName, label: 'Variants Master' },
@@ -153,7 +163,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
       case 'Accountant':
         return [
           { id: 'dashboard' as ScreenName, label: 'Accounts Dashboard' },
-          { id: 'leads' as ScreenName, label: 'Deals & Bookings' },
+          { id: 'deals' as ScreenName, label: 'Deals & Bookings' },
           { id: 'variant' as ScreenName, label: 'Variants & On-Road Tax' },
           { id: 'model' as ScreenName, label: 'Model Master' },
           { id: 'update-price' as ScreenName, label: 'Ex-Showroom & CSD Prices' },

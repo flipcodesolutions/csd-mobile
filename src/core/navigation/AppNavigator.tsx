@@ -19,6 +19,7 @@ import { UserMasterScreen } from '../../features/masters/UserMasterScreen';
 import { FollowUpScreen } from '../../features/followups/FollowUpScreen';
 import { SendQuotationScreen } from '../../features/quotations/SendQuotationScreen';
 import { CreateLeadScreen } from '../../features/leads/CreateLeadScreen';
+import { DealsScreen } from '../../features/deals/DealsScreen';
 
 import { useTheme } from '../theme/ThemeContext';
 import { CustomDrawerContent } from './CustomDrawerContent';
@@ -36,6 +37,7 @@ export type DrawerParamList = {
   leads: undefined;
   'follow-ups': undefined;
   'send-quotation': { leadId?: number } | undefined;
+  deals: undefined;
   brand: undefined;
   model: undefined;
   variant: undefined;
@@ -61,6 +63,7 @@ const SCREEN_TITLES: Record<string, string> = {
   leads: 'Customer Leads',
   'follow-ups': 'Follow-Up & Call Desk',
   'send-quotation': 'Official Vehicle Quotation',
+  deals: 'Vehicle Deals & Bookings',
   brand: 'Brand Master',
   model: 'Model Master',
   variant: 'Variant & Pricing',
@@ -182,6 +185,8 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
           />
         )}
       </Drawer.Screen>
+
+      <Drawer.Screen name="deals" component={DealsScreen} />
 
       <Drawer.Screen name="brand">
         {({ navigation }) => (
