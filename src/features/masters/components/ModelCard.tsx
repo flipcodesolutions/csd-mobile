@@ -23,7 +23,10 @@ export const ModelCard: React.FC<ModelCardProps> = ({
   const isFourWheeler =
     item.vehicle_segment === '4 Wheeler' ||
     !String(item.vehicle_segment).includes('2');
-  const isActive = item.status === 'Active';
+  const isActive =
+    String(item.status).toLowerCase() === 'active' ||
+    String(item.status) === '1' ||
+    item.status === 'Active';
   const brandName = item.brand?.name || item.brand_name || 'Generic OEM';
 
   return (
@@ -150,7 +153,7 @@ export const ModelCard: React.FC<ModelCardProps> = ({
                   { color: isActive ? '#10B981' : '#94A3B8' },
                 ]}
               >
-                {item.status}
+                {isActive ? 'Active' : 'Inactive'}
               </Text>
             </View>
           </View>

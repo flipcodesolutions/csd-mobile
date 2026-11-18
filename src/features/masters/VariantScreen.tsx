@@ -190,8 +190,8 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
           brand_id: currentBrand !== 'All' ? currentBrand : undefined,
           model_id: currentModel !== 'All' ? currentModel : undefined,
         }),
-        brands.length === 0 ? brandApi.getAll() : Promise.resolve(null),
-        models.length === 0 ? modelApi.getAll() : Promise.resolve(null),
+        brands.length === 0 ? brandApi.getAll({ per_page: 100 }) : Promise.resolve(null),
+        models.length === 0 ? modelApi.getAll({ per_page: 100 }) : Promise.resolve(null),
       ]);
 
       if (variantsRes.status === 'fulfilled') {

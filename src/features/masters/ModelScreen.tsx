@@ -130,7 +130,7 @@ export const ModelScreen: React.FC<ModelScreenProps> = () => {
           vehicle_segment: currentSegment !== 'All' ? currentSegment : undefined,
           brand_id: currentBrand !== 'All' ? currentBrand : undefined,
         }),
-        brands.length === 0 ? brandApi.getAll() : Promise.resolve(null),
+        brands.length === 0 ? brandApi.getAll({ per_page: 100 }) : Promise.resolve(null),
       ]);
 
       if (modelsRes.status === 'fulfilled') {
@@ -161,15 +161,14 @@ export const ModelScreen: React.FC<ModelScreenProps> = () => {
             m.vehicle_segment === '2 Wheeler' || String(m.vehicle_segment).includes('2')
               ? '2 Wheeler'
               : '4 Wheeler',
-          status: m.status || 'Active',
+          status:
+            m.status === 1 || m.status === '1' || m.status === 'Active'
+              ? 'Active'
+              : 'Inactive',
           created_at: m.created_at,
         }));
 
-        if (parsed.length > 0 || currentSearch || currentSegment !== 'All' || currentBrand !== 'All') {
-          setModels(parsed);
-        } else if (models.length === 0) {
-          setModels(DEFAULT_SEED_MODELS);
-        }
+        setModels(parsed);
 
         setPage(pageNumber);
 
@@ -269,7 +268,10 @@ export const ModelScreen: React.FC<ModelScreenProps> = () => {
             m.vehicle_segment === '2 Wheeler' || String(m.vehicle_segment).includes('2')
               ? '2 Wheeler'
               : '4 Wheeler',
-          status: m.status || 'Active',
+          status:
+            m.status === 1 || m.status === '1' || m.status === 'Active'
+              ? 'Active'
+              : 'Inactive',
           created_at: m.created_at,
         }));
         setModels((prev) => {

@@ -23,12 +23,20 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
 import { showWarningToast } from '../../../core/utils/toast';
 import { getImageUrl } from '../../../core/api/client';
-import { Brand, PRESET_OEM_BRANDS } from '../types';
+import { Brand } from '../types';
+
+interface SelectedFile {
+  uri: string;
+  fileName?: string;
+  type?: string;
+  fileSize?: number;
+}
 
 interface AddEditBrandModalProps {
   visible: boolean;
@@ -39,6 +47,7 @@ interface AddEditBrandModalProps {
     vehicle_type: string[];
     status: 'Active' | 'Inactive';
     logo?: string | null;
+    logoFile?: SelectedFile;
   }) => Promise<void>;
 }
 
@@ -55,7 +64,7 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
   const [vehicleTypes, setVehicleTypes] = useState<string[]>(['4 Wheeler']);
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
   const [logoUrl, setLogoUrl] = useState<string>('');
-  const [customLogoInput, setCustomLogoInput] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewError, setPreviewError] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -86,13 +95,13 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
         );
         setStatus(editingBrand.status || 'Active');
         setLogoUrl(editingBrand.logo || '');
-        setCustomLogoInput(editingBrand.logo || '');
+        setSelectedFile(null);
       } else {
         setName('');
         setVehicleTypes(['4 Wheeler']);
         setStatus('Active');
-        setLogoUrl(PRESET_OEM_BRANDS[0].logo);
-        setCustomLogoInput('');
+        setLogoUrl('');
+        setSelectedFile(null);
       }
       setPreviewError(false);
     }
@@ -120,15 +129,37 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
     });
   };
 
-  const handleSelectPreset = (preset: (typeof PRESET_OEM_BRANDS)[0]) => {
+  const handlePickImage = async () => {
     triggerHaptic('impactLight');
-    if (!isEdit && !name) {
-      setName(preset.name);
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+        selectionLimit: 1,
+      });
+
+      if (result.didCancel) {
+        return;
+      }
+
+      if (result.errorCode) {
+        Alert.alert('Error', result.errorMessage || 'Failed to select image');
+        return;
+      }
+
+      const asset = result.assets && result.assets[0];
+      if (asset && asset.uri) {
+        setSelectedFile({
+          uri: asset.uri,
+          fileName: asset.fileName || 'brand_logo.jpg',
+          type: asset.type || 'image/jpeg',
+          fileSize: asset.fileSize,
+        });
+        setPreviewError(false);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to open image picker');
     }
-    setVehicleTypes(preset.types);
-    setLogoUrl(preset.logo);
-    setCustomLogoInput(preset.logo);
-    setPreviewError(false);
   };
 
   const handleSave = async () => {
@@ -144,11 +175,10 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
     }
 
     // Logo validation: Required on Add per Web specification
-    const effectiveLogo = customLogoInput.trim() || logoUrl.trim();
-    if (!isEdit && !effectiveLogo) {
+    if (!isEdit && !selectedFile) {
       showWarningToast(
         'Brand Logo Required',
-        'Brand logo image is required. Please select an OEM preset logo or enter a logo image URL.'
+        'Brand logo image is required. Please choose a brand logo file.'
       );
       return;
     }
@@ -159,7 +189,8 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
         name: trimmedName,
         vehicle_type: vehicleTypes,
         status,
-        logo: effectiveLogo || null,
+        logo: !selectedFile && isEdit ? logoUrl : undefined,
+        logoFile: selectedFile || undefined,
       });
       onClose();
     } catch (err: any) {
@@ -168,8 +199,6 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
       setIsSubmitting(false);
     }
   };
-
-  const currentPreviewLogo = customLogoInput.trim() || logoUrl.trim();
 
   return (
     <Modal
@@ -443,7 +472,7 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
               </View>
             </View>
 
-            {/* 3. Brand Logo Selector & Preview */}
+            {/* 3. Brand Logo Selector & Preview (File Picker) */}
             <View style={styles.formGroup}>
               <Text
                 style={[
@@ -453,159 +482,146 @@ export const AddEditBrandModal: React.FC<AddEditBrandModalProps> = ({
               >
                 BRAND LOGO IMAGE {!isEdit && <Text style={{ color: '#EF4444' }}>*</Text>}
               </Text>
+
+              {/* File input bar matching web UI screenshot */}
+              <TouchableOpacity
+                style={[
+                  styles.filePickerBox,
+                  {
+                    backgroundColor: isDark ? '#162030' : '#FFFFFF',
+                    borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                  },
+                ]}
+                onPress={handlePickImage}
+                activeOpacity={0.7}
+                disabled={isSubmitting}
+              >
+                <View
+                  style={[
+                    styles.chooseFileBtn,
+                    {
+                      backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                      borderColor: isDark ? '#334155' : '#CBD5E1',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chooseFileText,
+                      { color: isDark ? '#F8FAFC' : '#1E293B' },
+                    ]}
+                  >
+                    Choose file
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.fileChosenText,
+                    {
+                      color: selectedFile
+                        ? colors.primaryDark
+                        : isEdit && logoUrl
+                        ? (isDark ? '#CBD5E1' : '#475569')
+                        : colors.textMuted,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {selectedFile
+                    ? selectedFile.fileName || 'Image selected'
+                    : isEdit && logoUrl
+                    ? 'Current logo attached (click to change)'
+                    : 'No file chosen'}
+                </Text>
+              </TouchableOpacity>
+
               <Text
                 style={[
                   styles.hintText,
                   { color: isDark ? '#94A3B8' : '#64748B' },
                 ]}
               >
-                Choose from verified Indian OEM brand presets or provide a custom image URL.
+                Upload PNG, JPG, or SVG logo file.
               </Text>
 
-              {/* Logo Preview Row */}
-              <View
-                style={[
-                  styles.previewBox,
-                  {
-                    backgroundColor: isDark ? '#162030' : '#F8FAFC',
-                    borderColor: isDark ? '#1E293B' : '#E2E8F0',
-                  },
-                ]}
-              >
+              {/* Logo Preview if file selected or in edit mode */}
+              {(selectedFile?.uri || (isEdit && logoUrl)) && (
                 <View
                   style={[
-                    styles.previewImageContainer,
+                    styles.previewBox,
                     {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                      borderColor: isDark ? '#1E293B' : '#DCE9A2',
+                      backgroundColor: isDark ? '#162030' : '#F8FAFC',
+                      borderColor: isDark ? '#1E293B' : '#E2E8F0',
                     },
                   ]}
                 >
-                  {getImageUrl(currentPreviewLogo) && !previewError ? (
-                    <Image
-                      source={{ uri: getImageUrl(currentPreviewLogo)! }}
-                      style={styles.previewImage}
-                      resizeMode="contain"
-                      onError={() => setPreviewError(true)}
-                    />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.fallbackInitial,
-                        { color: colors.primaryDark },
-                      ]}
-                    >
-                      {name.trim() ? name.trim().charAt(0).toUpperCase() : 'B'}
-                    </Text>
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
+                  <View
                     style={[
-                      styles.previewLabel,
-                      { color: isDark ? '#F8FAFC' : '#0F172A' },
+                      styles.previewImageContainer,
+                      {
+                        backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                        borderColor: isDark ? '#1E293B' : '#DCE9A2',
+                      },
                     ]}
                   >
-                    {currentPreviewLogo ? 'Logo Attached' : 'No Logo Uploaded'}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.previewSub,
-                      { color: isDark ? '#94A3B8' : '#64748B' },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {currentPreviewLogo || 'Using default dark olive alphabet avatar'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Quick OEM Presets Grid */}
-              <Text
-                style={[
-                  styles.subSectionTitle,
-                  { color: isDark ? '#94A3B8' : '#64748B' },
-                ]}
-              >
-                QUICK OEM LOGO PRESETS:
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.presetsRow}
-              >
-                {PRESET_OEM_BRANDS.map((preset) => {
-                  const isPresetActive = currentPreviewLogo === preset.logo;
-                  return (
-                    <TouchableOpacity
-                      key={preset.name}
-                      style={[
-                        styles.presetPill,
-                        {
-                          backgroundColor: isPresetActive
-                            ? isDark
-                              ? 'rgba(88, 99, 42, 0.25)'
-                              : '#F5F8EE'
-                            : isDark
-                            ? '#162030'
-                            : '#FFFFFF',
-                          borderColor: isPresetActive
-                            ? colors.primary
-                            : isDark
-                            ? '#1E293B'
-                            : '#E2E8F0',
-                        },
-                      ]}
-                      onPress={() => handleSelectPreset(preset)}
-                      activeOpacity={0.7}
-                    >
+                    {selectedFile?.uri ? (
                       <Image
-                        source={{ uri: preset.logo }}
-                        style={styles.presetThumb}
+                        source={{ uri: selectedFile.uri }}
+                        style={styles.previewImage}
                         resizeMode="contain"
                       />
+                    ) : getImageUrl(logoUrl) && !previewError ? (
+                      <Image
+                        source={{ uri: getImageUrl(logoUrl)! }}
+                        style={styles.previewImage}
+                        resizeMode="contain"
+                        onError={() => setPreviewError(true)}
+                      />
+                    ) : (
                       <Text
                         style={[
-                          styles.presetName,
-                          {
-                            color: isPresetActive
-                              ? colors.primaryDark
-                              : isDark
-                              ? '#CBD5E1'
-                              : '#475569',
-                            fontWeight: isPresetActive ? '800' : '600',
-                          },
+                          styles.fallbackInitial,
+                          { color: colors.primaryDark },
                         ]}
                       >
-                        {preset.name}
+                        {name.trim() ? name.trim().charAt(0).toUpperCase() : 'B'}
                       </Text>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.previewLabel,
+                        { color: isDark ? '#F8FAFC' : '#0F172A' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {selectedFile ? selectedFile.fileName || 'New Logo Selected' : 'Current Logo'}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.previewSub,
+                        { color: isDark ? '#94A3B8' : '#64748B' },
+                      ]}
+                    >
+                      {selectedFile
+                        ? selectedFile.fileSize
+                          ? `${Math.round(selectedFile.fileSize / 1024)} KB`
+                          : 'File ready'
+                        : 'Stored on server'}
+                    </Text>
+                  </View>
+                  {selectedFile && (
+                    <TouchableOpacity
+                      style={styles.removeFileBtn}
+                      onPress={() => setSelectedFile(null)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <X size={16} color="#EF4444" strokeWidth={2.5} />
                     </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Custom Logo URL Input */}
-              <View style={styles.customUrlRow}>
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    {
-                      flex: 1,
-                      backgroundColor: isDark ? '#162030' : '#F8FAFC',
-                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                      color: isDark ? '#F8FAFC' : '#0F172A',
-                    },
-                  ]}
-                  placeholder="Or paste custom image URL (https://...)"
-                  placeholderTextColor={colors.textMuted}
-                  value={customLogoInput}
-                  onChangeText={(val) => {
-                    setCustomLogoInput(val);
-                    setPreviewError(false);
-                  }}
-                  editable={!isSubmitting}
-                />
-              </View>
+                  )}
+                </View>
+              )}
             </View>
 
             {/* 4. Status Selector */}
@@ -882,6 +898,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filePickerBox: {
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 10,
+  },
+  chooseFileBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chooseFileText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fileChosenText: {
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '500',
+  },
+  removeFileBtn: {
+    padding: 6,
+    borderRadius: 6,
+  },
   previewBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -915,36 +962,6 @@ const styles = StyleSheet.create({
   previewSub: {
     fontSize: 11,
     marginTop: 2,
-  },
-  subSectionTitle: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginTop: 6,
-  },
-  presetsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  presetPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 6,
-  },
-  presetThumb: {
-    width: 18,
-    height: 18,
-  },
-  presetName: {
-    fontSize: 11,
-  },
-  customUrlRow: {
-    marginTop: 4,
   },
   statusRow: {
     flexDirection: 'row',

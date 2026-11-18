@@ -318,11 +318,15 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
     vehicle_type: string[];
     status: 'Active' | 'Inactive';
     logo?: string | null;
+    logoFile?: { uri: string; fileName?: string; type?: string };
   }) => {
     try {
       if (editingBrand) {
         // Edit flow
-        await brandApi.update(editingBrand.id, data);
+        const res = await brandApi.update(editingBrand.id, data);
+        const resolvedLogo =
+          res?.data?.logo ||
+          (data.logoFile ? data.logoFile.uri : data.logo !== undefined ? data.logo : editingBrand.logo);
         setBrands((prev) =>
           prev.map((b) =>
             b.id === editingBrand.id
@@ -331,7 +335,7 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
                   name: data.name,
                   vehicle_type: data.vehicle_type,
                   status: data.status,
-                  logo: data.logo !== undefined ? data.logo : b.logo,
+                  logo: resolvedLogo,
                 }
               : b
           )
@@ -346,12 +350,13 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
         const res = await brandApi.create(data);
         const newId =
           res?.data?.id || (brands.length > 0 ? Math.max(...brands.map((b) => b.id)) + 1 : 1);
+        const resolvedLogo = res?.data?.logo || data.logoFile?.uri || data.logo || null;
         const createdBrand: Brand = {
           id: newId,
           name: data.name,
           vehicle_type: data.vehicle_type,
           status: data.status,
-          logo: data.logo,
+          logo: resolvedLogo,
         };
         setBrands((prev) => [createdBrand, ...prev]);
         triggerHaptic('notificationSuccess');
@@ -363,38 +368,18 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
       fetchStats();
     } catch (err: any) {
       console.log('Error saving brand:', err);
-      // Graceful local optimistic fallback
-      if (editingBrand) {
-        setBrands((prev) =>
-          prev.map((b) =>
-            b.id === editingBrand.id
-              ? {
-                  ...b,
-                  name: data.name,
-                  vehicle_type: data.vehicle_type,
-                  status: data.status,
-                  logo: data.logo !== undefined ? data.logo : b.logo,
-                }
-              : b
-          )
-        );
-      } else {
-        const localId = Date.now();
-        setBrands((prev) => [
-          {
-            id: localId,
-            name: data.name,
-            vehicle_type: data.vehicle_type,
-            status: data.status,
-            logo: data.logo,
-          },
-          ...prev,
-        ]);
+      let errorMsg =
+        err?.response?.data?.message || err?.message || 'Unable to save brand.';
+      const serverErrors = err?.response?.data?.errors;
+      if (serverErrors && typeof serverErrors === 'object') {
+        const firstKey = Object.keys(serverErrors)[0];
+        if (firstKey && Array.isArray(serverErrors[firstKey])) {
+          errorMsg = serverErrors[firstKey][0];
+        } else if (firstKey && typeof serverErrors[firstKey] === 'string') {
+          errorMsg = serverErrors[firstKey];
+        }
       }
-      showSuccessToast(
-        editingBrand ? 'Brand Updated' : 'Brand Saved',
-        `Record for "${data.name}" updated in master catalog.`
-      );
+      showErrorToast('Save Failed', errorMsg);
     }
   };
 

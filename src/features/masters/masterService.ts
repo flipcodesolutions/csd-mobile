@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { api } from '../../core/api/client';
 import {
   BrandStats,
@@ -84,13 +85,24 @@ export const brandApi = {
     vehicle_type: string[];
     status: 'Active' | 'Inactive';
     logo?: string | null;
+    logoFile?: { uri: string; fileName?: string; type?: string };
   }) => {
-    const response = await api.post('/brands', {
-      name: data.name,
-      vehicle_type: data.vehicle_type,
-      status: data.status,
-      logo: data.logo,
-    });
+    const formData = new FormData();
+    formData.append('name', data.name.trim());
+    formData.append('status', data.status);
+    formData.append('vehicle_type', JSON.stringify(data.vehicle_type));
+
+    if (data.logoFile) {
+      formData.append('logo', {
+        uri: data.logoFile.uri,
+        name: data.logoFile.fileName || 'brand_logo.png',
+        type: data.logoFile.type || 'image/png',
+      } as any);
+    } else if (data.logo) {
+      formData.append('logo', data.logo);
+    }
+
+    const response = await api.post('/brands', formData);
     return response.data;
   },
   update: async (
@@ -100,14 +112,26 @@ export const brandApi = {
       vehicle_type: string[];
       status: 'Active' | 'Inactive';
       logo?: string | null;
+      logoFile?: { uri: string; fileName?: string; type?: string };
     }
   ) => {
-    const response = await api.put(`/brands/${id}`, {
-      name: data.name,
-      vehicle_type: data.vehicle_type,
-      status: data.status,
-      logo: data.logo,
-    });
+    const formData = new FormData();
+    formData.append('_method', 'PUT');
+    formData.append('name', data.name.trim());
+    formData.append('status', data.status);
+    formData.append('vehicle_type', JSON.stringify(data.vehicle_type));
+
+    if (data.logoFile) {
+      formData.append('logo', {
+        uri: data.logoFile.uri,
+        name: data.logoFile.fileName || 'brand_logo.png',
+        type: data.logoFile.type || 'image/png',
+      } as any);
+    } else if (data.logo) {
+      formData.append('logo', data.logo);
+    }
+
+    const response = await api.post(`/brands/${id}`, formData);
     return response.data;
   },
   delete: async (id: number) => {
@@ -195,11 +219,21 @@ export const variantApi = {
     return response.data;
   },
   create: async (data: CreateVariantPayload) => {
-    const response = await api.post('/variants', data);
+    const payload = {
+      ...data,
+      ex_showroom_price: data.ex_showroom_price ?? data.price,
+      price: data.price ?? data.ex_showroom_price,
+    };
+    const response = await api.post('/variants', payload);
     return response.data;
   },
   update: async (id: number, data: UpdateVariantPayload) => {
-    const response = await api.put(`/variants/${id}`, data);
+    const payload = {
+      ...data,
+      ex_showroom_price: data.ex_showroom_price ?? data.price,
+      price: data.price ?? data.ex_showroom_price,
+    };
+    const response = await api.put(`/variants/${id}`, payload);
     return response.data;
   },
   delete: async (id: number) => {
@@ -287,6 +321,7 @@ export const expenseCategoryApi = {
         : 1;
     const response = await api.post('/expense-categories', {
       name: data.name,
+      title: data.title || data.name,
       description: data.description || 'General dealership expense',
       status: rawStatus,
     });
@@ -304,6 +339,7 @@ export const expenseCategoryApi = {
         : 1;
     const response = await api.put(`/expense-categories/${id}`, {
       name: data.name,
+      title: data.title || data.name,
       description: data.description || 'General dealership expense',
       status: rawStatus,
     });

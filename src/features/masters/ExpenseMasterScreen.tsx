@@ -292,14 +292,12 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
       );
     } catch (err: any) {
       console.log('Error deleting expense category:', err);
-      // Demo optimistic delete
-      setCategories((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-      setDeleteModalVisible(false);
-      setDeleteTarget(null);
-      showSuccessToast(
-        'Category Deleted',
-        `Expense title "${deleteTarget.title}" removed from catalog.`
-      );
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Unable to delete expense category.';
+      triggerHaptic('notificationError');
+      showErrorToast('Delete Failed', errorMsg);
     } finally {
       setIsDeleting(false);
     }
@@ -573,6 +571,9 @@ const styles = StyleSheet.create({
   countRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 4,
   },
   countBadge: {
     paddingHorizontal: 10,

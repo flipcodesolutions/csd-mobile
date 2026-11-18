@@ -68,6 +68,14 @@ api.interceptors.request.use(
     if (authToken) {
       config.headers.Authorization = `Bearer ${authToken}`;
     }
+    const isFormData =
+      config.data instanceof FormData ||
+      (config.data &&
+        (typeof config.data.append === 'function' || Array.isArray(config.data?._parts)));
+    if (isFormData) {
+      // Allow browser / native fetch boundary calculation
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => Promise.reject(error)

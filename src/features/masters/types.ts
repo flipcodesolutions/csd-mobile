@@ -120,6 +120,7 @@ export interface CreateVariantPayload {
   brand_id: number;
   model_id: number;
   price: string | number;
+  ex_showroom_price?: string | number;
   fuel_type?: string;
   status: 'Active' | 'Inactive';
 }
@@ -129,6 +130,7 @@ export interface UpdateVariantPayload {
   brand_id?: number;
   model_id?: number;
   price: string | number;
+  ex_showroom_price?: string | number;
   fuel_type?: string;
   status: 'Active' | 'Inactive';
 }
@@ -160,12 +162,14 @@ export interface ExpenseCategory {
 
 export interface CreateExpenseCategoryPayload {
   name: string;
+  title?: string;
   description?: string;
   status?: number | string;
 }
 
 export interface UpdateExpenseCategoryPayload {
   name: string;
+  title?: string;
   description?: string;
   status?: number | string;
 }

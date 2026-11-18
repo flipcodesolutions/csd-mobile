@@ -35,8 +35,6 @@ interface AddEditVariantModalProps {
   onSubmit: (payload: CreateVariantPayload | UpdateVariantPayload) => Promise<void>;
 }
 
-const FUEL_TYPES = ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'];
-
 export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
   visible,
   editingItem,
@@ -52,7 +50,6 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
   const [brandId, setBrandId] = useState<number | null>(null);
   const [modelId, setModelId] = useState<number | null>(null);
   const [price, setPrice] = useState('');
-  const [fuelType, setFuelType] = useState<string>('Petrol');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -84,7 +81,6 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
       setBrandId(bId);
       setModelId(editingItem.model_id || editingItem.model?.id || null);
       setPrice(String(editingItem.price || editingItem.ex_showroom_price || ''));
-      setFuelType(editingItem.fuel_type || 'Petrol');
       setStatus(editingItem.status || 'Active');
     } else {
       setName('');
@@ -93,7 +89,6 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
       const defaultModels = models.filter((m) => m.brand_id === defaultBrand);
       setModelId(defaultModels[0]?.id ?? null);
       setPrice('');
-      setFuelType('Petrol');
       setStatus('Active');
     }
     setIsSubmitting(false);
@@ -137,7 +132,6 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
         brand_id: brandId,
         model_id: modelId,
         price: cleanPrice,
-        fuel_type: fuelType,
         status,
       });
       onClose();
@@ -410,66 +404,7 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
               />
             </View>
 
-            {/* 5. Fuel Type Picker */}
-            <View style={styles.fieldGroup}>
-              <Text
-                style={[
-                  styles.label,
-                  { color: isDark ? '#CBD5E1' : '#334155' },
-                ]}
-              >
-                5. FUEL TYPE
-              </Text>
-              <View style={styles.fuelRow}>
-                {FUEL_TYPES.map((f) => {
-                  const isSel = fuelType === f;
-                  return (
-                    <TouchableOpacity
-                      key={f}
-                      style={[
-                        styles.fuelPill,
-                        {
-                          backgroundColor: isSel
-                            ? isDark
-                              ? 'rgba(2, 132, 199, 0.25)'
-                              : '#E0F2FE'
-                            : isDark
-                            ? '#1E293B'
-                            : '#FFFFFF',
-                          borderColor: isSel
-                            ? '#0284C7'
-                            : isDark
-                            ? '#334155'
-                            : '#CBD5E1',
-                        },
-                      ]}
-                      onPress={() => {
-                        triggerHaptic('selection');
-                        setFuelType(f);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.fuelPillText,
-                          {
-                            color: isSel
-                              ? '#0284C7'
-                              : isDark
-                              ? '#CBD5E1'
-                              : '#64748B',
-                            fontWeight: isSel ? '800' : '600',
-                          },
-                        ]}
-                      >
-                        {f}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* 6. Status Toggle */}
+            {/* 5. Status Toggle */}
             <View style={styles.fieldGroup}>
               <Text
                 style={[
