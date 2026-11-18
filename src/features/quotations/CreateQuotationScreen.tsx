@@ -3,7 +3,9 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -1728,7 +1730,10 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
         transparent
         onRequestClose={() => setPickerType(null)}
       >
-        <View style={styles.pickerBackdrop}>
+        <KeyboardAvoidingView
+          style={styles.pickerBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View
             style={[
               styles.pickerContainer,
@@ -1865,7 +1870,7 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
               }
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Official Sheet Print / Preview Modal */}

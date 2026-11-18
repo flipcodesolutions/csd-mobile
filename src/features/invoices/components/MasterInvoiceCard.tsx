@@ -9,7 +9,6 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  ExternalLink,
   FileSpreadsheet,
   FileText,
   MapPin,
@@ -23,14 +22,13 @@ import { InvoiceRecord } from '../types';
 
 interface MasterInvoiceCardProps {
   invoice: InvoiceRecord;
-  onCustomerPress: (inv: InvoiceRecord) => void;
+  onCustomerPress?: (inv: InvoiceRecord) => void;
   onViewBill: (inv: InvoiceRecord) => void;
   onViewDealLedger: (inv: InvoiceRecord) => void;
 }
 
 export const MasterInvoiceCard: React.FC<MasterInvoiceCardProps> = ({
   invoice,
-  onCustomerPress,
   onViewBill,
   onViewDealLedger,
 }) => {
@@ -108,20 +106,13 @@ export const MasterInvoiceCard: React.FC<MasterInvoiceCardProps> = ({
       {/* 2. Customer & Vehicle Particulars */}
       <View style={styles.particularsContainer}>
         <View style={styles.customerRow}>
-          <TouchableOpacity
-            style={styles.customerBtn}
-            onPress={() => {
-              triggerHaptic();
-              onCustomerPress(invoice);
-            }}
-            activeOpacity={0.7}
-          >
-            <User size={13} color={isDark ? '#60A5FA' : '#1E3A8A'} />
-            <Text style={[styles.customerName, { color: isDark ? '#60A5FA' : '#1E3A8A' }]}>
+          {/* Customer Name (Non-clickable) */}
+          <View style={styles.customerBtn}>
+            <User size={13} color={isDark ? '#94A3B8' : '#64748B'} />
+            <Text style={[styles.customerName, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
               {invoice.customer_name}
             </Text>
-            <ExternalLink size={11} color={isDark ? '#60A5FA' : '#1E3A8A'} />
-          </TouchableOpacity>
+          </View>
 
           {invoice.customer_phone ? (
             <View style={styles.contactItem}>

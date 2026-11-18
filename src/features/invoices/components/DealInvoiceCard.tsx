@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import {
   Calendar,
-  ExternalLink,
   FileSpreadsheet,
   FileText,
   MapPin,
@@ -22,14 +21,13 @@ import { EnrichedDeal } from '../types';
 
 interface DealInvoiceCardProps {
   deal: EnrichedDeal;
-  onCustomerPress: (deal: EnrichedDeal) => void;
+  onCustomerPress?: (deal: EnrichedDeal) => void;
   onAddBill: (deal: EnrichedDeal) => void;
   onViewLedger: (deal: EnrichedDeal) => void;
 }
 
 export const DealInvoiceCard: React.FC<DealInvoiceCardProps> = ({
   deal,
-  onCustomerPress,
   onAddBill,
   onViewLedger,
 }) => {
@@ -93,7 +91,7 @@ export const DealInvoiceCard: React.FC<DealInvoiceCardProps> = ({
       {/* 1. Header: Avatar Initials + Customer Info + Deal Ref & Bills Badge */}
       <View style={styles.headerRow}>
         <View style={styles.customerLeft}>
-          <TouchableOpacity
+          <View
             style={[
               styles.avatarBadge,
               {
@@ -101,36 +99,22 @@ export const DealInvoiceCard: React.FC<DealInvoiceCardProps> = ({
                 borderColor: isDark ? '#334155' : '#E2E8F0',
               },
             ]}
-            onPress={() => {
-              triggerHaptic();
-              onCustomerPress(deal);
-            }}
-            activeOpacity={0.7}
           >
             <Text style={[styles.avatarText, { color: isDark ? '#CBD5E1' : '#131C27' }]}>
               {initials}
             </Text>
-          </TouchableOpacity>
+          </View>
 
           <View style={{ flex: 1, marginLeft: 10 }}>
-            {/* Customer Name Clickable */}
-            <TouchableOpacity
-              style={styles.customerNameBtn}
-              onPress={() => {
-                triggerHaptic();
-                onCustomerPress(deal);
-              }}
-              activeOpacity={0.7}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
+            {/* Customer Name (Non-clickable) */}
+            <View style={styles.customerNameBtn}>
               <Text
-                style={[styles.customerName, { color: isDark ? '#60A5FA' : '#1E3A8A' }]}
+                style={[styles.customerName, { color: isDark ? '#F1F5F9' : '#0F172A' }]}
                 numberOfLines={1}
               >
                 {deal.customer_name || 'Customer'}
               </Text>
-              <ExternalLink size={12} color={isDark ? '#60A5FA' : '#1E3A8A'} strokeWidth={2.4} />
-            </TouchableOpacity>
+            </View>
 
             {/* Sub-row: Phone & City */}
             <View style={styles.contactSubRow}>

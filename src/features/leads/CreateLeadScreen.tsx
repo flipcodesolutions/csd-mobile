@@ -1040,7 +1040,10 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
         animationType="fade"
         onRequestClose={() => setPickerModalVisible(false)}
       >
-        <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
@@ -1105,7 +1108,7 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
               )}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ========================================================= */}

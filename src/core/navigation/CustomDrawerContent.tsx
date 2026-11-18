@@ -24,6 +24,9 @@ import {
   Radio,
   Receipt,
   ReceiptText,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
   Sun,
   Trophy,
   UserCheck,
@@ -43,6 +46,9 @@ export type ScreenName =
   | 'send-quotation'
   | 'deals'
   | 'generate-invoice'
+  | 'pending-insurance'
+  | 'insurance-reminders'
+  | 'insurance-records'
   | 'lead-status'
   | 'lead-source'
   | 'brand'
@@ -69,6 +75,9 @@ const MENU_ICONS: Record<
   'send-quotation': FileSpreadsheet,
   deals: Trophy,
   'generate-invoice': ReceiptText,
+  'pending-insurance': ShieldAlert,
+  'insurance-reminders': ShieldCheck,
+  'insurance-records': Shield,
   'lead-status': ListFilter,
   'lead-source': Radio,
   brand: Building2,
@@ -86,6 +95,9 @@ const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'send-quotation', label: 'Send Quotation' },
   { id: 'deals', label: 'Deals & Bookings' },
   { id: 'generate-invoice', label: 'Generate Invoice' },
+  { id: 'pending-insurance', label: 'Pending Insurance' },
+  { id: 'insurance-reminders', label: 'Insurance Reminders' },
+  { id: 'insurance-records', label: 'Insurance Records' },
   { id: 'brand', label: 'Brand Master' },
   { id: 'model', label: 'Model Master' },
   { id: 'variant', label: 'Variant Master' },
@@ -151,6 +163,9 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           { id: 'send-quotation' as ScreenName, label: 'Send Quotation' },
           { id: 'deals' as ScreenName, label: 'Deals & Bookings' },
           { id: 'generate-invoice' as ScreenName, label: 'Generate Invoice' },
+          { id: 'pending-insurance' as ScreenName, label: 'Pending Insurance' },
+          { id: 'insurance-reminders' as ScreenName, label: 'Insurance Reminders' },
+          { id: 'insurance-records' as ScreenName, label: 'Insurance Records' },
           { id: 'users' as ScreenName, label: 'Sales Reps Team' },
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Master' },

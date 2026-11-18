@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -54,6 +55,22 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
   const [fuelType, setFuelType] = useState<string>('Petrol');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Cascading Models: filter by selected brandId
   const matchingModels = models.filter((m) =>
@@ -141,7 +158,7 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
     >
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View
           style={[
@@ -206,8 +223,8 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
 
           {/* Form Scroll */}
           <ScrollView
-            style={styles.formScroll}
-            contentContainerStyle={styles.formContent}
+            style={[styles.formScroll, { flexShrink: 1 }]}
+            contentContainerStyle={[styles.formContent, keyboardVisible ? { paddingBottom: 60 } : undefined]}
             keyboardShouldPersistTaps="handled"
           >
             {/* 1. Brand Selection */}
@@ -583,7 +600,7 @@ export const AddEditVariantModal: React.FC<AddEditVariantModalProps> = ({
               {
                 borderTopColor: isDark ? '#1E293B' : '#F1F5F9',
                 backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                paddingBottom: Math.max(insets.bottom, 16),
+                paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom, 16),
               },
             ]}
           >

@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -39,6 +42,24 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Keyboard avoidance tracking
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Form States
   const [clientName, setClientName] = useState('');
@@ -216,7 +237,10 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
@@ -272,8 +296,12 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
 
               <ScrollView
                 style={styles.scrollArea}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  keyboardVisible ? { paddingBottom: 60 } : undefined,
+                ]}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
                 {/* 1. Customer & Lead Info */}
                 <View
@@ -758,7 +786,7 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                   {
                     borderTopColor: isDark ? '#1E293B' : '#F1F5F9',
                     backgroundColor: isDark ? '#0D1322' : '#FFFFFF',
-                    paddingBottom: Math.max(insets.bottom, 28) + 8,
+                    paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom, 28) + 8,
                   },
                 ]}
               >
@@ -781,7 +809,7 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
   );
 };
@@ -797,7 +825,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     borderWidth: 1,
     borderBottomWidth: 0,
-    height: '92%',
+    maxHeight: '92%',
     overflow: 'hidden',
   },
   headerRow: {

@@ -3,7 +3,10 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -73,6 +76,24 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Keyboard avoidance tracking
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Form State
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
@@ -247,7 +268,10 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
@@ -350,7 +374,7 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
             style={styles.formScroll}
             contentContainerStyle={[
               styles.formContent,
-              { paddingBottom: Math.max(insets.bottom + 20, 36) },
+              { paddingBottom: keyboardVisible ? 80 : Math.max(insets.bottom + 20, 36) },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -944,7 +968,7 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     
       <DatePickerModal
         visible={datePickerTarget !== null}
@@ -1057,7 +1081,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   formScroll: {
-    flexGrow: 0,
+    flexShrink: 1,
   },
   formContent: {
     paddingHorizontal: 16,

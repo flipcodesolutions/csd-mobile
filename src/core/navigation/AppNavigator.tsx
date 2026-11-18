@@ -21,6 +21,9 @@ import { SendQuotationScreen } from '../../features/quotations/SendQuotationScre
 import { CreateLeadScreen } from '../../features/leads/CreateLeadScreen';
 import { DealsScreen } from '../../features/deals/DealsScreen';
 import { InvoiceScreen } from '../../features/invoices/InvoiceScreen';
+import { PendingInsuranceScreen } from '../../features/insurance/PendingInsuranceScreen';
+import { InsuranceRemindersScreen } from '../../features/insurance/InsuranceRemindersScreen';
+import { InsuranceRecordsScreen } from '../../features/insurance/InsuranceRecordsScreen';
 
 import { useTheme } from '../theme/ThemeContext';
 import { CustomDrawerContent } from './CustomDrawerContent';
@@ -40,6 +43,9 @@ export type DrawerParamList = {
   'send-quotation': { leadId?: number } | undefined;
   deals: undefined;
   'generate-invoice': undefined;
+  'pending-insurance': undefined;
+  'insurance-reminders': undefined;
+  'insurance-records': undefined;
   brand: undefined;
   model: undefined;
   variant: undefined;
@@ -67,6 +73,9 @@ const SCREEN_TITLES: Record<string, string> = {
   'send-quotation': 'Official Vehicle Quotation',
   deals: 'Vehicle Deals & Bookings',
   'generate-invoice': 'Vehicle Deals & Invoices Register',
+  'pending-insurance': 'Pending Insurance Deals',
+  'insurance-reminders': 'Insurance & Renewal Reminders',
+  'insurance-records': 'Insurance Records',
   brand: 'Brand Master',
   model: 'Model Master',
   variant: 'Variant & Pricing',
@@ -191,6 +200,9 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="deals" component={DealsScreen} />
       <Drawer.Screen name="generate-invoice" component={InvoiceScreen} />
+      <Drawer.Screen name="pending-insurance" component={PendingInsuranceScreen} />
+      <Drawer.Screen name="insurance-reminders" component={InsuranceRemindersScreen} />
+      <Drawer.Screen name="insurance-records" component={InsuranceRecordsScreen} />
 
       <Drawer.Screen name="brand">
         {({ navigation }) => (

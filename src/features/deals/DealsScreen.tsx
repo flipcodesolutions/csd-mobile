@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -41,6 +42,8 @@ import {
   DealsFilterModal,
 } from './components/DealsFilterModal';
 import { leadApi } from '../leads/leadService';
+import { CustomerLead } from '../leads/types';
+import { LeadProfileModal } from '../leads/components/LeadProfileModal';
 
 export const DealsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
@@ -74,6 +77,10 @@ export const DealsScreen: React.FC = () => {
   const [selectedDealForStage, setSelectedDealForStage] = useState<Deal | null>(null);
   const [selectedDealForLedger, setSelectedDealForLedger] = useState<Deal | null>(null);
   const [selectedDealForInvoice, setSelectedDealForInvoice] = useState<Deal | null>(null);
+
+  // Lead Profile Modal States (Matches 360° Lead Details from Leads Screen)
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [activeProfileLead, setActiveProfileLead] = useState<CustomerLead | null>(null);
 
   const formatInr = (val?: number | string) => {
     const num = Number(val || 0);
@@ -183,23 +190,47 @@ export const DealsScreen: React.FC = () => {
     setToDate('');
   };
 
-  // Open Lead Detail Screen on Customer Name Press
+  const handleCall = (phone: string) => {
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    if (cleaned) {
+      Linking.openURL(`tel:${cleaned}`).catch(() => {});
+    }
+  };
+
+  // Open Lead Detail Screen (360° Profile Modal) on Customer Name Press
   const handleCustomerPress = async (deal: Deal) => {
     triggerHaptic();
     const finalLeadId = deal.lead_id || (deal.lead && (deal.lead as any).id);
-    if (!finalLeadId) {
-      Alert.alert(
-        'Lead Information',
-        `Customer: ${deal.customer_name}\nPhone: ${deal.customer_phone || 'N/A'}\nCity: ${deal.customer_city || deal.city || 'N/A'}\nVehicle: ${deal.model_variant || deal.model_name || 'N/A'}`
-      );
-      return;
+    if (finalLeadId) {
+      try {
+        const res = await leadApi.getById(finalLeadId);
+        const fullLead = res?.data || res;
+        if (fullLead && (fullLead.name || fullLead.id)) {
+          setActiveProfileLead(fullLead);
+          setProfileModalVisible(true);
+          return;
+        }
+      } catch (e) {
+        console.log('Error fetching lead details for profile modal:', e);
+      }
     }
 
-    try {
-      navigation.navigate('LeadDetail', { leadId: finalLeadId });
-    } catch (e) {
-      navigation.navigate('leads');
-    }
+    // Fallback if lead API didn't return or no lead_id, synthesize from deal
+    const syntheticLead: CustomerLead = {
+      id: finalLeadId || deal.id,
+      name: deal.customer_name || 'Customer',
+      phone: deal.customer_phone || '',
+      email: deal.customer_email || '',
+      city: deal.customer_city || deal.city || '',
+      vehicle_segment: '4 Wheeler',
+      model_variant: deal.model_variant || deal.model_name || '',
+      brand_name: deal.brand_name || '',
+      priority: 'Hot',
+      status_name: deal.delivery_stage || deal.deal_status || 'Deal Confirmed',
+      assigned_user_name: deal.sales_executive_name || '',
+    };
+    setActiveProfileLead(syntheticLead);
+    setProfileModalVisible(true);
   };
 
   // Trash Operations
@@ -603,6 +634,21 @@ export const DealsScreen: React.FC = () => {
         onSuccess={() => {
           fetchDeals(1, true);
           fetchStats();
+        }}
+      />
+
+      {/* Lead Profile Modal (360° Lead Details, matching Leads screen) */}
+      <LeadProfileModal
+        visible={profileModalVisible}
+        lead={activeProfileLead}
+        onClose={() => setProfileModalVisible(false)}
+        onCall={handleCall}
+        onConvertToDeal={() => {
+          setProfileModalVisible(false);
+        }}
+        onSendQuotation={(ld) => {
+          setProfileModalVisible(false);
+          navigation.navigate('send-quotation', { leadId: ld?.id });
         }}
       />
     </View>

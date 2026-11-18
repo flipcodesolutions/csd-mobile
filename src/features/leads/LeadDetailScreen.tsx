@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -80,6 +81,22 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
   const [formNextTime, setFormNextTime] = useState('11:00');
   const [formStatus, setFormStatus] = useState('Completed');
   const [formLeadStatus, setFormLeadStatus] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const fetchDetails = useCallback(async () => {
     setIsLoading(true);
@@ -805,9 +822,9 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
       >
         <KeyboardAvoidingView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { maxHeight: '92%' }]}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Log Follow-Up Interaction</Text>
@@ -819,7 +836,11 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalBody}>
+            <ScrollView
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={[styles.modalBody, keyboardVisible ? { paddingBottom: 60 } : undefined]}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Customer Info Snippet */}
               <View style={styles.modalLeadInfo}>
                 <Text style={styles.modalLeadName}>{lead.name}</Text>

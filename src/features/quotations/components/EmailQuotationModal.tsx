@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -40,6 +44,22 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
     `Dear Customer,\n\nPlease find attached the official vehicle quotation with CSD price breakdown for your reference.\n\nBest Regards,\nDefence Autolink Team`
   );
   const [sending, setSending] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleSend = async () => {
     if (!email.trim() || !email.includes('@')) {
@@ -69,7 +89,10 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={[styles.modalCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
           {/* Header */}
           <View style={styles.modalHeader}>
@@ -87,7 +110,12 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
           </View>
 
           {/* Form */}
-          <View style={styles.formContent}>
+          <ScrollView
+            style={{ maxHeight: 380 }}
+            contentContainerStyle={[styles.formContent, keyboardVisible ? { paddingBottom: 60 } : undefined]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={[styles.inputLabel, { color: isDark ? '#CBD5E1' : '#334155' }]}>
               Recipient Email <Text style={styles.req}>*</Text>
             </Text>
@@ -146,7 +174,7 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
               multiline
               numberOfLines={4}
             />
-          </View>
+          </ScrollView>
 
           {/* Footer */}
           <View style={styles.footerRow}>
@@ -175,7 +203,7 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

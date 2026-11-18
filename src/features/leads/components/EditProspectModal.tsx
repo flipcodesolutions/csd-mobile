@@ -3,7 +3,10 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -59,6 +62,24 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
 
   const isEdit = !!lead;
 
+  // Keyboard avoidance tracking
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   // 1. Customer Details
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -93,7 +114,6 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
   const filteredVariants = variants.filter((v) =>
     modelId ? v.model_id === modelId : true
   );
-
   useEffect(() => {
     if (lead) {
       setName(lead.name || '');
@@ -212,7 +232,10 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
@@ -323,7 +346,10 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
           {/* Scrollable Form */}
           <ScrollView
             style={styles.formScroll}
-            contentContainerStyle={styles.formContent}
+            contentContainerStyle={[
+              styles.formContent,
+              keyboardVisible ? { paddingBottom: 60 } : undefined,
+            ]}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}
             keyboardShouldPersistTaps="handled"
@@ -1144,7 +1170,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
               {
                 borderTopColor: isDark ? '#1E293B' : '#F1F5F9',
                 backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
-                paddingBottom: Math.max(insets.bottom, 24) + 8,
+                paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom, 24) + 8,
               },
             ]}
           >
@@ -1183,7 +1209,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Date Picker Modal for Birth Date & Anniversary Date (Current & Past Dates Only) */}
       <DatePickerModal
@@ -1296,7 +1322,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   formScroll: {
-    flexGrow: 0,
+    flexShrink: 1,
   },
   formContent: {
     padding: 14,

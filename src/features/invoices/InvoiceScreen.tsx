@@ -368,24 +368,6 @@ export const InvoiceScreen: React.FC = () => {
     setToDate('');
   };
 
-  // Customer Profile Navigation
-  const handleCustomerPress = (dealOrInv: any) => {
-    triggerHaptic();
-    const finalLeadId = dealOrInv.lead_id || (dealOrInv.parent_deal && dealOrInv.parent_deal.lead_id);
-    if (!finalLeadId) {
-      Alert.alert(
-        'Lead Information',
-        `Customer: ${dealOrInv.customer_name}\nPhone: ${dealOrInv.customer_phone || 'N/A'}\nCity: ${dealOrInv.customer_city || dealOrInv.city || 'N/A'}`
-      );
-      return;
-    }
-    try {
-      navigation.navigate('LeadDetail', { leadId: finalLeadId });
-    } catch (e) {
-      navigation.navigate('leads');
-    }
-  };
-
   const selectedStageLabel =
     DEAL_STAGE_OPTIONS.find((s) => s.key === activeStage)?.label || 'All Stages';
   const selectedPaymentLabel =
@@ -730,7 +712,6 @@ export const InvoiceScreen: React.FC = () => {
             return (
               <DealInvoiceCard
                 deal={d}
-                onCustomerPress={handleCustomerPress}
                 onAddBill={(dl) => {
                   setSelectedDealForInvoice(dl);
                   setGenerateModalVisible(true);
@@ -746,7 +727,6 @@ export const InvoiceScreen: React.FC = () => {
             return (
               <MasterInvoiceCard
                 invoice={inv}
-                onCustomerPress={handleCustomerPress}
                 onViewBill={(record) => {
                   setSelectedInvoiceForPrint(record);
                   setPrintModalVisible(true);

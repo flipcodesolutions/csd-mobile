@@ -59,7 +59,6 @@ export const PURCHASE_TIMELINE_OPTIONS = [
 ] as const;
 
 export const INSURANCE_TYPE_OPTIONS = [
-  'Comprehensive (1+3 Years)',
   'Third Party',
   'Own Damage (OD)',
   'Zero Depreciation (Bumper to Bumper)',

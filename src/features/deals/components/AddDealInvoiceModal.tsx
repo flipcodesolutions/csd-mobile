@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -62,6 +65,24 @@ export const AddDealInvoiceModal: React.FC<AddDealInvoiceModalProps> = ({
 }) => {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Keyboard avoidance tracking
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => {
@@ -267,14 +288,17 @@ export const AddDealInvoiceModal: React.FC<AddDealInvoiceModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View
           style={[
             styles.container,
             {
               backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
               maxHeight: '92%',
-              paddingBottom: Math.max(insets.bottom, 16),
+              paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 16),
             },
           ]}
         >
@@ -294,7 +318,14 @@ export const AddDealInvoiceModal: React.FC<AddDealInvoiceModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContent,
+              keyboardVisible ? { paddingBottom: 60 } : undefined,
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* 1. Select Vehicle Deal (Locked) */}
             <View style={styles.formGroup}>
               <View style={styles.labelRow}>
@@ -894,7 +925,7 @@ export const AddDealInvoiceModal: React.FC<AddDealInvoiceModalProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Date Picker Modal */}
       <DatePickerModal

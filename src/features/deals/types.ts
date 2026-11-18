@@ -98,13 +98,20 @@ export interface DealFilterParams {
 }
 
 export interface UpdateDealPayload {
-  deal_status: string;
+  deal_status?: string;
   color?: string;
   vin_chassis_number?: string;
   engine_number?: string;
   registration_number?: string;
   expected_delivery_date?: string;
   notes?: string;
+  has_insurance?: boolean | string;
+  insurance_company?: string;
+  policy_number?: string;
+  insurance_type?: string;
+  policy_start_date?: string;
+  policy_expiry_date?: string;
+  insurance_premium?: number;
 }
 
 export interface CreateDealPaymentPayload {

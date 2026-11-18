@@ -21,6 +21,7 @@ import {
 import { Deal } from '../types';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
+import { isDealInsured } from '../../insurance/insuranceService';
 
 interface DealCardProps {
   deal: Deal;
@@ -94,7 +95,19 @@ export const DealCard: React.FC<DealCardProps> = ({
   };
 
   const stageBadge = getStageBadge(deal.delivery_stage || deal.deal_status);
-  const hasInsurance = deal.has_insurance === true || deal.has_insurance === 'Yes' || !!deal.insurance;
+  const hasInsurance =
+    deal.has_insurance === true ||
+    deal.has_insurance === 'Yes' ||
+    String(deal.has_insurance) === '1' ||
+    deal.insurance === 'Yes' ||
+    deal.insurance === true ||
+    !!deal.insurance_company ||
+    !!deal.policy_number ||
+    isDealInsured(deal.id) ||
+    (typeof deal.notes === 'string' &&
+      (deal.notes.toLowerCase().includes('insurance included: yes') ||
+        deal.notes.toLowerCase().includes('insurance: yes') ||
+        /insurance.*yes/i.test(deal.notes)));
 
   const vehicleTitle =
     deal.model_variant ||

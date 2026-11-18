@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -38,6 +41,22 @@ export const DealPickerModal: React.FC<DealPickerModalProps> = ({
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const formatInr = (val?: number | string) => {
     const num = Number(val || 0);
@@ -56,14 +75,17 @@ export const DealPickerModal: React.FC<DealPickerModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View
           style={[
             styles.container,
             {
               backgroundColor: isDark ? '#101726' : '#FFFFFF',
               maxHeight: '85%',
-              paddingBottom: Math.max(insets.bottom, 16),
+              paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom, 16),
             },
           ]}
         >
@@ -117,7 +139,7 @@ export const DealPickerModal: React.FC<DealPickerModalProps> = ({
           <FlatList
             data={filteredDeals}
             keyExtractor={(item) => `deal-pick-${item.id}`}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, keyboardVisible ? { paddingBottom: 40 } : undefined]}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const isSelected = selectedDealId === item.id;
@@ -201,7 +223,7 @@ export const DealPickerModal: React.FC<DealPickerModalProps> = ({
             }
           />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

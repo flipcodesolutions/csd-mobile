@@ -3,7 +3,10 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -56,6 +59,22 @@ export const UserMasterScreen: React.FC = () => {
   const [formRole, setFormRole] = useState('Sales Executive');
   const [formActive, setFormActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // 1. Fetch users from backend API
   const fetchUsers = async (isPullRefresh = false) => {
@@ -370,103 +389,113 @@ export const UserMasterScreen: React.FC = () => {
           if (!isSubmitting) setModalVisible(false);
         }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
             <Text style={styles.modalTitle}>
               {editingItem ? 'Edit Staff Member' : 'Add New Staff Member'}
             </Text>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Pooja Sharma"
-                placeholderTextColor={colors.textMuted}
-                value={formName}
-                onChangeText={setFormName}
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="name@dealership.com"
-                placeholderTextColor={colors.textMuted}
-                value={formEmail}
-                onChangeText={setFormEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="+91 98765 43210"
-                placeholderTextColor={colors.textMuted}
-                value={formPhone}
-                onChangeText={setFormPhone}
-                keyboardType="phone-pad"
-                editable={!isSubmitting}
-              />
-            </View>
-
-            {!editingItem && (
+            <ScrollView
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ paddingBottom: keyboardVisible ? 20 : 0 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Account Password</Text>
+                <Text style={styles.label}>Full Name</Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Password@123"
+                  placeholder="e.g. Pooja Sharma"
                   placeholderTextColor={colors.textMuted}
-                  value={formPassword}
-                  onChangeText={setFormPassword}
-                  secureTextEntry
+                  value={formName}
+                  onChangeText={setFormName}
                   editable={!isSubmitting}
                 />
               </View>
-            )}
 
-            {/* Role Picker */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Assign Role</Text>
-              <View style={styles.rolesWrap}>
-                {ROLES.map((r) => (
-                  <TouchableOpacity
-                    key={r}
-                    style={[
-                      styles.roleOption,
-                      formRole === r && styles.roleOptionActive,
-                    ]}
-                    onPress={() => setFormRole(r)}
-                    disabled={isSubmitting}
-                  >
-                    <Text
-                      style={[
-                        styles.roleOptionText,
-                        formRole === r && styles.roleOptionTextActive,
-                      ]}
-                    >
-                      {r}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email Address</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="name@dealership.com"
+                  placeholderTextColor={colors.textMuted}
+                  value={formEmail}
+                  onChangeText={setFormEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!isSubmitting}
+                />
               </View>
-            </View>
 
-            <View style={styles.switchRow}>
-              <Text style={styles.label}>Active Status</Text>
-              <Switch
-                value={formActive}
-                onValueChange={setFormActive}
-                trackColor={{ false: '#333', true: colors.primary }}
-                thumbColor={formActive ? colors.orange : '#aaa'}
-                disabled={isSubmitting}
-              />
-            </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Phone Number</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="+91 98765 43210"
+                  placeholderTextColor={colors.textMuted}
+                  value={formPhone}
+                  onChangeText={setFormPhone}
+                  keyboardType="phone-pad"
+                  editable={!isSubmitting}
+                />
+              </View>
+
+              {!editingItem && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Account Password</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Password@123"
+                    placeholderTextColor={colors.textMuted}
+                    value={formPassword}
+                    onChangeText={setFormPassword}
+                    secureTextEntry
+                    editable={!isSubmitting}
+                  />
+                </View>
+              )}
+
+              {/* Role Picker */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Assign Role</Text>
+                <View style={styles.rolesWrap}>
+                  {ROLES.map((r) => (
+                    <TouchableOpacity
+                      key={r}
+                      style={[
+                        styles.roleOption,
+                        formRole === r && styles.roleOptionActive,
+                      ]}
+                      onPress={() => setFormRole(r)}
+                      disabled={isSubmitting}
+                    >
+                      <Text
+                        style={[
+                          styles.roleOptionText,
+                          formRole === r && styles.roleOptionTextActive,
+                        ]}
+                      >
+                        {r}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.switchRow}>
+                <Text style={styles.label}>Active Status</Text>
+                <Switch
+                  value={formActive}
+                  onValueChange={setFormActive}
+                  trackColor={{ false: '#333', true: colors.primary }}
+                  thumbColor={formActive ? colors.orange : '#aaa'}
+                  disabled={isSubmitting}
+                />
+              </View>
+            </ScrollView>
 
             <View style={styles.modalBtnRow}>
               <TouchableOpacity
@@ -490,7 +519,7 @@ export const UserMasterScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

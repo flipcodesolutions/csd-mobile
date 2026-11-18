@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -60,6 +63,22 @@ export const UpdateDealStageModal: React.FC<UpdateDealStageModalProps> = ({
   const [showStagePicker, setShowStagePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (deal) {
@@ -114,14 +133,17 @@ export const UpdateDealStageModal: React.FC<UpdateDealStageModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View
           style={[
             styles.container,
             {
               backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-              maxHeight: '90%',
-              paddingBottom: Math.max(insets.bottom, 16),
+              maxHeight: '92%',
+              paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom, 16),
             },
           ]}
         >
@@ -138,7 +160,12 @@ export const UpdateDealStageModal: React.FC<UpdateDealStageModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={[styles.scrollContent, keyboardVisible ? { paddingBottom: 60 } : undefined]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Deal Reference Card */}
             <View
               style={[
@@ -383,7 +410,7 @@ export const UpdateDealStageModal: React.FC<UpdateDealStageModalProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Date Picker Modal - Strictly current & future dates as per user requirement */}
       <DatePickerModal

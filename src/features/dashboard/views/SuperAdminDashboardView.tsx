@@ -126,12 +126,48 @@ const DEFAULT_STATS: DashboardStats = {
 };
 
 const DEFAULT_PIPELINE: PipelineStage[] = [
-  { id: 'interested', label: 'Interested', count: 6, bg: '#0D1554', textColor: '#FFFFFF' },
-  { id: 'quote_req', label: 'Quote Req.', count: 2, bg: '#F3F4F6', textColor: '#1E293B' },
-  { id: 'negotiation', label: 'Negotiation', count: 0, bg: '#F3F4F6', textColor: '#1E293B' },
-  { id: 'not_reachable', label: 'Not Reachable', count: 0, bg: '#FEF3C7', textColor: '#D97706' },
-  { id: 'lost_lead', label: 'Lost Lead', count: 0, bg: '#FEE2E2', textColor: '#DC2626' },
-  { id: 'deal_won', label: 'Deal Won', count: 29, bg: '#DCFCE7', textColor: '#16A34A' },
+  {
+    id: 'interested',
+    label: 'Interested',
+    count: 6,
+    bg: '#0D1554',
+    textColor: '#FFFFFF',
+  },
+  {
+    id: 'quote_req',
+    label: 'Quote Req.',
+    count: 2,
+    bg: '#F3F4F6',
+    textColor: '#1E293B',
+  },
+  {
+    id: 'negotiation',
+    label: 'Negotiation',
+    count: 0,
+    bg: '#F3F4F6',
+    textColor: '#1E293B',
+  },
+  {
+    id: 'not_reachable',
+    label: 'Not Reachable',
+    count: 0,
+    bg: '#FEF3C7',
+    textColor: '#D97706',
+  },
+  {
+    id: 'lost_lead',
+    label: 'Lost Lead',
+    count: 0,
+    bg: '#FEE2E2',
+    textColor: '#DC2626',
+  },
+  {
+    id: 'deal_won',
+    label: 'Deal Won',
+    count: 29,
+    bg: '#DCFCE7',
+    textColor: '#16A34A',
+  },
 ];
 
 const DEFAULT_APPROVALS: PendingApproval[] = [
@@ -215,20 +251,39 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
 }) => {
   // Screen States
   const [statsData, setStatsData] = useState<DashboardStats>(DEFAULT_STATS);
-  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(DEFAULT_PIPELINE);
-  const [approvals, setApprovals] = useState<PendingApproval[]>(DEFAULT_APPROVALS);
-  const [deliveries, setDeliveries] = useState<UpcomingDelivery[]>(DEFAULT_DELIVERIES);
-  const [activities, setActivities] = useState<ActivityTimelineItem[]>(DEFAULT_ACTIVITIES);
+  const [pipelineStages, setPipelineStages] =
+    useState<PipelineStage[]>(DEFAULT_PIPELINE);
+  const [approvals, setApprovals] =
+    useState<PendingApproval[]>(DEFAULT_APPROVALS);
+  const [deliveries, setDeliveries] =
+    useState<UpcomingDelivery[]>(DEFAULT_DELIVERIES);
+  const [activities, setActivities] =
+    useState<ActivityTimelineItem[]>(DEFAULT_ACTIVITIES);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [actionLoadingId, setActionLoadingId] = useState<number | string | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<
+    number | string | null
+  >(null);
 
   // Formatted Current Date (e.g. 31 Oct 2026)
   const getFormattedDate = () => {
     const d = new Date();
     const day = String(d.getDate()).padStart(2, '0');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
 
@@ -251,30 +306,39 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
         const d = statsRes.value.data?.data || statsRes.value.data;
 
         // Core KPI Counts
-        setStatsData((prev) => ({
-          totalLeads: typeof d.total_leads === 'number' ? d.total_leads : prev.totalLeads,
+        setStatsData(prev => ({
+          totalLeads:
+            typeof d.total_leads === 'number' ? d.total_leads : prev.totalLeads,
           totalLeadsGrowth: d.leads_growth || prev.totalLeadsGrowth,
-          totalFollowUp: typeof d.total_follow_ups === 'number' ? d.total_follow_ups : prev.totalFollowUp,
-          totalQuotation: typeof d.total_quotations === 'number' ? d.total_quotations : prev.totalQuotation,
+          totalFollowUp:
+            typeof d.total_follow_ups === 'number'
+              ? d.total_follow_ups
+              : prev.totalFollowUp,
+          totalQuotation:
+            typeof d.total_quotations === 'number'
+              ? d.total_quotations
+              : prev.totalQuotation,
           totalDealAndBooking:
             typeof d.total_deals === 'number'
               ? d.total_deals
               : typeof d.total_bookings === 'number'
               ? d.total_bookings
               : prev.totalDealAndBooking,
-          totalLost: typeof d.total_lost === 'number' ? d.total_lost : prev.totalLost,
+          totalLost:
+            typeof d.total_lost === 'number' ? d.total_lost : prev.totalLost,
         }));
 
         // Pipeline Stages
         if (d.pipeline_stages && Array.isArray(d.pipeline_stages)) {
-          setPipelineStages((prev) =>
-            prev.map((stage) => {
+          setPipelineStages(prev =>
+            prev.map(stage => {
               const matched = d.pipeline_stages.find(
                 (s: any) =>
-                  s.key === stage.id || s.label?.toLowerCase() === stage.label.toLowerCase()
+                  s.key === stage.id ||
+                  s.label?.toLowerCase() === stage.label.toLowerCase(),
               );
               return matched ? { ...stage, count: matched.count } : stage;
-            })
+            }),
           );
         }
 
@@ -288,7 +352,12 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
                 customer_name: item.customer_name || item.name || 'Customer',
                 detail:
                   item.detail ||
-                  [item.delivery_date || item.date || item.expected_delivery_date, item.city || item.location]
+                  [
+                    item.delivery_date ||
+                      item.date ||
+                      item.expected_delivery_date,
+                    item.city || item.location,
+                  ]
                     .filter(Boolean)
                     .join(' • ') ||
                   '02 Nov • Dealership',
@@ -298,10 +367,11 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
                   item.variant ||
                   item.model ||
                   'Vehicle Model',
-                status_label: item.status_label || item.status || 'Ready for Delivery',
+                status_label:
+                  item.status_label || item.status || 'Ready for Delivery',
                 badge_bg: item.badge_bg || '#DCFCE7',
                 badge_color: item.badge_color || '#16A34A',
-              }))
+              })),
             );
           } else {
             setDeliveries([]);
@@ -315,10 +385,14 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             setActivities(
               rawActivities.map((act: any, idx: number) => ({
                 id: act.id || idx + 1,
-                text: act.text || act.description || act.action || 'System Activity',
+                text:
+                  act.text ||
+                  act.description ||
+                  act.action ||
+                  'System Activity',
                 time_ago: act.time_ago || act.time || 'Just now',
                 dot_color: act.dot_color || '#2563EB',
-              }))
+              })),
             );
           } else {
             setActivities([]);
@@ -333,18 +407,22 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
           setApprovals(
             apData.map((item: any) => ({
               id: item.id,
-              customer_name: item.customer_name || item.lead?.customer_name || 'Customer',
+              customer_name:
+                item.customer_name || item.lead?.customer_name || 'Customer',
               vehicle_model:
                 item.vehicle_model ||
                 item.lead?.vehicle_model ||
                 item.model?.name ||
                 'Vehicle',
               request_type: (item.request_type || 'DISCOUNT').toUpperCase(),
-              discount_amount: Number(item.discount_amount || item.demanded_discount || 0),
+              discount_amount: Number(
+                item.discount_amount || item.demanded_discount || 0,
+              ),
               reason: item.reason || item.notes || 'Approval requested',
-              requested_by: item.requested_by || item.user?.name || 'Sales Executive',
+              requested_by:
+                item.requested_by || item.user?.name || 'Sales Executive',
               proposed_price: item.proposed_price,
-            }))
+            })),
           );
         }
       }
@@ -361,12 +439,17 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
   }, [fetchDashboardData]);
 
   // Handle Approve or Reject with Optimistic UI updates
-  const handleApprovalAction = async (id: number | string, action: 'approve' | 'reject') => {
-    triggerHaptic(action === 'approve' ? 'impactMedium' : 'notificationWarning');
+  const handleApprovalAction = async (
+    id: number | string,
+    action: 'approve' | 'reject',
+  ) => {
+    triggerHaptic(
+      action === 'approve' ? 'impactMedium' : 'notificationWarning',
+    );
     setActionLoadingId(id);
 
-    const target = approvals.find((a) => a.id === id);
-    setApprovals((prev) => prev.filter((a) => a.id !== id));
+    const target = approvals.find(a => a.id === id);
+    setApprovals(prev => prev.filter(a => a.id !== id));
 
     try {
       await api.post(`/discount-approvals/${id}/action`, { action });
@@ -374,13 +457,13 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
         action === 'approve' ? 'Approval Approved' : 'Approval Rejected',
         `Request for ${target?.customer_name || 'customer'} has been ${
           action === 'approve' ? 'approved' : 'rejected'
-        }.`
+        }.`,
       );
     } catch (err: any) {
       console.log(`Action ${action} error:`, err);
       showSuccessToast(
         action === 'approve' ? 'Approved' : 'Rejected',
-        `Discount request updated (${action.toUpperCase()}).`
+        `Discount request updated (${action.toUpperCase()}).`,
       );
     } finally {
       setActionLoadingId(null);
@@ -405,7 +488,9 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
       <View style={styles.headerRow}>
         <View style={styles.headerTextGroup}>
           <Text style={styles.pageTitle}>Business Overview</Text>
-          <Text style={styles.pageSubtitle}>{"Here's your live business overview for today"}</Text>
+          <Text style={styles.pageSubtitle}>
+            {"Here's your live business overview for today"}
+          </Text>
         </View>
         <View style={styles.dateBadge}>
           <Calendar size={13} color={THEME.textSecondary} strokeWidth={2} />
@@ -488,8 +573,12 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             activeOpacity={0.85}
           >
             <View style={styles.kpiCardTopRow}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>TOTAL LEADS</Text>
-              <View style={[styles.kpiBadge, { backgroundColor: THEME.successBg }]}>
+              <Text style={styles.kpiLabel} numberOfLines={1}>
+                TOTAL LEADS
+              </Text>
+              <View
+                style={[styles.kpiBadge, { backgroundColor: THEME.successBg }]}
+              >
                 <Text style={[styles.kpiBadgeText, { color: THEME.success }]}>
                   {statsData.totalLeadsGrowth}
                 </Text>
@@ -499,8 +588,12 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
               {isLoading ? '...' : statsData.totalLeads}
             </Text>
             <View style={styles.kpiBottomRow}>
-              <View style={[styles.kpiDot, { backgroundColor: THEME.success }]} />
-              <Text style={styles.kpiSubtext} numberOfLines={1}>All Inquiries</Text>
+              <View
+                style={[styles.kpiDot, { backgroundColor: THEME.success }]}
+              />
+              <Text style={styles.kpiSubtext} numberOfLines={1}>
+                All Inquiries
+              </Text>
             </View>
           </TouchableOpacity>
 
@@ -514,17 +607,27 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             activeOpacity={0.85}
           >
             <View style={styles.kpiCardTopRow}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>FOLLOW UP</Text>
-              <View style={[styles.kpiBadge, { backgroundColor: THEME.warningBg }]}>
-                <Text style={[styles.kpiBadgeText, { color: THEME.warning }]}>Active</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>
+                FOLLOW UP
+              </Text>
+              <View
+                style={[styles.kpiBadge, { backgroundColor: THEME.warningBg }]}
+              >
+                <Text style={[styles.kpiBadgeText, { color: THEME.warning }]}>
+                  Active
+                </Text>
               </View>
             </View>
             <Text style={styles.kpiValue}>
               {isLoading ? '...' : statsData.totalFollowUp}
             </Text>
             <View style={styles.kpiBottomRow}>
-              <View style={[styles.kpiDot, { backgroundColor: THEME.warning }]} />
-              <Text style={styles.kpiSubtext} numberOfLines={1}>Call Pipeline</Text>
+              <View
+                style={[styles.kpiDot, { backgroundColor: THEME.warning }]}
+              />
+              <Text style={styles.kpiSubtext} numberOfLines={1}>
+                Call Pipeline
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -541,9 +644,15 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             activeOpacity={0.85}
           >
             <View style={styles.kpiCardTopRow}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>QUOTATION</Text>
-              <View style={[styles.kpiBadge, { backgroundColor: THEME.infoBg }]}>
-                <Text style={[styles.kpiBadgeText, { color: THEME.info }]}>Sent</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>
+                QUOTATION
+              </Text>
+              <View
+                style={[styles.kpiBadge, { backgroundColor: THEME.infoBg }]}
+              >
+                <Text style={[styles.kpiBadgeText, { color: THEME.info }]}>
+                  Sent
+                </Text>
               </View>
             </View>
             <Text style={styles.kpiValue}>
@@ -551,7 +660,9 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             </Text>
             <View style={styles.kpiBottomRow}>
               <View style={[styles.kpiDot, { backgroundColor: THEME.info }]} />
-              <Text style={styles.kpiSubtext} numberOfLines={1}>Proposals</Text>
+              <Text style={styles.kpiSubtext} numberOfLines={1}>
+                Proposals
+              </Text>
             </View>
           </TouchableOpacity>
 
@@ -565,17 +676,27 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             activeOpacity={0.85}
           >
             <View style={styles.kpiCardTopRow}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>DEAL & BOOKING</Text>
-              <View style={[styles.kpiBadge, { backgroundColor: THEME.successBg }]}>
-                <Text style={[styles.kpiBadgeText, { color: THEME.success }]}>WON</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>
+                DEAL & BOOKING
+              </Text>
+              <View
+                style={[styles.kpiBadge, { backgroundColor: THEME.successBg }]}
+              >
+                <Text style={[styles.kpiBadgeText, { color: THEME.success }]}>
+                  WON
+                </Text>
               </View>
             </View>
             <Text style={[styles.kpiValue, { color: THEME.success }]}>
               {isLoading ? '...' : statsData.totalDealAndBooking}
             </Text>
             <View style={styles.kpiBottomRow}>
-              <View style={[styles.kpiDot, { backgroundColor: THEME.success }]} />
-              <Text style={styles.kpiSubtext} numberOfLines={1}>Invoiced</Text>
+              <View
+                style={[styles.kpiDot, { backgroundColor: THEME.success }]}
+              />
+              <Text style={styles.kpiSubtext} numberOfLines={1}>
+                Invoiced
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -591,8 +712,12 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
         >
           <View style={styles.kpiCardTopRow}>
             <Text style={styles.kpiLabel}>TOTAL LOST</Text>
-            <View style={[styles.kpiBadge, { backgroundColor: THEME.dangerBg }]}>
-              <Text style={[styles.kpiBadgeText, { color: THEME.danger }]}>Lost</Text>
+            <View
+              style={[styles.kpiBadge, { backgroundColor: THEME.dangerBg }]}
+            >
+              <Text style={[styles.kpiBadgeText, { color: THEME.danger }]}>
+                Lost
+              </Text>
             </View>
           </View>
           <Text style={[styles.kpiValue, { color: THEME.danger }]}>
@@ -629,7 +754,7 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.pipelineScroll}
         >
-          {pipelineStages.map((stage) => (
+          {pipelineStages.map(stage => (
             <TouchableOpacity
               key={stage.id}
               style={styles.stageItem}
@@ -670,7 +795,9 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
           <View style={styles.emptyContainer}>
             <CheckCircle2 size={32} color={THEME.success} strokeWidth={2} />
             <Text style={styles.emptyTitle}>All Approvals Cleared</Text>
-            <Text style={styles.emptySubtitle}>No pending discount or sourcing approvals.</Text>
+            <Text style={styles.emptySubtitle}>
+              No pending discount or sourcing approvals.
+            </Text>
           </View>
         ) : (
           approvals.map((item, index) => {
@@ -686,11 +813,17 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
                 {/* Top: Customer & Vehicle + Request Type Badge */}
                 <View style={styles.approvalTopRow}>
                   <View style={styles.itemTextContainer}>
-                    <Text style={styles.approvalCustomer}>{item.customer_name}</Text>
-                    <Text style={styles.approvalVehicle}>{item.vehicle_model}</Text>
+                    <Text style={styles.approvalCustomer}>
+                      {item.customer_name}
+                    </Text>
+                    <Text style={styles.approvalVehicle}>
+                      {item.vehicle_model}
+                    </Text>
                   </View>
                   <View style={styles.discountBadge}>
-                    <Text style={styles.discountBadgeText}>{item.request_type}</Text>
+                    <Text style={styles.discountBadgeText}>
+                      {item.request_type}
+                    </Text>
                   </View>
                 </View>
 
@@ -701,7 +834,9 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
                     ₹{item.discount_amount.toLocaleString('en-IN')}
                   </Text>
                   {' • "' + item.reason + '" '}
-                  <Text style={styles.approvalBy}>{"(By: " + item.requested_by + ")"}</Text>
+                  <Text style={styles.approvalBy}>
+                    {'(By: ' + item.requested_by + ')'}
+                  </Text>
                 </Text>
 
                 {/* Bottom Actions: Side-by-Side Approve & Reject */}
@@ -743,13 +878,19 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderTitleGroup}>
             <Truck size={17} color={THEME.primaryNavy} strokeWidth={2.2} />
-            <Text style={[styles.cardHeaderTitle, { color: THEME.primaryNavy }]}>Upcoming Deliveries</Text>
+            <Text
+              style={[styles.cardHeaderTitle, { color: THEME.primaryNavy }]}
+            >
+              Upcoming Deliveries
+            </Text>
           </View>
         </View>
 
         {deliveries.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptySubtitle}>No upcoming deliveries scheduled.</Text>
+            <Text style={styles.emptySubtitle}>
+              No upcoming deliveries scheduled.
+            </Text>
           </View>
         ) : (
           deliveries.map((item, index) => {
@@ -766,13 +907,25 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
                 ]}
               >
                 <View style={styles.itemTextContainer}>
-                  <Text style={styles.deliveryCustomer}>{item.customer_name}</Text>
+                  <Text style={styles.deliveryCustomer}>
+                    {item.customer_name}
+                  </Text>
                   <Text style={styles.deliverySubtext} numberOfLines={2}>
                     {subtitle}
                   </Text>
                 </View>
-                <View style={[styles.statusBadgePill, { backgroundColor: item.badge_bg }]}>
-                  <Text style={[styles.statusBadgePillText, { color: item.badge_color }]}>
+                <View
+                  style={[
+                    styles.statusBadgePill,
+                    { backgroundColor: item.badge_bg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusBadgePillText,
+                      { color: item.badge_color },
+                    ]}
+                  >
                     {item.status_label}
                   </Text>
                 </View>
@@ -787,23 +940,37 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderTitleGroup}>
             <Clock size={17} color={THEME.primaryNavy} strokeWidth={2.2} />
-            <Text style={[styles.cardHeaderTitle, { color: THEME.primaryNavy }]}>Recent Activity</Text>
+            <Text
+              style={[styles.cardHeaderTitle, { color: THEME.primaryNavy }]}
+            >
+              Recent Activity
+            </Text>
           </View>
         </View>
 
         {activities.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptySubtitle}>No recent activities recorded.</Text>
+            <Text style={styles.emptySubtitle}>
+              No recent activities recorded.
+            </Text>
           </View>
         ) : (
           <View style={styles.timelineContainer}>
             {activities.map((item, index) => {
               const isLast = index === activities.length - 1;
               return (
-                <View key={item.id} style={[styles.timelineRow, isLast && styles.timelineRowLast]}>
+                <View
+                  key={item.id}
+                  style={[styles.timelineRow, isLast && styles.timelineRowLast]}
+                >
                   {/* Vertical Line with Dot Indicator */}
                   <View style={styles.timelineAxis}>
-                    <View style={[styles.timelineDot, { backgroundColor: item.dot_color || '#2563EB' }]} />
+                    <View
+                      style={[
+                        styles.timelineDot,
+                        { backgroundColor: item.dot_color || '#2563EB' },
+                      ]}
+                    />
                     {!isLast && <View style={styles.timelineLine} />}
                   </View>
 

@@ -39,7 +39,7 @@ export const Modal: React.FC<ModalProps> = ({
       </TouchableWithoutFeedback>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.centeredView}
         pointerEvents="box-none"
       >
