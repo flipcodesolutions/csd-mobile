@@ -16,7 +16,6 @@ import {
   Download,
   RotateCcw,
   Search,
-  Send,
   X,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +24,6 @@ import { triggerHaptic } from '../../core/utils/haptics';
 import { brandApi, modelApi, priceMasterApi } from './masterService';
 import { PriceCard } from './components/PriceCard';
 import { BulkPriceBar } from './components/BulkPriceBar';
-import { FabSpeedDial } from '../../shared/FabSpeedDial';
 import { exportCsvToFile } from '../../core/utils/csvExporter';
 import { showErrorToast, showNotification, showSuccessToast } from '../../core/utils/toast';
 import { Brand, CarModel, VehicleVariant } from './types';
@@ -791,25 +789,6 @@ export const UpdatePriceScreen: React.FC<UpdatePriceScreenProps> = ({
         onSaveBulk={handleSaveBulk}
         onDeselectAll={handleDeselectAll}
       />
-
-      {/* 4. Floating Action Button Speed Dial (active when not in bulk edit mode) */}
-      {selectedIds.length === 0 && (
-        <FabSpeedDial
-          primaryAction={{
-            label: 'Send Quote',
-            icon: <Send size={18} color="#FFFFFF" strokeWidth={2.4} />,
-            onPress: () => {
-              triggerHaptic('impactLight');
-              if (onNavigateQuotation) onNavigateQuotation();
-              else showNotification('Quotation Desk', 'Navigating to Send Quotation generator.');
-            },
-          }}
-          secondaryAction={{
-            label: 'Download CSV',
-            onPress: handleExportCSV,
-          }}
-        />
-      )}
     </View>
   );
 };
