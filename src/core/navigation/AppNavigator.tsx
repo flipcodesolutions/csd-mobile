@@ -24,6 +24,7 @@ import { InvoiceScreen } from '../../features/invoices/InvoiceScreen';
 import { PendingInsuranceScreen } from '../../features/insurance/PendingInsuranceScreen';
 import { InsuranceRemindersScreen } from '../../features/insurance/InsuranceRemindersScreen';
 import { InsuranceRecordsScreen } from '../../features/insurance/InsuranceRecordsScreen';
+import { ExpenseDetailsScreen } from '../../features/expenses/ExpenseDetailsScreen';
 import { PlaceholderScreen } from '../../shared/PlaceholderScreen';
 import {
   BarChart2,
@@ -290,13 +291,11 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="expense-details">
         {({ navigation }) => (
-          <PlaceholderScreen
-            title="Expense Details"
-            category="FINANCE & BILLING"
-            icon={CreditCard}
-            description="Track showroom overheads, operational expenses, and detailed financial vouchers."
+          <ExpenseDetailsScreen
+            navigation={navigation}
             onOpenDrawer={() => (navigation as any).openDrawer()}
-            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+            userRole={userRole}
+            loggedInUserName={userEmail ? userEmail.split('@')[0] : 'Admin User'}
           />
         )}
       </Drawer.Screen>
