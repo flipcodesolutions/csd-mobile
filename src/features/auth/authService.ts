@@ -6,6 +6,28 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  role?: string | { id?: number; title?: string; name?: string };
+  status?: string;
+  avatar?: string;
+  created_at?: string;
+}
+
+export interface UpdateProfilePayload {
+  email: string;
+  phone: string;
+}
+
+export interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+  new_password_confirmation: string;
+}
+
 export const authService = {
   login: async (credentials: LoginCredentials) => {
     const response = await api.post('/auth/login', credentials);
@@ -26,6 +48,7 @@ export const authService = {
     }
     return response.data;
   },
+
   logout: async () => {
     try {
       await api.post('/auth/logout');
@@ -36,13 +59,54 @@ export const authService = {
       await appStorage.clearAll();
     }
   },
+
   getProfile: async () => {
-    const response = await api.get('/auth/user');
-    if (response.data?.data) {
-      await appStorage.saveUserProfile(response.data.data);
+    try {
+      const response = await api.get('/auth/profile');
+      const user = response.data?.data || response.data;
+      if (user) {
+        await appStorage.saveUserProfile(user);
+      }
+      return response.data;
+    } catch (err) {
+      // Fallback to legacy endpoint if /auth/profile 404s
+      try {
+        const response = await api.get('/auth/user');
+        if (response.data?.data) {
+          await appStorage.saveUserProfile(response.data.data);
+        }
+        return response.data;
+      } catch (e) {
+        throw err;
+      }
+    }
+  },
+
+  updateProfile: async (data: UpdateProfilePayload) => {
+    const response = await api.put('/auth/profile', {
+      email: data.email.trim(),
+      phone: data.phone.trim(),
+    });
+
+    const updatedUser = response.data?.data || response.data?.user;
+    if (updatedUser) {
+      // Preserve existing fields like name and role if backend only returns partial
+      const currentUser = await appStorage.getUserProfile();
+      const merged = { ...currentUser, ...updatedUser };
+      await appStorage.saveUserProfile(merged);
     }
     return response.data;
   },
+
+  changePassword: async (data: ChangePasswordPayload) => {
+    const response = await api.post('/auth/change-password', {
+      current_password: data.current_password,
+      new_password: data.new_password,
+      new_password_confirmation: data.new_password_confirmation,
+    });
+    return response.data;
+  },
+
   restoreSession: async () => {
     const token = await appStorage.getToken();
     if (token) {

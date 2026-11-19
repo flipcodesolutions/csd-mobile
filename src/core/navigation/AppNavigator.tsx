@@ -26,6 +26,8 @@ import { PendingInsuranceScreen } from '../../features/insurance/PendingInsuranc
 import { InsuranceRemindersScreen } from '../../features/insurance/InsuranceRemindersScreen';
 import { InsuranceRecordsScreen } from '../../features/insurance/InsuranceRecordsScreen';
 import { ExpenseDetailsScreen } from '../../features/expenses/ExpenseDetailsScreen';
+import { ActivityLogsScreen } from '../../features/activityLogs/ActivityLogsScreen';
+import { ProfileScreen } from '../../features/auth/ProfileScreen';
 import { PlaceholderScreen } from '../../shared/PlaceholderScreen';
 import {
   BarChart2,
@@ -311,13 +313,8 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="activity-logs">
         {({ navigation }) => (
-          <PlaceholderScreen
-            title="Activity Logs"
-            category="AUDIT & SECURITY"
-            icon={Clock}
-            description="Full audit trail of user logins, deal modifications, price updates, and record changes."
+          <ActivityLogsScreen
             onOpenDrawer={() => (navigation as any).openDrawer()}
-            onNavigateHome={() => (navigation as any).navigate('dashboard')}
           />
         )}
       </Drawer.Screen>
@@ -337,13 +334,9 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="profile">
         {({ navigation }) => (
-          <PlaceholderScreen
-            title="My Profile"
-            category="USER ACCOUNT"
-            icon={User}
-            description="Manage your account profile details, change password, and notification preferences."
+          <ProfileScreen
             onOpenDrawer={() => (navigation as any).openDrawer()}
-            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+            onLogout={onLogout}
           />
         )}
       </Drawer.Screen>
