@@ -272,3 +272,52 @@ export const PRESET_OEM_BRANDS: {
     logo: 'https://images.seeklogo.com/logo-png/14/2/yamaha-motor-logo-png_seeklogo-147343.png',
   },
 ];
+
+// ============================================================================
+// 7. Insurance Company Master Types
+// ============================================================================
+export interface InsuranceCompany {
+  id: number;
+  name: string;
+  code?: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  status: 'Active' | 'Inactive';
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface InsuranceCompanyStats {
+  total: number;
+  active: number;
+  inactive: number;
+}
+
+export interface InsuranceCompanyFilterParams {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  status?: 'all' | 'active' | 'inactive';
+}
+
+export interface CreateInsuranceCompanyPayload {
+  name: string;
+  status?: 'active' | 'inactive' | 'Active' | 'Inactive';
+  code?: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}
+
+export interface UpdateInsuranceCompanyPayload {
+  name: string;
+  status?: 'active' | 'inactive' | 'Active' | 'Inactive';
+  code?: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}

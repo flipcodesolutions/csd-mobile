@@ -116,12 +116,12 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
         raw && raw.status && Array.isArray(raw.data)
           ? raw.data
           : Array.isArray(raw?.data)
-          ? raw.data
-          : Array.isArray(raw?.data?.data)
-          ? raw.data.data
-          : Array.isArray(raw)
-          ? raw
-          : [];
+            ? raw.data
+            : Array.isArray(raw?.data?.data)
+              ? raw.data.data
+              : Array.isArray(raw)
+                ? raw
+                : [];
 
       const pagination =
         raw?.pagination ||
@@ -193,12 +193,12 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
           raw && raw.status && Array.isArray(raw.data)
             ? raw.data
             : Array.isArray(raw?.data)
-            ? raw.data
-            : Array.isArray(raw?.data?.data)
-            ? raw.data.data
-            : Array.isArray(raw)
-            ? raw
-            : [];
+              ? raw.data
+              : Array.isArray(raw?.data?.data)
+                ? raw.data.data
+                : Array.isArray(raw)
+                  ? raw
+                  : [];
         const parsed: LeadSource[] = rawList.map((s: any) => ({
           id: Number(s.id),
           title: s.title || s.name || 'Marketing Channel',
@@ -271,11 +271,11 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
           prev.map((s) =>
             s.id === editingItem.id
               ? {
-                  ...s,
-                  title: payload.title,
-                  name: payload.title,
-                  status: payload.status,
-                }
+                ...s,
+                title: payload.title,
+                name: payload.title,
+                status: payload.status,
+              }
               : s
           )
         );
@@ -434,28 +434,7 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
               </View>
 
               {/* Total Count Badge */}
-              <View style={styles.countRow}>
-                <View
-                  style={[
-                    styles.countBadge,
-                    {
-                      backgroundColor: isDark
-                        ? 'rgba(88, 99, 42, 0.25)'
-                        : '#F5F8EE',
-                      borderColor: isDark ? '#3F4912' : '#DCE9A2',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.countBadgeText,
-                      { color: isDark ? '#DCE9A2' : colors.primaryDark },
-                    ]}
-                  >
-                    {totalCount || filteredSources.length} Acquisition Channels Active
-                  </Text>
-                </View>
-              </View>
+
             </View>
           </>
         }

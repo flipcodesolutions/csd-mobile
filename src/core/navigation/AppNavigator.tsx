@@ -13,6 +13,7 @@ import { ModelScreen } from '../../features/masters/ModelScreen';
 import { VariantScreen } from '../../features/masters/VariantScreen';
 import { UpdatePriceScreen } from '../../features/masters/UpdatePriceScreen';
 import { ExpenseMasterScreen } from '../../features/masters/ExpenseMasterScreen';
+import { InsuranceCompanyScreen } from '../../features/masters/InsuranceCompanyScreen';
 import { LeadStatusScreen } from '../../features/masters/LeadStatusScreen';
 import { LeadSourceScreen } from '../../features/masters/LeadSourceScreen';
 import { UserMasterScreen } from '../../features/masters/UserMasterScreen';
@@ -302,13 +303,8 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="insurance-companies">
         {({ navigation }) => (
-          <PlaceholderScreen
-            title="Insurance Companies"
-            category="INSURANCE MASTER"
-            icon={Briefcase}
-            description="Manage tie-ups, commission rates, and partner insurance underwriters."
+          <InsuranceCompanyScreen
             onOpenDrawer={() => (navigation as any).openDrawer()}
-            onNavigateHome={() => (navigation as any).navigate('dashboard')}
           />
         )}
       </Drawer.Screen>

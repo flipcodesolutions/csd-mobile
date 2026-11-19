@@ -3,11 +3,15 @@ import { api } from '../../core/api/client';
 import {
   BrandStats,
   CreateExpenseCategoryPayload,
+  CreateInsuranceCompanyPayload,
   CreateModelPayload,
   CreateVariantPayload,
+  InsuranceCompanyFilterParams,
+  InsuranceCompanyStats,
   LeadSourceStats,
   ModelStats,
   UpdateExpenseCategoryPayload,
+  UpdateInsuranceCompanyPayload,
   UpdateModelPayload,
   UpdateVariantPayload,
   VariantStats,
@@ -455,6 +459,62 @@ export const userApi = {
   },
 };
 
+// --------------------------------------------------------------------------
+// 9. Insurance Company Master API
+// --------------------------------------------------------------------------
+export const insuranceCompanyApi = {
+  getAll: async (params?: InsuranceCompanyFilterParams) => {
+    const cleanParams: Record<string, any> = {};
+    if (params?.page) cleanParams.page = params.page;
+    if (params?.per_page) cleanParams.per_page = params.per_page;
+    if (params?.search && params.search.trim()) cleanParams.search = params.search.trim();
+    if (params?.status && params.status !== 'all') cleanParams.status = params.status;
+
+    const response = await api.get('/insurance-companies', { params: cleanParams });
+    return response.data;
+  },
+
+  getStats: async (): Promise<{ status: boolean; data: InsuranceCompanyStats }> => {
+    try {
+      const response = await api.get('/insurance-companies/stats');
+      return response.data;
+    } catch (err) {
+      console.warn('Failed to fetch insurance companies stats:', err);
+      return { status: false, data: { total: 0, active: 0, inactive: 0 } };
+    }
+  },
+
+  getActiveList: async () => {
+    const response = await api.get('/insurance-companies/active-list');
+    return response.data;
+  },
+
+  create: async (data: CreateInsuranceCompanyPayload) => {
+    const rawStatus = (data.status || 'Active').toLowerCase();
+    const response = await api.post('/insurance-companies', {
+      ...data,
+      name: data.name.trim(),
+      status: rawStatus,
+    });
+    return response.data;
+  },
+
+  update: async (id: number, data: UpdateInsuranceCompanyPayload) => {
+    const rawStatus = (data.status || 'Active').toLowerCase();
+    const response = await api.put(`/insurance-companies/${id}`, {
+      ...data,
+      name: data.name.trim(),
+      status: rawStatus,
+    });
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    const response = await api.delete(`/insurance-companies/${id}`);
+    return response.data;
+  },
+};
+
 export const masterService = {
   brand: brandApi,
   model: modelApi,
@@ -464,6 +524,7 @@ export const masterService = {
   leadSource: leadSourceApi,
   leadStatus: leadStatusApi,
   user: userApi,
+  insuranceCompany: insuranceCompanyApi,
 };
 
 export default masterService;
