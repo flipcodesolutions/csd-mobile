@@ -24,6 +24,16 @@ import { InvoiceScreen } from '../../features/invoices/InvoiceScreen';
 import { PendingInsuranceScreen } from '../../features/insurance/PendingInsuranceScreen';
 import { InsuranceRemindersScreen } from '../../features/insurance/InsuranceRemindersScreen';
 import { InsuranceRecordsScreen } from '../../features/insurance/InsuranceRecordsScreen';
+import { PlaceholderScreen } from '../../shared/PlaceholderScreen';
+import {
+  BarChart2,
+  Briefcase,
+  Clock,
+  CreditCard,
+  HelpCircle,
+  Settings,
+  User,
+} from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { CustomDrawerContent } from './CustomDrawerContent';
@@ -46,14 +56,21 @@ export type DrawerParamList = {
   'pending-insurance': undefined;
   'insurance-reminders': undefined;
   'insurance-records': undefined;
+  users: undefined;
+  'reports-analytics': undefined;
+  'expense-details': undefined;
   brand: undefined;
   model: undefined;
   variant: undefined;
   'update-price': undefined;
+  'insurance-companies': undefined;
   'expense-master': undefined;
   'lead-status': undefined;
   'lead-source': undefined;
-  users: undefined;
+  'activity-logs': undefined;
+  settings: undefined;
+  profile: undefined;
+  'help-support': undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -69,21 +86,28 @@ const SCREEN_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   'my-leads': 'My Assigned Leads',
   leads: 'Customer Leads',
-  'follow-ups': 'Follow-Up & Call Desk',
-  'send-quotation': 'Official Vehicle Quotation',
-  deals: 'Vehicle Deals & Bookings',
-  'generate-invoice': 'Vehicle Deals & Invoices Register',
-  'pending-insurance': 'Pending Insurance Deals',
-  'insurance-reminders': 'Insurance & Renewal Reminders',
+  'follow-ups': 'Follow-Ups',
+  'send-quotation': 'Send Quotation',
+  deals: 'Deals & Bookings',
+  'generate-invoice': 'Generate Invoice',
+  'pending-insurance': 'Pending Insurance',
+  'insurance-reminders': 'Insurance Reminders',
   'insurance-records': 'Insurance Records',
-  brand: 'Brand Master',
-  model: 'Model Master',
-  variant: 'Variant & Pricing',
-  'update-price': 'Price Master & Updater',
+  users: 'Users & Team',
+  'reports-analytics': 'Reports & Analytics',
+  'expense-details': 'Expense Details',
+  brand: 'Brands',
+  model: 'Models',
+  variant: 'Variants',
+  'update-price': 'Update Price',
+  'insurance-companies': 'Insurance Companies',
   'expense-master': 'Expense Master',
   'lead-status': 'Lead Status Master',
-  'lead-source': 'Lead Source Master',
-  users: 'User & Team Master',
+  'lead-source': 'Lead Sources',
+  'activity-logs': 'Activity Logs',
+  settings: 'Settings',
+  profile: 'My Profile',
+  'help-support': 'Help & Support',
 };
 
 function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
@@ -249,6 +273,98 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
         )}
       </Drawer.Screen>
       <Drawer.Screen name="users" component={UserMasterScreen} />
+
+      {/* Web Reference Parity - Placeholder Screens for Modules Under Mobile Development */}
+      <Drawer.Screen name="reports-analytics">
+        {({ navigation }) => (
+          <PlaceholderScreen
+            title="Reports & Analytics"
+            category="BUSINESS INTELLIGENCE"
+            icon={BarChart2}
+            description="Comprehensive business reports, sales KPIs, executive performance, and conversion analytics."
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="expense-details">
+        {({ navigation }) => (
+          <PlaceholderScreen
+            title="Expense Details"
+            category="FINANCE & BILLING"
+            icon={CreditCard}
+            description="Track showroom overheads, operational expenses, and detailed financial vouchers."
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="insurance-companies">
+        {({ navigation }) => (
+          <PlaceholderScreen
+            title="Insurance Companies"
+            category="INSURANCE MASTER"
+            icon={Briefcase}
+            description="Manage tie-ups, commission rates, and partner insurance underwriters."
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="activity-logs">
+        {({ navigation }) => (
+          <PlaceholderScreen
+            title="Activity Logs"
+            category="AUDIT & SECURITY"
+            icon={Clock}
+            description="Full audit trail of user logins, deal modifications, price updates, and record changes."
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="settings">
+        {({ navigation }) => (
+          <PlaceholderScreen
+            title="Settings"
+            category="SYSTEM CONFIGURATION"
+            icon={Settings}
+            description="Configure portal parameters, notifications, SMS/WhatsApp gateways, and system defaults."
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="profile">
+        {({ navigation }) => (
+          <PlaceholderScreen
+            title="My Profile"
+            category="USER ACCOUNT"
+            icon={User}
+            description="Manage your account profile details, change password, and notification preferences."
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="help-support">
+        {({ navigation }) => (
+          <PlaceholderScreen
+            title="Help & Support"
+            category="HELP DESK"
+            icon={HelpCircle}
+            description="Get assistance, access documentation, or reach out to technical support for portal issues."
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+            onNavigateHome={() => (navigation as any).navigate('dashboard')}
+          />
+        )}
+      </Drawer.Screen>
     </Drawer.Navigator>
   );
 }

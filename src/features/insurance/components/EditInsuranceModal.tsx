@@ -94,9 +94,9 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
     return displayStr;
   };
 
-  const [companyList, setCompanyList] = useState<string[]>(INSURANCE_COMPANIES);
+  const [companyList, setCompanyList] = useState<string[]>([]);
   const [companySearch, setCompanySearch] = useState('');
-  const [company, setCompany] = useState(INSURANCE_COMPANIES[0]);
+  const [company, setCompany] = useState('');
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
 
   const [policyNumber, setPolicyNumber] = useState('');
@@ -125,6 +125,7 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
       insuranceService.getCompanies().then((res) => {
         if (res && res.length > 0) {
           setCompanyList(res);
+          setCompany((curr) => (curr && res.includes(curr) ? curr : (curr || res[0])));
         }
       });
     }
@@ -132,7 +133,7 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
 
   useEffect(() => {
     if (visible && record) {
-      setCompany(record.insurance_company || companyList[0] || INSURANCE_COMPANIES[0]);
+      setCompany(record.insurance_company || '');
       setPolicyNumber(record.policy_number || '');
       setInsuranceType(record.insurance_type || 'Standard');
       setRegNo(
@@ -148,7 +149,7 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
       setRenewalStatus(record.renewal_status || record.status || 'Pending');
       setNotes(record.notes || '');
     }
-  }, [visible, record, companyList]);
+  }, [visible, record?.id]);
 
   // Auto-calculated reminder date from expiry date - reminder days
   const getCalculatedReminderDisplay = (): string => {

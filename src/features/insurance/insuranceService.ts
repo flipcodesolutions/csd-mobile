@@ -481,8 +481,8 @@ export const insuranceService = {
             .filter(Boolean);
 
           if (names.length > 0) {
-            // Deduplicate while preserving backend master list items
-            return Array.from(new Set([...names, ...INSURANCE_COMPANIES]));
+            // Return ONLY active companies from Master API without static mock additions
+            return Array.from(new Set(names));
           }
         }
       }
@@ -503,13 +503,13 @@ export const insuranceService = {
         .map((r: any) => r?.insurance_company?.trim())
         .filter(Boolean);
       if (existingNames.length > 0) {
-        return Array.from(new Set([...existingNames, ...INSURANCE_COMPANIES]));
+        return Array.from(new Set(existingNames));
       }
     } catch {
       // fallback
     }
 
-    return INSURANCE_COMPANIES;
+    return [];
   },
 
   /**

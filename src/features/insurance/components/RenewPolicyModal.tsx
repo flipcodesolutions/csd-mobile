@@ -107,9 +107,9 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
     return `${dd}/${mm}/${yyyy}`;
   };
 
-  const [companyList, setCompanyList] = useState<string[]>(INSURANCE_COMPANIES);
+  const [companyList, setCompanyList] = useState<string[]>([]);
   const [companySearch, setCompanySearch] = useState('');
-  const [company, setCompany] = useState(INSURANCE_COMPANIES[0]);
+  const [company, setCompany] = useState('');
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
 
   const [policyNumber, setPolicyNumber] = useState('');
@@ -133,6 +133,7 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
       insuranceService.getCompanies().then((res) => {
         if (res && res.length > 0) {
           setCompanyList(res);
+          setCompany((curr) => (curr && res.includes(curr) ? curr : (curr || res[0])));
         }
       });
     }
@@ -144,7 +145,7 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
       const initialStart = toDisplayDate(currExp);
       const initialExp = calculateExpiryFromStart(initialStart);
 
-      setCompany(record.insurance_company || companyList[0] || INSURANCE_COMPANIES[0]);
+      setCompany(record.insurance_company || '');
       setPolicyNumber(record.policy_number ? `${record.policy_number}-RNW` : '');
       setInsuranceType(record.insurance_type || 'Standard');
       setStartDate(initialStart);
@@ -153,7 +154,7 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
       setReminderDays(record.reminder_days_before || 15);
       setNotes(`Renewed on ${new Date().toLocaleDateString('en-IN')}`);
     }
-  }, [visible, record, companyList]);
+  }, [visible, record?.id]);
 
   const handleStartDateChange = (selectedDate: string) => {
     setStartDate(selectedDate);

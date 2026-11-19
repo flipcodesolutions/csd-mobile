@@ -101,9 +101,9 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
     return displayDate;
   };
 
-  const [companyList, setCompanyList] = useState<string[]>(INSURANCE_COMPANIES);
+  const [companyList, setCompanyList] = useState<string[]>([]);
   const [companySearch, setCompanySearch] = useState('');
-  const [company, setCompany] = useState(INSURANCE_COMPANIES[0]);
+  const [company, setCompany] = useState('');
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
 
   const [policyNumber, setPolicyNumber] = useState('');
@@ -128,18 +128,17 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
       insuranceService.getCompanies().then((res) => {
         if (res && res.length > 0) {
           setCompanyList(res);
-          if (!company) setCompany(res[0]);
+          setCompany((current) => (current && res.includes(current) ? current : res[0]));
         }
       });
     }
-  }, [visible, company]);
+  }, [visible]);
 
   useEffect(() => {
     if (visible && deal) {
       const today = getTodayDisplay();
       setStartDate(today);
       setExpiryDate(calculateExpiryFromStart(today));
-      setCompany(companyList[0] || INSURANCE_COMPANIES[0]);
       setPolicyNumber('');
       setInsuranceType('Standard');
       setRegChassisNo(deal.registration_number || deal.vin_chassis_number || '');
@@ -147,7 +146,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
       setReminderDays(15);
       setNotes(`Insurance added post deal conversion for deal #${deal.deal_number}`);
     }
-  }, [visible, deal, companyList]);
+  }, [visible, deal?.id]);
 
   const handleStartDateChange = (selectedDate: string) => {
     setStartDate(selectedDate);

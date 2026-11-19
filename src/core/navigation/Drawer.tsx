@@ -36,12 +36,27 @@ export type ScreenName =
   | 'lead-detail'
   | 'leads'
   | 'follow-ups'
-  | 'lead-status'
-  | 'lead-source'
+  | 'send-quotation'
+  | 'deals'
+  | 'generate-invoice'
+  | 'pending-insurance'
+  | 'insurance-reminders'
+  | 'insurance-records'
+  | 'users'
+  | 'reports-analytics'
+  | 'expense-details'
   | 'brand'
   | 'model'
   | 'variant'
-  | 'users';
+  | 'update-price'
+  | 'insurance-companies'
+  | 'expense-master'
+  | 'lead-source'
+  | 'lead-status'
+  | 'activity-logs'
+  | 'settings'
+  | 'profile'
+  | 'help-support';
 
 interface DrawerProps {
   isOpen: boolean;
@@ -53,7 +68,7 @@ interface DrawerProps {
   userRole?: string;
 }
 
-const MENU_ICONS: Record<ScreenName, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
+const MENU_ICONS: Partial<Record<ScreenName, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>> = {
   dashboard: LayoutDashboard,
   'my-leads': UserCheck,
   'lead-detail': UserCheck,
