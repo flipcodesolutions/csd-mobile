@@ -25,6 +25,7 @@ import {
   LayoutDashboard,
   ListFilter,
   LogOut,
+  Mail,
   Moon,
   PhoneForwarded,
   Radio,
@@ -51,6 +52,7 @@ export type ScreenName =
   | 'my-leads'
   | 'leads'
   | 'lead-dates'
+  | 'contact-inquiries'
   | 'follow-ups'
   | 'send-quotation'
   | 'deals'
@@ -195,6 +197,12 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             ],
           },
           {
+            title: 'WEBSITE & CMS',
+            items: [
+              { id: 'contact-inquiries', label: 'Contact Inquiries', icon: Mail },
+            ],
+          },
+          {
             title: 'ACCOUNT',
             items: [
               { id: 'profile', label: 'My Profile', icon: User },
@@ -291,6 +299,12 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'insurance-companies', label: 'Insurance Companies', icon: Briefcase },
               { id: 'expense-master', label: 'Expense Master', icon: Receipt },
               { id: 'lead-source', label: 'Lead Sources', icon: Radio },
+            ],
+          },
+          {
+            title: 'WEBSITE & CMS',
+            items: [
+              { id: 'contact-inquiries', label: 'Contact Inquiries', icon: Mail },
             ],
           },
           {

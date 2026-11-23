@@ -9,6 +9,7 @@ import { SalesExecutiveLeadsScreen } from '../../features/leads/SalesExecutiveLe
 import { SalesExecutiveLeadDetailScreen } from '../../features/leads/SalesExecutiveLeadDetailScreen';
 import { LeadsScreen } from '../../features/leads/LeadsScreen';
 import { CustomerDatesManagerScreen } from '../../features/leads/CustomerDatesManagerScreen';
+import { ContactInquiriesScreen } from '../../features/contactInquiries';
 import { BrandScreen } from '../../features/masters/BrandScreen';
 import { ModelScreen } from '../../features/masters/ModelScreen';
 import { VariantScreen } from '../../features/masters/VariantScreen';
@@ -55,6 +56,7 @@ export type DrawerParamList = {
   'my-leads': undefined;
   leads: undefined;
   'lead-dates': undefined;
+  'contact-inquiries': undefined;
   'follow-ups': undefined;
   'send-quotation': { leadId?: number } | undefined;
   deals: undefined;
@@ -93,6 +95,7 @@ const SCREEN_TITLES: Record<string, string> = {
   'my-leads': 'My Assigned Leads',
   leads: 'Customer Leads',
   'lead-dates': 'Lead Dates Manager',
+  'contact-inquiries': 'Contact Inquiries',
   'follow-ups': 'Follow-Ups',
   'send-quotation': 'Send Quotation',
   deals: 'Deals & Bookings',
@@ -210,6 +213,15 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       <Drawer.Screen name="lead-dates">
         {({ navigation }) => (
           <CustomerDatesManagerScreen
+            navigation={navigation}
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="contact-inquiries">
+        {({ navigation }) => (
+          <ContactInquiriesScreen
             navigation={navigation}
             onOpenDrawer={() => (navigation as any).openDrawer()}
           />

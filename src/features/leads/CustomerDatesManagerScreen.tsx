@@ -116,7 +116,10 @@ const KpiSummaryCard: React.FC<KpiSummaryCardProps> = ({
   );
 };
 
-export const CustomerDatesManagerScreen: React.FC<CustomerDatesManagerScreenProps> = () => {
+export const CustomerDatesManagerScreen: React.FC<CustomerDatesManagerScreenProps> = ({
+  onOpenDrawer,
+  navigation,
+}) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -178,16 +181,27 @@ export const CustomerDatesManagerScreen: React.FC<CustomerDatesManagerScreenProp
         per_page: 50,
       });
 
-      const list: CustomerLead[] = Array.isArray(res) ? res : res?.data || [];
-      const pagination = res?.pagination;
+      let list: CustomerLead[] = [];
+      if (Array.isArray(res)) {
+        list = res;
+      } else if (Array.isArray(res?.data)) {
+        list = res.data;
+      } else if (Array.isArray(res?.data?.data)) {
+        list = res.data.data;
+      } else if (Array.isArray(res?.leads)) {
+        list = res.leads;
+      }
+
+      const pagination = res?.pagination || res?.data?.pagination;
 
       if (pageNumber === 1) {
         setLeads(list);
       } else {
         setLeads((prev) => {
-          const existingIds = new Set(prev.map((l) => l.id));
+          const safePrev = Array.isArray(prev) ? prev : [];
+          const existingIds = new Set(safePrev.map((l) => l.id));
           const newItems = list.filter((l) => !existingIds.has(l.id));
-          return [...prev, ...newItems];
+          return [...safePrev, ...newItems];
         });
       }
 
@@ -224,13 +238,15 @@ export const CustomerDatesManagerScreen: React.FC<CustomerDatesManagerScreenProp
   // KPI Metrics Calculation across loaded leads
   // -------------------------------------------------------------
   const kpiCounts = useMemo(() => {
-    let total = leads.length;
+    const safeLeads = Array.isArray(leads) ? leads : [];
+    let total = safeLeads.length;
     let missingDob = 0;
     let missingAnniv = 0;
     let missingBoth = 0;
     let hasBoth = 0;
 
-    leads.forEach((l) => {
+    safeLeads.forEach((l) => {
+      if (!l || !l.id) return;
       const currentBirth = draftDates[l.id]?.birth_date !== undefined
         ? draftDates[l.id].birth_date
         : l.birth_date || l.birthday;
@@ -254,7 +270,9 @@ export const CustomerDatesManagerScreen: React.FC<CustomerDatesManagerScreenProp
   // Filtered Leads List Logic
   // -------------------------------------------------------------
   const filteredLeads = useMemo(() => {
-    return leads.filter((item) => {
+    const safeLeads = Array.isArray(leads) ? leads : [];
+    return safeLeads.filter((item) => {
+      if (!item) return false;
       // 1. Text Search Filter
       const q = search.trim().toLowerCase();
       if (q) {
@@ -735,7 +753,7 @@ export const CustomerDatesManagerScreen: React.FC<CustomerDatesManagerScreenProp
       {/* ----------------------------------------------------------- */}
       <FlatList
         data={filteredLeads}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => (item?.id ? item.id.toString() : index.toString())}
         renderItem={renderItem}
         ListHeaderComponent={renderListHeader}
         ListEmptyComponent={

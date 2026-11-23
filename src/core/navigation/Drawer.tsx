@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   ListFilter,
   LogOut,
+  Mail,
   PhoneForwarded,
   Radio,
   UserCheck,
@@ -37,6 +38,7 @@ export type ScreenName =
   | 'lead-detail'
   | 'leads'
   | 'lead-dates'
+  | 'contact-inquiries'
   | 'follow-ups'
   | 'send-quotation'
   | 'deals'
@@ -76,6 +78,7 @@ const MENU_ICONS: Partial<Record<ScreenName, React.ComponentType<{ size?: number
   'lead-detail': UserCheck,
   leads: Kanban,
   'lead-dates': Calendar,
+  'contact-inquiries': Mail,
   'follow-ups': PhoneForwarded,
   'lead-status': ListFilter,
   'lead-source': Radio,
@@ -90,6 +93,7 @@ const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'my-leads', label: 'My Assigned Leads', badge: 'Active' },
   { id: 'leads', label: 'Leads Pipeline', badge: 'Live' },
   { id: 'lead-dates', label: 'Lead Dates Manager', badge: 'Dates' },
+  { id: 'contact-inquiries', label: 'Contact Inquiries' },
   { id: 'follow-ups', label: 'Follow-Up Call Desk', badge: 'Live' },
   { id: 'lead-status', label: 'Lead Status Master' },
   { id: 'lead-source', label: 'Lead Source Master' },
