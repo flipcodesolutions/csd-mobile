@@ -14,6 +14,7 @@ import {
   BarChart2,
   Briefcase,
   Building2,
+  Calendar,
   Car,
   Clock,
   CreditCard,
@@ -49,6 +50,7 @@ export type ScreenName =
   | 'dashboard'
   | 'my-leads'
   | 'leads'
+  | 'lead-dates'
   | 'follow-ups'
   | 'send-quotation'
   | 'deals'
@@ -138,6 +140,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'my-leads', label: 'My Assigned Leads', icon: UserCheck, badge: 'Live' },
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
+              { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
               { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
@@ -169,6 +172,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             items: [
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
+              { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
               { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
@@ -264,6 +268,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             items: [
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
+              { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
               { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
@@ -418,7 +423,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
                   ]}
                   onPress={() => {
                     triggerHaptic('selection');
-                    navigation.navigate(item.id);
+                    (navigation as any).navigate(item.id);
                   }}
                   activeOpacity={0.7}
                 >

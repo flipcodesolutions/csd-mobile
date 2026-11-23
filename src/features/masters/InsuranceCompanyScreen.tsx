@@ -124,12 +124,12 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
         raw && raw.status && Array.isArray(raw.data)
           ? raw.data
           : Array.isArray(raw?.data)
-          ? raw.data
-          : Array.isArray(raw?.data?.data)
-          ? raw.data.data
-          : Array.isArray(raw)
-          ? raw
-          : [];
+            ? raw.data
+            : Array.isArray(raw?.data?.data)
+              ? raw.data.data
+              : Array.isArray(raw)
+                ? raw
+                : [];
 
       const pagination =
         raw?.pagination ||
@@ -146,9 +146,9 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
         email: c.email || undefined,
         status:
           c.status === 'Active' ||
-          c.status === 'active' ||
-          c.status === 1 ||
-          c.status === '1'
+            c.status === 'active' ||
+            c.status === 1 ||
+            c.status === '1'
             ? 'Active'
             : 'Inactive',
         notes: c.notes || undefined,
@@ -159,9 +159,9 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       if (pageNumber === 1) {
         setCompanies(parsed);
         if (parsed.length === 0) {
-          AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
+          AsyncStorage.removeItem(CACHE_KEY).catch(() => { });
         } else {
-          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(parsed)).catch(() => {});
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(parsed)).catch(() => { });
         }
       } else {
         setCompanies((prev) => {
@@ -258,7 +258,7 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       // Remove from local state immediately
       setCompanies((prev) => {
         const updated = prev.filter((c) => c.id !== targetItem.id);
-        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(() => {});
+        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(() => { });
         return updated;
       });
 
@@ -283,7 +283,7 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       if (status === 404) {
         setCompanies((prev) => {
           const updated = prev.filter((c) => c.id !== targetItem.id);
-          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(() => {});
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(() => { });
           return updated;
         });
         showSuccessToast('Removed', `Record "${targetItem.name}" removed from list.`);
@@ -350,8 +350,8 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
     statusFilter === 'all'
       ? 'All Statuses'
       : statusFilter === 'active'
-      ? 'Active'
-      : 'Inactive';
+        ? 'Active'
+        : 'Inactive';
 
   return (
     <View

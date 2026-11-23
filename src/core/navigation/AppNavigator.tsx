@@ -8,6 +8,7 @@ import { DashboardScreen } from '../../features/dashboard/DashboardScreen';
 import { SalesExecutiveLeadsScreen } from '../../features/leads/SalesExecutiveLeadsScreen';
 import { SalesExecutiveLeadDetailScreen } from '../../features/leads/SalesExecutiveLeadDetailScreen';
 import { LeadsScreen } from '../../features/leads/LeadsScreen';
+import { CustomerDatesManagerScreen } from '../../features/leads/CustomerDatesManagerScreen';
 import { BrandScreen } from '../../features/masters/BrandScreen';
 import { ModelScreen } from '../../features/masters/ModelScreen';
 import { VariantScreen } from '../../features/masters/VariantScreen';
@@ -53,6 +54,7 @@ export type DrawerParamList = {
   dashboard: undefined;
   'my-leads': undefined;
   leads: undefined;
+  'lead-dates': undefined;
   'follow-ups': undefined;
   'send-quotation': { leadId?: number } | undefined;
   deals: undefined;
@@ -90,6 +92,7 @@ const SCREEN_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   'my-leads': 'My Assigned Leads',
   leads: 'Customer Leads',
+  'lead-dates': 'Lead Dates Manager',
   'follow-ups': 'Follow-Ups',
   'send-quotation': 'Send Quotation',
   deals: 'Deals & Bookings',
@@ -201,6 +204,15 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       <Drawer.Screen name="leads">
         {({ navigation }) => (
           <LeadsScreen navigation={navigation} onOpenDrawer={() => (navigation as any).openDrawer()} />
+        )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="lead-dates">
+        {({ navigation }) => (
+          <CustomerDatesManagerScreen
+            navigation={navigation}
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
         )}
       </Drawer.Screen>
 

@@ -235,6 +235,30 @@ export const leadApi = {
       phone: data.phone,
     });
   },
+  updateDates: async (
+    leadId: number,
+    data: {
+      birth_date: string | null;
+      anniversary_date: string | null;
+    }
+  ) => {
+    try {
+      const response = await api.patch(`/leads/${leadId}/dates`, data);
+      return response.data;
+    } catch (err) {
+      // Fallback: If PATCH /leads/{id}/dates is unavailable, fallback to PUT /leads/{id}
+      try {
+        const fallbackRes = await api.put(`/leads/${leadId}`, {
+          birth_date: data.birth_date,
+          birthday: data.birth_date,
+          anniversary_date: data.anniversary_date,
+        });
+        return fallbackRes.data;
+      } catch {
+        throw err;
+      }
+    }
+  },
 };
 
 export const salesExecutiveApi = {

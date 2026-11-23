@@ -442,7 +442,7 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
           isLoading ? (
             <View style={styles.emptyContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text
+              <Text 
                 style={[
                   styles.emptyText,
                   { color: isDark ? '#94A3B8' : '#64748B' },

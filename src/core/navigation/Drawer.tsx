@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {
   Building2,
+  Calendar,
   Car,
   Kanban,
   LayoutDashboard,
@@ -35,6 +36,7 @@ export type ScreenName =
   | 'my-leads'
   | 'lead-detail'
   | 'leads'
+  | 'lead-dates'
   | 'follow-ups'
   | 'send-quotation'
   | 'deals'
@@ -73,6 +75,7 @@ const MENU_ICONS: Partial<Record<ScreenName, React.ComponentType<{ size?: number
   'my-leads': UserCheck,
   'lead-detail': UserCheck,
   leads: Kanban,
+  'lead-dates': Calendar,
   'follow-ups': PhoneForwarded,
   'lead-status': ListFilter,
   'lead-source': Radio,
@@ -86,6 +89,7 @@ const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'my-leads', label: 'My Assigned Leads', badge: 'Active' },
   { id: 'leads', label: 'Leads Pipeline', badge: 'Live' },
+  { id: 'lead-dates', label: 'Lead Dates Manager', badge: 'Dates' },
   { id: 'follow-ups', label: 'Follow-Up Call Desk', badge: 'Live' },
   { id: 'lead-status', label: 'Lead Status Master' },
   { id: 'lead-source', label: 'Lead Source Master' },
@@ -131,6 +135,7 @@ export const Drawer: React.FC<DrawerProps> = ({
           { id: 'dashboard' as ScreenName, label: 'Sales Dashboard' },
           { id: 'my-leads' as ScreenName, label: 'My Assigned Leads', badge: 'Active' },
           { id: 'leads' as ScreenName, label: 'Leads Pipeline' },
+          { id: 'lead-dates' as ScreenName, label: 'Lead Dates Manager' },
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Catalogue' },
           { id: 'variant' as ScreenName, label: 'Variant & Prices' },
@@ -139,6 +144,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         return [
           { id: 'dashboard' as ScreenName, label: 'Manager Dashboard' },
           { id: 'leads' as ScreenName, label: 'Leads Pipeline' },
+          { id: 'lead-dates' as ScreenName, label: 'Lead Dates Manager' },
           { id: 'users' as ScreenName, label: 'Sales Reps Team' },
           { id: 'brand' as ScreenName, label: 'Brand Catalogue' },
           { id: 'model' as ScreenName, label: 'Model Master' },
