@@ -136,3 +136,23 @@ export interface CreateDealPaymentPayload {
   }[];
 }
 
+export interface RefundCancelPayload {
+  refund_amount: number;
+  cancellation_fee?: number;
+  payment_mode: string; // 'UPI' | 'NEFT/RTGS' | 'IMPS' | 'CHEQUE' | 'CASH'
+  transaction_reference?: string;
+  bank_name?: string;
+  reason?: string;
+  notes?: string;
+}
+
+export interface RefundCancelResponse {
+  status: boolean;
+  message?: string;
+  data?: {
+    deal?: any;
+    refund_payment?: any;
+    voucher?: any;
+  };
+}
+

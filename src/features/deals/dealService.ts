@@ -6,6 +6,8 @@ import {
   Deal,
   DealFilterParams,
   DealStats,
+  RefundCancelPayload,
+  RefundCancelResponse,
   UpdateDealPayload,
 } from './types';
 
@@ -258,6 +260,32 @@ export const dealApi = {
     });
 
     return res.path();
+  },
+
+  /**
+   * Cancel Deal and process Money Return (Refund)
+   * POST /api/deals/{id}/refund-cancel
+   */
+  refundAndCancel: async (
+    dealId: number,
+    data: RefundCancelPayload
+  ): Promise<RefundCancelResponse> => {
+    try {
+      const response = await api.post(`/deals/${dealId}/refund-cancel`, data);
+      return response.data;
+    } catch (error: any) {
+      console.log('dealApi.refundAndCancel error:', error?.response?.data || error?.message);
+      // Fallback: If 404 on /refund-cancel, try /cancel
+      if (error?.response?.status === 404) {
+        try {
+          const fallbackRes = await api.post(`/deals/${dealId}/cancel`, data);
+          return fallbackRes.data;
+        } catch (fallbackErr: any) {
+          throw fallbackErr;
+        }
+      }
+      throw error;
+    }
   },
 };
 

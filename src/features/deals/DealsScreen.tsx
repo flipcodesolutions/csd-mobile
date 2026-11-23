@@ -36,6 +36,7 @@ import { DealCard } from './components/DealCard';
 import { UpdateDealStageModal } from './components/UpdateDealStageModal';
 import { DealLedgerModal } from './components/DealLedgerModal';
 import { AddDealInvoiceModal } from './components/AddDealInvoiceModal';
+import { DealRefundCancelModal } from './components/DealRefundCancelModal';
 import {
   DEAL_PAYMENT_OPTIONS,
   DEAL_STAGE_OPTIONS,
@@ -77,6 +78,7 @@ export const DealsScreen: React.FC = () => {
   const [selectedDealForStage, setSelectedDealForStage] = useState<Deal | null>(null);
   const [selectedDealForLedger, setSelectedDealForLedger] = useState<Deal | null>(null);
   const [selectedDealForInvoice, setSelectedDealForInvoice] = useState<Deal | null>(null);
+  const [selectedDealForRefundCancel, setSelectedDealForRefundCancel] = useState<Deal | null>(null);
 
   // Lead Profile Modal States (Matches 360° Lead Details from Leads Screen)
   const [profileModalVisible, setProfileModalVisible] = useState(false);
@@ -538,6 +540,7 @@ export const DealsScreen: React.FC = () => {
             onUpdateStage={(d) => setSelectedDealForStage(d)}
             onViewLedger={(d) => setSelectedDealForLedger(d)}
             onAddInvoice={(d) => setSelectedDealForInvoice(d)}
+            onRefundCancel={(d) => setSelectedDealForRefundCancel(d)}
             onRestore={handleRestoreDeal}
             onDelete={handleDeleteDeal}
           />
@@ -631,6 +634,17 @@ export const DealsScreen: React.FC = () => {
         visible={selectedDealForInvoice !== null}
         deal={selectedDealForInvoice}
         onClose={() => setSelectedDealForInvoice(null)}
+        onSuccess={() => {
+          fetchDeals(1, true);
+          fetchStats();
+        }}
+      />
+
+      {/* Money Return & Deal Cancellation Modal (Screenshot 2) */}
+      <DealRefundCancelModal
+        visible={selectedDealForRefundCancel !== null}
+        deal={selectedDealForRefundCancel}
+        onClose={() => setSelectedDealForRefundCancel(null)}
         onSuccess={() => {
           fetchDeals(1, true);
           fetchStats();

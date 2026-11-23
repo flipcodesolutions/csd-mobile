@@ -30,6 +30,7 @@ interface DealCardProps {
   onUpdateStage: (deal: Deal) => void;
   onViewLedger: (deal: Deal) => void;
   onAddInvoice: (deal: Deal) => void;
+  onRefundCancel?: (deal: Deal) => void;
   onRestore?: (deal: Deal) => void;
   onDelete?: (deal: Deal) => void;
 }
@@ -41,6 +42,7 @@ export const DealCard: React.FC<DealCardProps> = ({
   onUpdateStage,
   onViewLedger,
   onAddInvoice,
+  onRefundCancel,
   onRestore,
   onDelete,
 }) => {
@@ -63,6 +65,10 @@ export const DealCard: React.FC<DealCardProps> = ({
 
   const percentPaid = netAmount > 0 ? Math.min(100, Math.round((paidAmount / netAmount) * 100)) : 0;
   const isFullyPaid = balanceDue <= 0 || deal.payment_status === 'fully_paid' || percentPaid >= 100;
+  const isCancelled =
+    deal.deal_status?.toLowerCase() === 'cancelled' ||
+    (deal as any).status?.toLowerCase() === 'cancelled' ||
+    (deal.delivery_stage && deal.delivery_stage.toLowerCase().includes('cancel'));
 
   // Initials for FollowUp-style Avatar
   const initials = deal.customer_name
@@ -358,8 +364,8 @@ export const DealCard: React.FC<DealCardProps> = ({
               onPress={() => onUpdateStage(deal)}
               activeOpacity={0.7}
             >
-              <Pencil size={13} color="#1E3A8A" />
-              <Text style={[styles.actionBtnText, { color: '#1E3A8A' }]}>
+              <Pencil size={11} color="#1E3A8A" />
+              <Text style={[styles.actionBtnText, { color: '#1E3A8A' }]} numberOfLines={1}>
                 Update Stage
               </Text>
             </TouchableOpacity>
@@ -369,8 +375,8 @@ export const DealCard: React.FC<DealCardProps> = ({
               onPress={() => onViewLedger(deal)}
               activeOpacity={0.7}
             >
-              <Receipt size={13} color="#059669" />
-              <Text style={[styles.actionBtnText, { color: '#059669' }]}>
+              <Receipt size={11} color="#059669" />
+              <Text style={[styles.actionBtnText, { color: '#059669' }]} numberOfLines={1}>
                 Ledger
               </Text>
             </TouchableOpacity>
@@ -382,9 +388,31 @@ export const DealCard: React.FC<DealCardProps> = ({
                 onPress={() => onAddInvoice(deal)}
                 activeOpacity={0.7}
               >
-                <PlusCircle size={13} color="#EE6800" />
-                <Text style={[styles.actionBtnText, { color: '#EE6800', fontWeight: '800' }]}>
+                <PlusCircle size={11} color="#EE6800" />
+                <Text style={[styles.actionBtnText, { color: '#EE6800', fontWeight: '800' }]} numberOfLines={1}>
                   + Add Bill
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Money Return & Deal Cancellation (Screenshot 1 action) */}
+            {/* Task 1 & 2: Hide if Fully Paid OR already cancelled; rename to Cancel */}
+            {!isFullyPaid && !isCancelled && onRefundCancel && (
+              <TouchableOpacity
+                style={[
+                  styles.actionBtn,
+                  styles.cancelRefundBtn,
+                  isDark && { backgroundColor: '#7F1D1D25', borderColor: '#991B1B' },
+                ]}
+                onPress={() => {
+                  triggerHaptic('impactLight');
+                  onRefundCancel(deal);
+                }}
+                activeOpacity={0.7}
+              >
+                <RotateCcw size={11} color="#DC2626" strokeWidth={2.4} />
+                <Text style={[styles.actionBtnText, { color: '#DC2626', fontWeight: '800' }]} numberOfLines={1}>
+                  Cancel
                 </Text>
               </TouchableOpacity>
             )}
@@ -632,26 +660,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    rowGap: 6,
-    paddingTop: 10,
+    flexWrap: 'nowrap',
+    gap: 4.5,
+    paddingTop: 8,
     borderTopWidth: 1,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
     borderRadius: 6,
     backgroundColor: 'rgba(0, 0, 0, 0.03)',
   },
   actionBtnText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
   },
   addBillBtn: {
     backgroundColor: 'rgba(238, 104, 0, 0.08)',
+  },
+  cancelRefundBtn: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
 });
