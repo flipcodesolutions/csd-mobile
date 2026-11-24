@@ -37,10 +37,7 @@ import { EditInsuranceModal } from './components/EditInsuranceModal';
 import { InsuranceDetailModal } from './components/InsuranceDetailModal';
 import { InsuranceFilterModal } from './components/InsuranceFilterModal';
 import { RenewPolicyModal } from './components/RenewPolicyModal';
-import {
-  formatIndianCurrency,
-  insuranceService,
-} from './insuranceService';
+import { formatIndianCurrency, insuranceService } from './insuranceService';
 import { InsurancePagination, InsuranceRecord } from './types';
 
 export const InsuranceRecordsScreen: React.FC = () => {
@@ -64,7 +61,9 @@ export const InsuranceRecordsScreen: React.FC = () => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   // Modals state
-  const [selectedRecord, setSelectedRecord] = useState<InsuranceRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<InsuranceRecord | null>(
+    null,
+  );
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -73,7 +72,10 @@ export const InsuranceRecordsScreen: React.FC = () => {
     if (!displayStr) return '';
     const parts = displayStr.split('/');
     if (parts.length === 3) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(
+        2,
+        '0',
+      )}`;
     }
     return displayStr;
   };
@@ -94,7 +96,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
       search: string = searchTerm,
       status: string = statusFilter,
       from: string = fromDate,
-      to: string = toDate
+      to: string = toDate,
     ) => {
       try {
         if (isLoadMore) {
@@ -114,7 +116,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
 
         if (res && res.status) {
           if (isLoadMore) {
-            setRecords((prev) => [...prev, ...res.data]);
+            setRecords(prev => [...prev, ...res.data]);
           } else {
             setRecords(res.data);
             setTotalCount(res.pagination.total);
@@ -130,7 +132,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
         setIsRefreshing(false);
       }
     },
-    [searchTerm, statusFilter, fromDate, toDate, isRefreshing]
+    [searchTerm, statusFilter, fromDate, toDate, isRefreshing],
   );
 
   useEffect(() => {
@@ -168,7 +170,9 @@ export const InsuranceRecordsScreen: React.FC = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       expDate.setHours(0, 0, 0, 0);
-      const diff = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const diff = Math.ceil(
+        (expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+      );
 
       if (diff < 0) {
         return { label: 'Expired', bg: '#FEE2E2', text: '#DC2626' };
@@ -210,7 +214,9 @@ export const InsuranceRecordsScreen: React.FC = () => {
             </Text>
           </View>
 
-          <View style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}>
+          <View
+            style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}
+          >
             <Text style={[styles.statusBadgeText, { color: statusMeta.text }]}>
               {statusMeta.label}
             </Text>
@@ -247,7 +253,9 @@ export const InsuranceRecordsScreen: React.FC = () => {
                 style={[styles.quickContactBtn, { backgroundColor: '#DCFCE7' }]}
                 onPress={() => {
                   triggerHaptic('impactLight');
-                  Linking.openURL(`tel:${item.customer_phone || item.customer_number}`);
+                  Linking.openURL(
+                    `tel:${item.customer_phone || item.customer_number}`,
+                  );
                 }}
               >
                 <Phone size={13} color="#16A34A" />
@@ -256,12 +264,26 @@ export const InsuranceRecordsScreen: React.FC = () => {
                 style={[styles.quickContactBtn, { backgroundColor: '#D1FAE5' }]}
                 onPress={() => {
                   triggerHaptic('impactLight');
-                  const p = (item.customer_phone || item.customer_number || '').replace(/[^0-9]/g, '');
-                  const expDate = toDisplayDate(item.policy_expiry_date || item.insurance_expire_date);
-                  const text = encodeURIComponent(
-                    `Dear ${item.customer_name},\nRegarding your insurance policy (#${item.policy_number || ''}) for ${item.model_variant || 'your vehicle'} expiring on ${expDate}.\n- Defence Autolink`
+                  const p = (
+                    item.customer_phone ||
+                    item.customer_number ||
+                    ''
+                  ).replace(/[^0-9]/g, '');
+                  const expDate = toDisplayDate(
+                    item.policy_expiry_date || item.insurance_expire_date,
                   );
-                  Linking.openURL(`https://wa.me/91${p.slice(-10)}?text=${text}`);
+                  const text = encodeURIComponent(
+                    `Dear ${
+                      item.customer_name
+                    },\nRegarding your insurance policy (#${
+                      item.policy_number || ''
+                    }) for ${
+                      item.model_variant || 'your vehicle'
+                    } expiring on ${expDate}.\n- Defence Autolink`,
+                  );
+                  Linking.openURL(
+                    `https://wa.me/91${p.slice(-10)}?text=${text}`,
+                  );
                 }}
               >
                 <MessageCircle size={13} color="#059669" />
@@ -324,7 +346,9 @@ export const InsuranceRecordsScreen: React.FC = () => {
               ]}
             >
               {toDisplayDate(item.policy_start_date || item.delivery_date)} -{' '}
-              {toDisplayDate(item.policy_expiry_date || item.insurance_expire_date)}
+              {toDisplayDate(
+                item.policy_expiry_date || item.insurance_expire_date,
+              )}
             </Text>
           </View>
 
@@ -413,7 +437,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
     >
       <FlatList
         data={records}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={item => String(item.id)}
         renderItem={renderRecordCard}
         contentContainerStyle={[
           styles.listContainer,
@@ -452,14 +476,6 @@ export const InsuranceRecordsScreen: React.FC = () => {
                 </Text>
               </View>
             </View>
-            <Text
-              style={[
-                styles.pageSubtitle,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Master vehicle insurance register, policy archives, and renewal histories.
-            </Text>
 
             {/* Search and Filter Button Row */}
             <View style={styles.searchAndFilterRow}>
@@ -467,8 +483,11 @@ export const InsuranceRecordsScreen: React.FC = () => {
                 style={[
                   styles.searchBox,
                   {
+                    marginTop: 12,
                     backgroundColor: isDark ? '#131C27' : '#FFFFFF',
-                    borderColor: isDark ? 'rgba(217, 221, 204, 0.2)' : colors.border,
+                    borderColor: isDark
+                      ? 'rgba(217, 221, 204, 0.2)'
+                      : colors.border,
                   },
                 ]}
               >
@@ -478,7 +497,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
                     styles.searchInput,
                     { color: isDark ? '#F1F5F9' : '#0F172A' },
                   ]}
-                  placeholder="Search policy #, customer, VIN..."
+                  placeholder="Search policy, customer, VIN..."
                   placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                   value={searchTerm}
                   onChangeText={setSearchTerm}
@@ -494,6 +513,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
                 style={[
                   styles.filterButton,
                   {
+                    marginTop: 12,
                     backgroundColor:
                       activeFiltersCount > 0
                         ? colors.primary
@@ -626,7 +646,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
         fromDate={fromDate}
         toDate={toDate}
         onClose={() => setShowFilterModal(false)}
-        onApply={(f) => {
+        onApply={f => {
           setStatusFilter(f.status);
           setFromDate(f.fromDate);
           setToDate(f.toDate);
@@ -646,11 +666,11 @@ export const InsuranceRecordsScreen: React.FC = () => {
           setShowDetailModal(false);
           setSelectedRecord(null);
         }}
-        onEdit={(rec) => {
+        onEdit={rec => {
           setSelectedRecord(rec);
           setShowEditModal(true);
         }}
-        onRenew={(rec) => {
+        onRenew={rec => {
           setSelectedRecord(rec);
           setShowRenewModal(true);
         }}

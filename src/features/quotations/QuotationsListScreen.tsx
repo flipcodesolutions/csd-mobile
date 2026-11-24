@@ -67,7 +67,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
   const [isTrashView, setIsTrashView] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [datePickerTarget, setDatePickerTarget] = useState<'from' | 'to' | null>(null);
+  const [datePickerTarget, setDatePickerTarget] = useState<
+    'from' | 'to' | null
+  >(null);
 
   // Data States
   const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -83,9 +85,12 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
 
   // Lead Profile Modal States (Matches 360° Lead Details from Leads Screen)
   const [profileModalVisible, setProfileModalVisible] = useState(false);
-  const [activeProfileLead, setActiveProfileLead] = useState<CustomerLead | null>(null);
+  const [activeProfileLead, setActiveProfileLead] =
+    useState<CustomerLead | null>(null);
   const [dealModalVisible, setDealModalVisible] = useState(false);
-  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(null);
+  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(
+    null,
+  );
 
   const handleCall = (phone: string) => {
     const cleaned = phone.replace(/[^\d+]/g, '');
@@ -98,12 +103,17 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
     try {
       await dealApi.create(dealData);
       setDealModalVisible(false);
-      showSuccessToast('Deal Created', 'Lead converted to deal dossier successfully.');
+      showSuccessToast(
+        'Deal Created',
+        'Lead converted to deal dossier successfully.',
+      );
       fetchQuotations(1);
     } catch (err: any) {
       Alert.alert(
         'Conversion Failed',
-        err?.response?.data?.message || err?.message || 'Failed to convert lead to deal.'
+        err?.response?.data?.message ||
+          err?.message ||
+          'Failed to convert lead to deal.',
       );
     }
   };
@@ -164,7 +174,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         if (pageNum === 1) {
           setQuotations(records);
         } else {
-          setQuotations((prev) => [...prev, ...records]);
+          setQuotations(prev => [...prev, ...records]);
         }
 
         const currentPage = res?.data?.current_page || pageNum;
@@ -174,7 +184,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       } catch (err: any) {
         console.log('Error fetching quotations:', err);
         if (pageNum === 1) {
-          setQuotations((prev) => (prev.length > 0 ? prev : []));
+          setQuotations(prev => (prev.length > 0 ? prev : []));
         }
       } finally {
         setLoading(false);
@@ -182,7 +192,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         setLoadingMore(false);
       }
     },
-    [searchQuery, activeStatus, isTrashView, fromDate, toDate]
+    [searchQuery, activeStatus, isTrashView, fromDate, toDate],
   );
 
   useEffect(() => {
@@ -220,20 +230,31 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         'Status',
       ];
 
-      const rows = quotations.map((q) => [
+      const rows = quotations.map(q => [
         q.quotation_number || `QT-${q.id}`,
         q.customer_name || 'N/A',
         q.customer_phone || '',
         q.subject || `${q.brand_name || ''} ${q.model_name || ''}`,
         q.quotation_date || q.created_at?.slice(0, 10) || '',
-        Number(q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0),
+        Number(
+          q.final_on_road_price ||
+            q.grand_total ||
+            q.total_amount ||
+            q.total ||
+            0,
+        ),
         q.status || 'Sent',
       ]);
 
-      const filename = `Quotations_Archive_${new Date().toISOString().slice(0, 10)}`;
+      const filename = `Quotations_Archive_${new Date()
+        .toISOString()
+        .slice(0, 10)}`;
       await exportCsvToFile({ filename, headers, rows });
     } catch (err: any) {
-      showErrorToast('Export Failed', err.message || 'Could not export quotations.');
+      showErrorToast(
+        'Export Failed',
+        err.message || 'Could not export quotations.',
+      );
     }
   };
 
@@ -242,8 +263,8 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
     const items = q.items || [];
     const getVal = (nameKeywords: string[]) => {
       for (const kw of nameKeywords) {
-        const match = items.find((i) =>
-          i.item_name?.toLowerCase().includes(kw.toLowerCase())
+        const match = items.find(i =>
+          i.item_name?.toLowerCase().includes(kw.toLowerCase()),
         );
         if (match) {
           const val = match.total ?? match.unit_price ?? (match as any).price;
@@ -277,10 +298,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       '';
 
     const cityJurisdiction =
-      q.customer_address ||
-      (q as any).city ||
-      (q as any).lead?.city ||
-      '';
+      q.customer_address || (q as any).city || (q as any).lead?.city || '';
 
     const executiveName =
       q.executive_name ||
@@ -296,8 +314,13 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       (q as any).creator?.phone ||
       '+91 98000 11111';
 
-    const csdPriceVal =
-      String(firstItem?.unit_price || (q as any).csd_base_price || (q as any).ex_showroom_price || q.subtotal || 0);
+    const csdPriceVal = String(
+      firstItem?.unit_price ||
+        (q as any).csd_base_price ||
+        (q as any).ex_showroom_price ||
+        q.subtotal ||
+        0,
+    );
 
     const gjRtoVal =
       getVal(['gujarat', 'gj rto', 'gj_rto', 'rto & registration', 'rto']) ||
@@ -307,9 +330,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       getVal(['bh series', 'bh rto', 'bh_rto', 'bh']) ||
       String((q as any).bh_rto || '');
 
-    const crtmVal =
-      getVal(['crtm']) ||
-      String((q as any).crtm || '');
+    const crtmVal = getVal(['crtm']) || String((q as any).crtm || '');
 
     const insuranceVal =
       getVal(['insurance', 'zero-dep']) ||
@@ -321,15 +342,31 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
 
     const warrantyVal =
       getVal(['warranty', 'extended']) ||
-      String((q as any).warranty || (q as any).extended_warranty || (q as any).warranty_tenure || '');
+      String(
+        (q as any).warranty ||
+          (q as any).extended_warranty ||
+          (q as any).warranty_tenure ||
+          '',
+      );
 
     const diffAmtCashVal =
-      getVal(['difference', 'cash adjustment', 'diff_amt_cash', 'diff', 'cash']) ||
-      String((q as any).diff_amt_cash || '');
+      getVal([
+        'difference',
+        'cash adjustment',
+        'diff_amt_cash',
+        'diff',
+        'cash',
+      ]) || String((q as any).diff_amt_cash || '');
 
     const msRewardVal =
       getVal(['reword', 'reward', 'discount', 'm.s']) ||
-      String((q as any).discount_amount || (q as any).ms_reward || (q as any).ms_reword || (q as any).discount || '');
+      String(
+        (q as any).discount_amount ||
+          (q as any).ms_reward ||
+          (q as any).ms_reword ||
+          (q as any).discount ||
+          '',
+      );
 
     return {
       leadId: q.lead_id || null,
@@ -344,8 +381,10 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       modelName: q.model_name || '',
       variantId: null,
       variantName: q.variant_name || '',
-      sheetCarTitle: q.brand_name || firstItem?.item_name?.split('–')[0]?.trim() || '',
-      sheetModelTitle: q.model_name || firstItem?.item_name?.split('–')[1]?.trim() || '',
+      sheetCarTitle:
+        q.brand_name || firstItem?.item_name?.split('–')[0]?.trim() || '',
+      sheetModelTitle:
+        q.model_name || firstItem?.item_name?.split('–')[1]?.trim() || '',
       fuelType: 'PETROL',
       executiveName,
       executivePhone,
@@ -361,7 +400,11 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         msReward: msRewardVal,
       },
       grandTotal: Number(
-        q.final_on_road_price || q.grand_total || q.total_amount || q.total || 0
+        q.final_on_road_price ||
+          q.grand_total ||
+          q.total_amount ||
+          q.total ||
+          0,
       ),
     };
   };
@@ -373,7 +416,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       const res = await quotationService.getById(q.id);
       const fullQuote = res?.data || res;
       if (fullQuote && fullQuote.id === q.id) {
-        setPreviewQuote((prev) => (prev?.id === q.id ? { ...prev, ...fullQuote } : prev));
+        setPreviewQuote(prev =>
+          prev?.id === q.id ? { ...prev, ...fullQuote } : prev,
+        );
       }
     } catch (err) {
       console.log('Error fetching full quotation details for preview:', err);
@@ -383,7 +428,8 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
   const handleOpenConvertDeal = async (q: Quotation) => {
     triggerHaptic();
     let targetLead: CustomerLead | null = null;
-    const targetLeadId = q.lead_id || (q as any).leadId || (q as any).customer_id;
+    const targetLeadId =
+      q.lead_id || (q as any).leadId || (q as any).customer_id;
     if (targetLeadId) {
       try {
         const res = await leadApi.getById(targetLeadId);
@@ -419,11 +465,16 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       showSuccessToast('Downloaded', `Saved to ${path}`);
       // Task 1: Update status to 'print' on PDF download/print
       await quotationService.updateStatus(q.id, 'print').catch(() => {});
-      setQuotations((prev) =>
-        prev.map((item) => (item.id === q.id ? { ...item, status: 'print' } : item))
+      setQuotations(prev =>
+        prev.map(item =>
+          item.id === q.id ? { ...item, status: 'print' } : item,
+        ),
       );
     } catch (err: any) {
-      showErrorToast('Download Failed', err?.message || 'Could not download PDF.');
+      showErrorToast(
+        'Download Failed',
+        err?.message || 'Could not download PDF.',
+      );
     }
   };
 
@@ -431,7 +482,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
     triggerHaptic();
     Alert.alert(
       'Move to Trash',
-      `Are you sure you want to move quotation ${q.quotation_number || q.id} to trash?`,
+      `Are you sure you want to move quotation ${
+        q.quotation_number || q.id
+      } to trash?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -440,14 +493,20 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
           onPress: async () => {
             try {
               await quotationService.delete(q.id);
-              showSuccessToast('Moved to Trash', 'Quotation soft-deleted successfully.');
-              setQuotations((prev) => prev.filter((item) => item.id !== q.id));
+              showSuccessToast(
+                'Moved to Trash',
+                'Quotation soft-deleted successfully.',
+              );
+              setQuotations(prev => prev.filter(item => item.id !== q.id));
             } catch (err: any) {
-              showErrorToast('Failed', err?.message || 'Could not delete quotation.');
+              showErrorToast(
+                'Failed',
+                err?.message || 'Could not delete quotation.',
+              );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -456,13 +515,13 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
     try {
       await quotationService.restore(q.id);
       showSuccessToast('Restored', 'Quotation restored from trash.');
-      setQuotations((prev) => prev.filter((item) => item.id !== q.id));
+      setQuotations(prev => prev.filter(item => item.id !== q.id));
     } catch (err: any) {
       showErrorToast('Failed', err?.message || 'Could not restore quotation.');
     }
   };
 
-  // Floating Action Items (Task 3)
+  // Floating Action Items (Only 'New Quote' action as requested)
   const fabActions = [
     {
       label: 'New Quote',
@@ -473,25 +532,15 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         onNavigateToCreate?.();
       },
     },
-    {
-      label: 'Export to Excel',
-      icon: <FileSpreadsheet size={18} color="#FFFFFF" />,
-      backgroundColor: '#059669',
-      onPress: handleExportExcel,
-    },
-    {
-      label: isTrashView ? 'Active Quotes' : 'Trash View',
-      icon: <Trash2 size={18} color="#FFFFFF" />,
-      backgroundColor: isTrashView ? '#2563EB' : '#EF4444',
-      onPress: () => {
-        triggerHaptic();
-        setIsTrashView(!isTrashView);
-      },
-    },
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' },
+      ]}
+    >
       {/* Top Bar Header (Task 3: Trash Icon only, New Quote moved to FAB) */}
       <View
         style={[
@@ -503,11 +552,13 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         ]}
       >
         <View style={styles.headerLeft}>
-          <Text style={[styles.screenHeading, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+          <Text
+            style={[
+              styles.screenHeading,
+              { color: isDark ? '#FFFFFF' : '#0F172A' },
+            ]}
+          >
             Saved Quotations Archive
-          </Text>
-          <Text style={styles.screenSub}>
-            {isTrashView ? 'Trash Folder (Deleted Records)' : 'Official vehicle quotes & PDF logs'}
           </Text>
         </View>
 
@@ -517,7 +568,13 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
             style={[
               styles.trashIconButton,
               isTrashView && styles.trashIconButtonActive,
-              { borderColor: isTrashView ? '#EF4444' : isDark ? '#334155' : '#CBD5E1' },
+              {
+                borderColor: isTrashView
+                  ? '#EF4444'
+                  : isDark
+                  ? '#334155'
+                  : '#CBD5E1',
+              },
             ]}
             onPress={() => {
               triggerHaptic();
@@ -552,7 +609,10 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         >
           <Search size={16} color="#94A3B8" />
           <TextInput
-            style={[styles.searchInput, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
+            style={[
+              styles.searchInput,
+              { color: isDark ? '#FFFFFF' : '#0F172A' },
+            ]}
             placeholder="Search customer, phone, quote number..."
             placeholderTextColor="#94A3B8"
             value={searchQuery}
@@ -574,7 +634,11 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
               fromDate ? styles.dateFilterBtnActive : null,
               {
                 backgroundColor: isDark ? '#0F172A' : '#F1F5F9',
-                borderColor: fromDate ? '#1E3A8A' : isDark ? '#334155' : '#CBD5E1',
+                borderColor: fromDate
+                  ? '#1E3A8A'
+                  : isDark
+                  ? '#334155'
+                  : '#CBD5E1',
               },
             ]}
             onPress={() => {
@@ -587,7 +651,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
             <Text
               style={[
                 styles.dateFilterBtnText,
-                { color: fromDate ? '#1E3A8A' : isDark ? '#CBD5E1' : '#64748B' },
+                {
+                  color: fromDate ? '#1E3A8A' : isDark ? '#CBD5E1' : '#64748B',
+                },
               ]}
             >
               {fromDate ? `From: ${fromDate}` : 'From Date'}
@@ -600,7 +666,11 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
               toDate ? styles.dateFilterBtnActive : null,
               {
                 backgroundColor: isDark ? '#0F172A' : '#F1F5F9',
-                borderColor: toDate ? '#1E3A8A' : isDark ? '#334155' : '#CBD5E1',
+                borderColor: toDate
+                  ? '#1E3A8A'
+                  : isDark
+                  ? '#334155'
+                  : '#CBD5E1',
               },
             ]}
             onPress={() => {
@@ -641,7 +711,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
           horizontal
           showsHorizontalScrollIndicator={false}
           data={STATUS_FILTERS}
-          keyExtractor={(item) => item.key}
+          keyExtractor={item => item.key}
           contentContainerStyle={styles.statusPillsList}
           renderItem={({ item }) => {
             const isActive = activeStatus === item.key;
@@ -667,7 +737,13 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
                   style={[
                     styles.statusPillText,
                     isActive && styles.statusPillTextActive,
-                    { color: isActive ? '#FFFFFF' : isDark ? '#CBD5E1' : '#475569' },
+                    {
+                      color: isActive
+                        ? '#FFFFFF'
+                        : isDark
+                        ? '#CBD5E1'
+                        : '#475569',
+                    },
                   ]}
                 >
                   {item.label}
@@ -687,8 +763,11 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       ) : (
         <FlatList
           data={quotations}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
+          keyExtractor={item => String(item.id)}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 100 },
+          ]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
@@ -720,7 +799,9 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
                   onPress={onNavigateToCreate}
                 >
                   <Plus size={16} color="#FFFFFF" />
-                  <Text style={styles.emptyCreateBtnText}>Create Quotation</Text>
+                  <Text style={styles.emptyCreateBtnText}>
+                    Create Quotation
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -746,12 +827,14 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
       {/* Date Picker Modal */}
       <DatePickerModal
         visible={datePickerTarget !== null}
-        title={datePickerTarget === 'from' ? 'Select From Date' : 'Select To Date'}
+        title={
+          datePickerTarget === 'from' ? 'Select From Date' : 'Select To Date'
+        }
         initialDate={datePickerTarget === 'from' ? fromDate : toDate}
         allowPast={true}
         allowFuture={true}
         onClose={() => setDatePickerTarget(null)}
-        onSelectDate={(dateStr) => {
+        onSelectDate={dateStr => {
           if (datePickerTarget === 'from') {
             setFromDate(dateStr);
           } else if (datePickerTarget === 'to') {
@@ -790,10 +873,10 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
             setEmailQuote(null);
             // Task 1: Update status to 'sent' on successful email dispatch
             quotationService.updateStatus(sentId, 'sent').catch(() => {});
-            setQuotations((prev) =>
-              prev.map((item) =>
-                item.id === sentId ? { ...item, status: 'sent' } : item
-              )
+            setQuotations(prev =>
+              prev.map(item =>
+                item.id === sentId ? { ...item, status: 'sent' } : item,
+              ),
             );
           }}
         />
@@ -805,7 +888,7 @@ export const QuotationsListScreen: React.FC<QuotationsListScreenProps> = ({
         lead={activeProfileLead}
         onClose={() => setProfileModalVisible(false)}
         onCall={handleCall}
-        onConvertToDeal={(ld) => {
+        onConvertToDeal={ld => {
           setProfileModalVisible(false);
           setActiveDealLead(ld);
           setDealModalVisible(true);

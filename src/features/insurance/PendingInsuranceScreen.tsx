@@ -30,10 +30,7 @@ import { colors } from '../../core/theme/colors';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../core/utils/haptics';
 import { AddInsuranceModal } from './components/AddInsuranceModal';
-import {
-  formatIndianCurrency,
-  insuranceService,
-} from './insuranceService';
+import { formatIndianCurrency, insuranceService } from './insuranceService';
 import { InsurancePagination, PendingInsuranceDeal } from './types';
 
 export const PendingInsuranceScreen: React.FC = () => {
@@ -56,11 +53,17 @@ export const PendingInsuranceScreen: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Selected deal for Add Insurance Modal
-  const [selectedDeal, setSelectedDeal] = useState<PendingInsuranceDeal | null>(null);
+  const [selectedDeal, setSelectedDeal] = useState<PendingInsuranceDeal | null>(
+    null,
+  );
   const [showAddModal, setShowAddModal] = useState(false);
 
   const loadData = useCallback(
-    async (pageNumber: number = 1, isLoadMore: boolean = false, search: string = searchTerm) => {
+    async (
+      pageNumber: number = 1,
+      isLoadMore: boolean = false,
+      search: string = searchTerm,
+    ) => {
       try {
         if (isLoadMore) {
           setIsLoadingMore(true);
@@ -76,7 +79,7 @@ export const PendingInsuranceScreen: React.FC = () => {
 
         if (res && res.status) {
           if (isLoadMore) {
-            setDeals((prev) => [...prev, ...res.data]);
+            setDeals(prev => [...prev, ...res.data]);
           } else {
             setDeals(res.data);
             setMetrics(res.metrics);
@@ -93,7 +96,7 @@ export const PendingInsuranceScreen: React.FC = () => {
         setIsRefreshing(false);
       }
     },
-    [searchTerm, isRefreshing]
+    [searchTerm, isRefreshing],
   );
 
   useEffect(() => {
@@ -221,7 +224,9 @@ export const PendingInsuranceScreen: React.FC = () => {
                 style={[
                   styles.brandBadge,
                   {
-                    backgroundColor: isDark ? 'rgba(88, 99, 42, 0.25)' : '#EFF3DF',
+                    backgroundColor: isDark
+                      ? 'rgba(88, 99, 42, 0.25)'
+                      : '#EFF3DF',
                     borderColor: isDark ? 'rgba(88, 99, 42, 0.4)' : '#DCE9A2',
                   },
                 ]}
@@ -238,6 +243,16 @@ export const PendingInsuranceScreen: React.FC = () => {
               >
                 Color: {item.color || 'Standard'}
               </Text>
+              {item.registration_number ? (
+                <Text
+                  style={[
+                    styles.vehicleMetaText,
+                    { color: isDark ? '#94A3B8' : '#64748B' },
+                  ]}
+                >
+                  Reg: {item.registration_number}
+                </Text>
+              ) : null}
               {item.vin_chassis_number ? (
                 <Text
                   style={[
@@ -273,7 +288,10 @@ export const PendingInsuranceScreen: React.FC = () => {
 
           {/* Action Button: + Add Insurance */}
           <TouchableOpacity
-            style={[styles.addInsuranceBtn, { backgroundColor: colors.primary }]}
+            style={[
+              styles.addInsuranceBtn,
+              { backgroundColor: colors.primary },
+            ]}
             onPress={() => {
               triggerHaptic('impactMedium');
               setSelectedDeal(item);
@@ -297,7 +315,7 @@ export const PendingInsuranceScreen: React.FC = () => {
     >
       <FlatList
         data={deals}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={item => String(item.id)}
         renderItem={renderDealCard}
         contentContainerStyle={[
           styles.listContainer,
@@ -330,14 +348,6 @@ export const PendingInsuranceScreen: React.FC = () => {
               >
                 Pending Insurance Deals
               </Text>
-              <Text
-                style={[
-                  styles.pageSubtitle,
-                  { color: isDark ? '#94A3B8' : '#64748B' },
-                ]}
-              >
-                Active vehicle deals pending insurance policy allocation.
-              </Text>
             </View>
 
             {/* Horizontal KPI Deck */}
@@ -353,13 +363,17 @@ export const PendingInsuranceScreen: React.FC = () => {
                   {
                     backgroundColor: isDark ? '#131C27' : '#FFFFFF',
                     borderTopColor: '#EF4444',
-                    borderColor: isDark ? 'rgba(217, 221, 204, 0.15)' : colors.border,
+                    borderColor: isDark
+                      ? 'rgba(217, 221, 204, 0.15)'
+                      : colors.border,
                   },
                 ]}
               >
                 <View style={styles.kpiHeaderRow}>
                   <Text style={styles.kpiTitle}>PENDING INSURANCE</Text>
-                  <View style={[styles.kpiIconBox, { backgroundColor: '#FEE2E2' }]}>
+                  <View
+                    style={[styles.kpiIconBox, { backgroundColor: '#FEE2E2' }]}
+                  >
                     <ShieldAlert size={14} color="#DC2626" />
                   </View>
                 </View>
@@ -383,13 +397,17 @@ export const PendingInsuranceScreen: React.FC = () => {
                   {
                     backgroundColor: isDark ? '#131C27' : '#FFFFFF',
                     borderTopColor: colors.primary,
-                    borderColor: isDark ? 'rgba(217, 221, 204, 0.15)' : colors.border,
+                    borderColor: isDark
+                      ? 'rgba(217, 221, 204, 0.15)'
+                      : colors.border,
                   },
                 ]}
               >
                 <View style={styles.kpiHeaderRow}>
                   <Text style={styles.kpiTitle}>PORTFOLIO EXPOSURE</Text>
-                  <View style={[styles.kpiIconBox, { backgroundColor: '#EFF3DF' }]}>
+                  <View
+                    style={[styles.kpiIconBox, { backgroundColor: '#EFF3DF' }]}
+                  >
                     <IndianRupee size={14} color={colors.primary} />
                   </View>
                 </View>
@@ -448,7 +466,9 @@ export const PendingInsuranceScreen: React.FC = () => {
                 styles.searchBox,
                 {
                   backgroundColor: isDark ? '#131C27' : '#FFFFFF',
-                  borderColor: isDark ? 'rgba(217, 221, 204, 0.2)' : colors.border,
+                  borderColor: isDark
+                    ? 'rgba(217, 221, 204, 0.2)'
+                    : colors.border,
                 },
               ]}
             >
@@ -458,7 +478,7 @@ export const PendingInsuranceScreen: React.FC = () => {
                   styles.searchInput,
                   { color: isDark ? '#F1F5F9' : '#0F172A' },
                 ]}
-                placeholder="Search customer, phone, deal #..."
+                placeholder="Search customer, phone ... "
                 placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                 value={searchTerm}
                 onChangeText={setSearchTerm}
@@ -509,7 +529,8 @@ export const PendingInsuranceScreen: React.FC = () => {
                   { color: isDark ? '#94A3B8' : '#64748B' },
                 ]}
               >
-                All booked vehicle deals currently have insurance policies linked.
+                All booked vehicle deals currently have insurance policies
+                linked.
               </Text>
             </View>
           )

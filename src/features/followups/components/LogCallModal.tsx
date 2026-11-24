@@ -737,44 +737,64 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
 
             {/* 5. Next Action Date & Next Action Time */}
             <View style={styles.twoColRow}>
-              <View style={[styles.fieldGroup, { flex: 1.2 }]}>
+              <View style={[styles.fieldGroup, { flex: 1.1 }]}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                   NEXT ACTION DATE
                 </Text>
-                <TextInput
+                <TouchableOpacity
                   style={[
-                    styles.input,
+                    styles.pickerTriggerBtn,
                     {
                       backgroundColor: isDark ? '#101726' : '#FFFFFF',
                       borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                      color: colors.textPrimary,
                     },
                   ]}
-                  value={nextDate}
-                  onChangeText={setNextDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.textMuted}
-                />
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setDatePickerTarget('next');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.pickerTriggerText,
+                      { color: nextDate ? colors.textPrimary : colors.textMuted },
+                    ]}
+                  >
+                    {nextDate || 'Select Date'}
+                  </Text>
+                  <Calendar size={16} color={colors.primary} />
+                </TouchableOpacity>
               </View>
 
               <View style={[styles.fieldGroup, { flex: 1 }]}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                   NEXT ACTION TIME
                 </Text>
-                <TextInput
+                <TouchableOpacity
                   style={[
-                    styles.input,
+                    styles.pickerTriggerBtn,
                     {
                       backgroundColor: isDark ? '#101726' : '#FFFFFF',
                       borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                      color: colors.textPrimary,
                     },
                   ]}
-                  value={nextTime}
-                  onChangeText={setNextTime}
-                  placeholder="10:00 AM"
-                  placeholderTextColor={colors.textMuted}
-                />
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setTimePickerTarget('next');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.pickerTriggerText,
+                      { color: nextTime ? colors.textPrimary : colors.textMuted },
+                    ]}
+                  >
+                    {nextTime || 'Select Time'}
+                  </Text>
+                  <Clock size={16} color={colors.primary} />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -802,125 +822,129 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
               />
             </View>
 
-            {/* 7. Special Discount Approval Sub-panel (Web Section 7 & 8) */}
-            <View
-              style={[
-                styles.discountBox,
-                {
-                  backgroundColor: isDark ? '#101726' : '#F8FAFC',
-                  borderColor: requestDiscount
-                    ? isDark
-                      ? '#F59E0B'
-                      : '#FDE68A'
-                    : isDark
-                    ? '#1E293B'
-                    : '#E2E8F0',
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.discountToggleRow}
-                activeOpacity={0.8}
-                onPress={() => {
-                  triggerHaptic('selection');
-                  setRequestDiscount(!requestDiscount);
-                }}
+            {/* 7. Special Discount Approval Sub-panel (Only visible when Price Discussion / Negotiation is selected) */}
+            {(outcome === 'Negotiation / Price Discussion' ||
+              outcome.toLowerCase().includes('price') ||
+              outcome.toLowerCase().includes('negotiat')) && (
+              <View
+                style={[
+                  styles.discountBox,
+                  {
+                    backgroundColor: isDark ? '#101726' : '#F8FAFC',
+                    borderColor: requestDiscount
+                      ? isDark
+                        ? '#F59E0B'
+                        : '#FDE68A'
+                      : isDark
+                      ? '#1E293B'
+                      : '#E2E8F0',
+                  },
+                ]}
               >
-                <View style={styles.discountHeaderLeft}>
-                  <ShieldAlert
-                    size={18}
-                    color={requestDiscount ? '#F59E0B' : colors.textSecondary}
-                    strokeWidth={2.2}
-                  />
-                  <View style={{ marginLeft: 8 }}>
-                    <Text
-                      style={[
-                        styles.discountTitle,
-                        { color: isDark ? '#F8FAFC' : '#0F172A' },
-                      ]}
-                    >
-                      Customer Demanded Discount?
-                    </Text>
-                    <Text
-                      style={[
-                        styles.discountSubtitle,
-                        { color: isDark ? '#94A3B8' : '#64748B' },
-                      ]}
-                    >
-                      Dispatches approval alert to Sales Manager & Admin
-                    </Text>
-                  </View>
-                </View>
-
-                <Switch
-                  value={requestDiscount}
-                  onValueChange={(val) => {
+                <TouchableOpacity
+                  style={styles.discountToggleRow}
+                  activeOpacity={0.8}
+                  onPress={() => {
                     triggerHaptic('selection');
-                    setRequestDiscount(val);
+                    setRequestDiscount(!requestDiscount);
                   }}
-                  trackColor={{
-                    false: isDark ? '#334155' : '#CBD5E1',
-                    true: colors.primary,
-                  }}
-                  thumbColor="#FFFFFF"
-                />
-              </TouchableOpacity>
-
-              {requestDiscount && (
-                <View style={styles.discountFields}>
-                  <View style={styles.fieldGroup}>
-                    <Text
-                      style={[
-                        styles.fieldLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      REQUESTED DISCOUNT AMOUNT (₹) <Text style={styles.reqStar}>*</Text>
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? '#162030' : '#FFFFFF',
-                          borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                          color: colors.textPrimary,
-                        },
-                      ]}
-                      value={discountAmount}
-                      onChangeText={setDiscountAmount}
-                      keyboardType="numeric"
-                      placeholder="e.g. 25000"
-                      placeholderTextColor={colors.textMuted}
+                >
+                  <View style={styles.discountHeaderLeft}>
+                    <ShieldAlert
+                      size={18}
+                      color={requestDiscount ? '#F59E0B' : colors.textSecondary}
+                      strokeWidth={2.2}
                     />
+                    <View style={{ marginLeft: 8 }}>
+                      <Text
+                        style={[
+                          styles.discountTitle,
+                          { color: isDark ? '#F8FAFC' : '#0F172A' },
+                        ]}
+                      >
+                        Customer Demanded Discount?
+                      </Text>
+                      <Text
+                        style={[
+                          styles.discountSubtitle,
+                          { color: isDark ? '#94A3B8' : '#64748B' },
+                        ]}
+                      >
+                        Dispatches approval alert to Sales Manager & Admin
+                      </Text>
+                    </View>
                   </View>
 
-                  <View style={styles.fieldGroup}>
-                    <Text
-                      style={[
-                        styles.fieldLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      DISCOUNT REASON / JUSTIFICATION
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? '#162030' : '#FFFFFF',
-                          borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                          color: colors.textPrimary,
-                        },
-                      ]}
-                      value={discountReason}
-                      onChangeText={setDiscountReason}
-                      placeholder="e.g. Officer comparing with local dealer; ready to book immediately"
-                      placeholderTextColor={colors.textMuted}
-                    />
+                  <Switch
+                    value={requestDiscount}
+                    onValueChange={(val) => {
+                      triggerHaptic('selection');
+                      setRequestDiscount(val);
+                    }}
+                    trackColor={{
+                      false: isDark ? '#334155' : '#CBD5E1',
+                      true: colors.primary,
+                    }}
+                    thumbColor="#FFFFFF"
+                  />
+                </TouchableOpacity>
+
+                {requestDiscount && (
+                  <View style={styles.discountFields}>
+                    <View style={styles.fieldGroup}>
+                      <Text
+                        style={[
+                          styles.fieldLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        REQUESTED DISCOUNT AMOUNT (₹) <Text style={styles.reqStar}>*</Text>
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: isDark ? '#162030' : '#FFFFFF',
+                            borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                            color: colors.textPrimary,
+                          },
+                        ]}
+                        value={discountAmount}
+                        onChangeText={setDiscountAmount}
+                        keyboardType="numeric"
+                        placeholder="e.g. 25000"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                      <Text
+                        style={[
+                          styles.fieldLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        DISCOUNT REASON / JUSTIFICATION
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: isDark ? '#162030' : '#FFFFFF',
+                            borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                            color: colors.textPrimary,
+                          },
+                        ]}
+                        value={discountReason}
+                        onChangeText={setDiscountReason}
+                        placeholder="e.g. Officer comparing with local dealer; ready to book immediately"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </View>
                   </View>
-                </View>
-              )}
-            </View>
+                )}
+              </View>
+            )}
 
             {/* Action Buttons */}
             <View style={styles.footerRow}>
@@ -975,7 +999,7 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
         title={datePickerTarget === 'interaction' ? 'Select Interaction Date' : 'Select Next Action Date'}
         initialDate={datePickerTarget === 'interaction' ? interactionDate : nextDate}
         allowFuture={true}
-        allowPast={false}
+        allowPast={true}
         onClose={() => setDatePickerTarget(null)}
         onSelectDate={(formattedDate) => {
           if (datePickerTarget === 'interaction') {
@@ -983,6 +1007,7 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
           } else {
             setNextDate(formattedDate);
           }
+          setDatePickerTarget(null);
         }}
       />
 
@@ -997,6 +1022,7 @@ export const LogCallModal: React.FC<LogCallModalProps> = ({
           } else {
             setNextTime(formattedTime);
           }
+          setTimePickerTarget(null);
         }}
       />
     </Modal>

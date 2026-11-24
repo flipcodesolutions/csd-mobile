@@ -45,11 +45,11 @@ export const INSURANCE_COMPANIES = [
 ];
 
 export const INSURANCE_TYPES = [
-  'Standard',
   'Comprehensive',
-  'Zero Depreciation',
-  'Third Party Only',
-  'Own Damage Only',
+  'Zero Depreciation (B2B)',
+  'Third Party',
+  'Own Damage',
+  'Standard',
 ];
 
 export const REMINDER_DAYS_OPTIONS = [
@@ -170,9 +170,25 @@ export const insuranceService = {
           brand_name: d.brand_name || d.brand?.name || d.lead?.brand_name || d.lead?.brand?.name || '',
           model_variant: d.model_variant || d.lead?.model_variant || 'Standard Variant',
           color: d.color || 'Standard',
-          vin_chassis_number: d.vin_chassis_number || '',
-          engine_number: d.engine_number || '',
-          registration_number: d.registration_number || '',
+          vin_chassis_number:
+            d.vin_chassis_number ||
+            d.vin ||
+            d.chassis_number ||
+            d.chassis_no ||
+            d.lead?.vin_chassis_number ||
+            '',
+          engine_number:
+            d.engine_number ||
+            d.engine_no ||
+            d.lead?.engine_number ||
+            '',
+          registration_number:
+            d.registration_number ||
+            d.vehicle_number ||
+            d.rto_no ||
+            d.reg_no ||
+            d.lead?.registration_number ||
+            '',
           total_amount: Number(d.total_amount || 0),
           net_amount: Number(d.net_amount || d.total_amount || 0),
           paid_amount: Number(d.paid_amount || d.total_paid || 0),

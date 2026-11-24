@@ -53,15 +53,24 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
 
   // Keyboard avoidance tracking
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      (e) => {
+        setKeyboardVisible(true);
+        if (e?.endCoordinates?.height) {
+          setKeyboardHeight(e.endCoordinates.height);
+        }
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
     );
     return () => {
       showSub.remove();
@@ -86,18 +95,22 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
 
   const toIsoDate = (displayStr?: string): string => {
     if (!displayStr) return '';
-    const parts = displayStr.split('/');
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    if (displayStr.includes('/')) {
+      const parts = displayStr.split('/');
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
     }
-    return displayStr;
+    return displayStr.split('T')[0];
   };
 
-  const calculateExpiryFromStart = (startDisplay: string): string => {
-    if (!startDisplay) return '';
-    const parts = startDisplay.split('/');
+  const calculateExpiryFromStart = (startVal: string): string => {
+    if (!startVal) return '';
+    const iso = toIsoDate(startVal);
+    if (!iso || !iso.includes('-')) return '';
+    const parts = iso.split('-');
     if (parts.length !== 3) return '';
-    const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     if (isNaN(d.getTime())) return '';
     d.setFullYear(d.getFullYear() + 1);
     d.setDate(d.getDate() - 1);
@@ -113,6 +126,7 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
 
   const [policyNumber, setPolicyNumber] = useState('');
+  const [vehicleNumber, setVehicleNumber] = useState('');
   const [insuranceType, setInsuranceType] = useState('Standard');
   const [showTypePicker, setShowTypePicker] = useState(false);
 
@@ -148,17 +162,24 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
       setCompany(record.insurance_company || '');
       setPolicyNumber(record.policy_number ? `${record.policy_number}-RNW` : '');
       setInsuranceType(record.insurance_type || 'Standard');
+      setVehicleNumber(
+        record.vehicle_number ||
+          record.registration_number ||
+          record.vin_chassis_number ||
+          ''
+      );
       setStartDate(initialStart);
       setExpiryDate(initialExp);
       setPremiumAmount(record.premium_amount ? String(record.premium_amount) : '');
       setReminderDays(record.reminder_days_before || 15);
-      setNotes(`Renewed on ${new Date().toLocaleDateString('en-IN')}`);
+      setNotes('');
     }
   }, [visible, record?.id]);
 
   const handleStartDateChange = (selectedDate: string) => {
-    setStartDate(selectedDate);
-    const calculated = calculateExpiryFromStart(selectedDate);
+    const display = toDisplayDate(selectedDate);
+    setStartDate(display);
+    const calculated = calculateExpiryFromStart(display);
     setExpiryDate(calculated);
   };
 
@@ -190,7 +211,8 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
 
       await insuranceService.renewInsurance(record.id, {
         customer_name: record.customer_name,
-        vehicle_number: record.vehicle_number || record.registration_number || undefined,
+        vehicle_number: vehicleNumber.trim() || undefined,
+        registration_number: vehicleNumber.trim() || undefined,
         insurance_company: company,
         policy_number: policyNumber.trim(),
         insurance_type: insuranceType,
@@ -394,6 +416,32 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
                 placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                 value={policyNumber}
                 onChangeText={setPolicyNumber}
+              />
+            </View>
+
+            {/* Vehicle Number / Reg No */}
+            <View style={styles.formGroup}>
+              <Text
+                style={[
+                  styles.formLabel,
+                  { color: isDark ? '#E2E8F0' : '#1E293B' },
+                ]}
+              >
+                Vehicle Number / Reg No
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                    borderColor: isDark ? '#334155' : '#CBD5E1',
+                    color: isDark ? '#F1F5F9' : '#0F172A',
+                  },
+                ]}
+                placeholder="e.g. GJ-01-AB-1234 or Reg/Chassis No"
+                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                value={vehicleNumber}
+                onChangeText={setVehicleNumber}
               />
             </View>
 
@@ -637,7 +685,7 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
       <DatePickerModal
         visible={showStartDatePicker}
         title="New Policy Start Date"
-        initialDate={startDate}
+        initialDate={toIsoDate(startDate)}
         allowPast={true}
         allowFuture={true}
         onClose={() => setShowStartDatePicker(false)}
@@ -651,12 +699,12 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
       <DatePickerModal
         visible={showExpiryDatePicker}
         title="New Policy Expiry Date"
-        initialDate={expiryDate}
+        initialDate={toIsoDate(expiryDate)}
         allowPast={true}
         allowFuture={true}
         onClose={() => setShowExpiryDatePicker(false)}
         onSelectDate={(d) => {
-          setExpiryDate(d);
+          setExpiryDate(toDisplayDate(d));
           setShowExpiryDatePicker(false);
         }}
       />
@@ -666,17 +714,31 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
         visible={showCompanyPicker}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowCompanyPicker(false)}
+        statusBarTranslucent
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowCompanyPicker(false);
+        }}
       >
-        <TouchableOpacity
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCompanyPicker(false)}
         >
+          <TouchableOpacity
+            style={styles.overlayBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowCompanyPicker(false);
+            }}
+          />
           <View
             style={[
               styles.pickerContainer,
               { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
+              Platform.OS === 'android' && keyboardVisible && {
+                marginBottom: Math.max(keyboardHeight, 20),
+              },
             ]}
           >
             <View style={styles.pickerHeader}>
@@ -688,7 +750,12 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
               >
                 Select Insurance Provider
               </Text>
-              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowCompanyPicker(false);
+                }}
+              >
                 <X size={20} color={isDark ? '#94A3B8' : '#64748B'} />
               </TouchableOpacity>
             </View>
@@ -794,7 +861,7 @@ export const RenewPolicyModal: React.FC<RenewPolicyModalProps> = ({
                 ))}
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Type Selector Modal */}
@@ -1107,6 +1174,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFill,
   },
   pickerContainer: {
     borderTopLeftRadius: 18,

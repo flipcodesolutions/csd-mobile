@@ -111,6 +111,7 @@ export interface CreateInsurancePayload {
 export interface RenewInsurancePayload {
   customer_name?: string;
   vehicle_number?: string;
+  registration_number?: string;
   insurance_company: string;
   policy_number: string;
   insurance_type: string;

@@ -14,11 +14,28 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../core/theme/colors';
 import { leadApi, salesExecutiveApi } from './leadService';
 import { dealApi } from '../deals/dealService';
 import followUpService from '../followups/followUpService';
-import { Award, Download, Edit3, Eye, FileText, Plus, Trash2 } from 'lucide-react-native';
+import {
+  Award,
+  Clock,
+  CreditCard,
+  Download,
+  Edit3,
+  Eye,
+  FileText,
+  FolderKanban,
+  Phone,
+  PhoneCall,
+  Plus,
+  Receipt,
+  Shield,
+  ShieldCheck,
+  Trash2,
+} from 'lucide-react-native';
 import { quotationApi, quotationService } from '../quotations/quotationService';
 import {
   brandApi,
@@ -31,6 +48,7 @@ import {
 import { SendQuotationModal } from './components/SendQuotationModal';
 import { EditProspectModal } from './components/EditProspectModal';
 import { ConvertToDealModal } from './components/ConvertToDealModal';
+import { FollowUpModal } from './components/FollowUpModal';
 import { QuotationSheetView } from '../quotations/components/QuotationSheetView';
 import { QuotationFormData } from '../quotations/types';
 import { SourceItem, StatusItem, UserItem } from './types';
@@ -52,11 +70,13 @@ const LEAD_STATUS_OPTIONS = [
 ];
 
 export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack }) => {
+  const navigation = useNavigation<any>();
   const [lead, setLead] = useState<any>(null);
   const [followUps, setFollowUps] = useState<any[]>([]);
   const [quotations, setQuotations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [selectedQuotationForPreview, setSelectedQuotationForPreview] = useState<any | null>(null);
   const [isDownloadingPdfId, setIsDownloadingPdfId] = useState<number | null>(null);
@@ -70,6 +90,74 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
   const [showEditLeadModal, setShowEditLeadModal] = useState(false);
   const [showDealModal, setShowDealModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const formatFollowUpDateTime = (item: any) => {
+    if (item.created_at) {
+      try {
+        const d = new Date(item.created_at);
+        if (!isNaN(d.getTime())) {
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+          return `${yyyy}-${mm}-${dd} at ${timeStr}`;
+        }
+      } catch {}
+    }
+    const dateStr = item.follow_up_date || '';
+    const timeStr = item.follow_up_time ? ` at ${item.follow_up_time}` : '';
+    return `${dateStr}${timeStr}`.trim() || 'Date Recorded';
+  };
+
+  const handleViewInvoiceBill = (inv: any) => {
+    Alert.alert(
+      `Invoice #${inv.receipt_number || inv.invoice_number || inv.id}`,
+      `Date: ${inv.payment_date || (inv.created_at ? inv.created_at.split('T')[0] : '-')}\n` +
+      `Payment Type: ${inv.payment_type || inv.type || 'Payment'}\n` +
+      `Payment Mode: ${inv.payment_mode || inv.mode || 'UPI'}\n` +
+      `Reference / UTR: ${inv.transaction_reference || inv.utr_number || inv.reference || '-'}\n` +
+      `Amount Paid: ₹${Number(inv.amount || 0).toLocaleString('en-IN')}\n` +
+      `Status: ${inv.status || 'Paid'}\n` +
+      (inv.notes ? `Notes: ${inv.notes}` : ''),
+      [{ text: 'Close', style: 'cancel' }]
+    );
+  };
+
+  const handleSaveFollowUpModal = async (
+    targetLeadId: number,
+    followUpData: any
+  ) => {
+    setIsSubmitting(true);
+    try {
+      const payload: any = {
+        follow_up_date: followUpData.follow_up_date,
+        follow_up_time: followUpData.follow_up_time || null,
+        type: followUpData.type,
+        notes: followUpData.notes || '',
+        next_follow_up_date: followUpData.next_follow_up_date || null,
+        next_follow_up_time: followUpData.next_follow_up_date ? followUpData.next_follow_up_time : null,
+        status: followUpData.outcome || followUpData.status,
+        lead_status_name: followUpData.status || null,
+        is_discount_requested: followUpData.is_discount_requested,
+        discount_amount: followUpData.discount_amount,
+        reason: followUpData.reason,
+      };
+
+      const res = await salesExecutiveApi.createFollowUp(targetLeadId, payload);
+      if (res && res.status) {
+        Alert.alert('Success', 'Follow-up interaction recorded successfully!');
+        setShowFollowUpModal(false);
+        fetchDetails();
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to save follow-up.');
+      }
+    } catch (error: any) {
+      console.log('Error saving follow-up:', error);
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to save follow-up.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Form State
   const todayStr = new Date().toISOString().split('T')[0];
@@ -102,21 +190,26 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
     setIsLoading(true);
     try {
       const [leadRes, historyRes, quoteRes] = await Promise.all([
-        salesExecutiveApi.getLeadDetails(leadId),
+        leadApi.getById(leadId).catch(() => salesExecutiveApi.getLeadDetails(leadId)),
         salesExecutiveApi.getFollowUps(leadId).catch(() => ({ data: [] })),
         quotationApi.getAll({ lead_id: leadId }).catch(() => ({ data: [] })),
       ]);
 
-      if (leadRes && leadRes.status && leadRes.data) {
-        setLead(leadRes.data);
-        setFormLeadStatus(leadRes.data.status_name || 'In Follow-Up');
+      const leadData = leadRes?.data || leadRes;
+      if (leadData && (leadData.id || leadRes?.status)) {
+        setLead(leadData);
+        setFormLeadStatus(leadData.status_name || 'In Follow-Up');
       } else {
         Alert.alert('Error', 'Lead not found or access denied.', [{ text: 'OK', onPress: onBack }]);
       }
 
-      if (historyRes && historyRes.status) {
-        setFollowUps(historyRes.data || []);
-      }
+      const followUpList =
+        historyRes && historyRes.status && Array.isArray(historyRes.data) && historyRes.data.length > 0
+          ? historyRes.data
+          : Array.isArray(leadRes?.data?.follow_ups) && leadRes.data.follow_ups.length > 0
+          ? leadRes.data.follow_ups
+          : historyRes?.data || [];
+      setFollowUps(followUpList);
 
       const qItems = Array.isArray(quoteRes) ? quoteRes : quoteRes?.data || [];
       setQuotations(Array.isArray(qItems) ? qItems : []);
@@ -417,6 +510,17 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
       }
     : null;
 
+  const insurancePolicies = Array.isArray(lead?.insurances)
+    ? lead.insurances
+    : Array.isArray(lead?.latest_deal?.insurances)
+    ? lead.latest_deal.insurances
+    : [];
+
+  const activeDeal =
+    lead?.latest_deal ||
+    (Array.isArray(lead?.deals) && lead.deals.length > 0 ? lead.deals[0] : null);
+  const dealPayments = Array.isArray(activeDeal?.payments) ? activeDeal.payments : [];
+
   return (
     <View style={styles.container}>
       {/* 1. Sub-Header Navigation */}
@@ -543,7 +647,7 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
                 </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.nextBannerAction} onPress={() => setShowModal(true)}>
+            <TouchableOpacity style={styles.nextBannerAction} onPress={() => setShowFollowUpModal(true)}>
               <Text style={styles.nextBannerActionText}>Log Outcome</Text>
             </TouchableOpacity>
           </View>
@@ -577,15 +681,21 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
           </View>
         </View>
 
-        {/* 5. Follow-Up History Section */}
+        {/* 5. Follow-Up History Section (Replicates Screenshot 1) */}
         <View style={styles.sectionCard}>
           <View style={styles.historyHeader}>
-            <Text style={styles.sectionTitle}>📋 Follow-Up History ({followUps.length})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <PhoneCall size={16} color={colors.primary} />
+              <Text style={styles.sectionTitle}>
+                Follow-Up History ({followUps.length})
+              </Text>
+            </View>
             <TouchableOpacity
               style={styles.addInlineBtn}
-              onPress={() => setShowModal(true)}
+              onPress={() => setShowFollowUpModal(true)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.addInlineText}>+ Log Note</Text>
+              <Text style={styles.addInlineText}>+ Log Call / Interaction</Text>
             </TouchableOpacity>
           </View>
 
@@ -595,66 +705,80 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
               <Text style={styles.emptyHistoryText}>No follow-ups recorded yet.</Text>
               <TouchableOpacity
                 style={styles.addFirstBtn}
-                onPress={() => setShowModal(true)}
+                onPress={() => setShowFollowUpModal(true)}
               >
                 <Text style={styles.addFirstBtnText}>+ Add First Follow-Up</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.timelineList}>
-              {followUps.map((item, idx) => (
-                <View key={item.id || idx} style={styles.timelineCard}>
-                  <View style={styles.timelineHeader}>
-                    <View style={styles.typeBadge}>
-                      <Text style={styles.typeBadgeText}>
-                        {item.type === 'Call'
-                          ? '📞 Call'
-                          : item.type === 'Meeting'
-                          ? '🤝 Meeting'
-                          : item.type === 'WhatsApp'
-                          ? '💬 WhatsApp'
-                          : item.type}
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={styles.timelineDate}>
-                        {item.follow_up_date} {item.follow_up_time ? `• ${item.follow_up_time}` : ''}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteFollowUp(item)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Trash2 size={13} color="#DC2626" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+              {followUps.map((item, idx) => {
+                const dateStr = formatFollowUpDateTime(item);
+                const nextActionStr = item.next_follow_up_date
+                  ? `${item.next_follow_up_date}${item.next_follow_up_time ? ' ' + item.next_follow_up_time : ''}`
+                  : null;
+                return (
+                  <View key={item.id || idx} style={styles.followUpCard}>
+                    {/* Top Row: Dual Badges on Left, Date + Delete Trash on Right */}
+                    <View style={styles.followUpTopRow}>
+                      <View style={styles.followUpBadgesRow}>
+                        {/* Badge 1: Type (Olive Green) */}
+                        <View style={styles.followUpTypeBadge}>
+                          <Text style={styles.followUpTypeBadgeText}>
+                            {item.type || 'Phone Call'}
+                          </Text>
+                        </View>
+                        {/* Badge 2: Outcome / Status (Soft Cyan) */}
+                        {!!(item.status || item.outcome) && (
+                          <View style={styles.followUpOutcomeBadge}>
+                            <Text style={styles.followUpOutcomeBadgeText}>
+                              {item.status || item.outcome}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
 
-                  {item.notes ? (
-                    <Text style={styles.timelineNotes}>{item.notes}</Text>
-                  ) : (
-                    <Text style={styles.noNotesText}>No interaction notes provided.</Text>
-                  )}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.followUpDateText}>
+                          {dateStr}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleDeleteFollowUp(item)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
+                        >
+                          <Trash2 size={13} color="#DC2626" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
 
-                  <View style={styles.timelineFooter}>
-                    {item.next_follow_up_date ? (
-                      <Text style={styles.nextScheduledText}>
-                        Next: {item.next_follow_up_date}
-                        {item.next_follow_up_time ? ` (${item.next_follow_up_time})` : ''}
-                      </Text>
-                    ) : (
-                      <Text style={styles.loggedByText}>Outcome: {item.status}</Text>
-                    )}
-                    <Text style={styles.loggedByText}>
-                      By: {item.user_name || 'Executive'}
+                    {/* Middle: Interaction Notes */}
+                    <Text style={styles.followUpNotesText}>
+                      {item.notes || 'No interaction notes provided.'}
                     </Text>
+
+                    {/* Bottom Footer: Logged By user & Next Action Clock Pill */}
+                    <View style={styles.followUpFooterRow}>
+                      <Text style={styles.followUpLoggedByText}>
+                        Logged By: {item.user_name || item.assigned_user_name || 'Admin User (Super Admin)'}
+                      </Text>
+                      {nextActionStr && (
+                        <View style={styles.followUpNextBadge}>
+                          <Clock size={10} color="#D97706" strokeWidth={2.2} />
+                          <Text style={styles.followUpNextText}>
+                            Next: {nextActionStr}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
 
-        {/* 5. Quotations Sent Section (Matches dev.defenceautolink.com/admin/leads/:id) */}
+        {/* 6. Quotations Sent Section (Matches dev.defenceautolink.com/admin/leads/:id) */}
         <View style={styles.sectionCard}>
           <View style={styles.historyHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -797,6 +921,248 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
             </View>
           )}
         </View>
+
+        {/* 7. Insurance Policies & History Section (Screenshot 2) */}
+        <View style={styles.sectionCard}>
+          <View style={styles.historyHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <ShieldCheck size={16} color="#059669" />
+              <Text style={styles.sectionTitle}>
+                Insurance Policies & History ({insurancePolicies.length})
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.headerQueueBtn}
+              onPress={() => navigation?.navigate('pending-insurance')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.headerQueueBtnText}>🛡️ Pending Insurance Queue</Text>
+            </TouchableOpacity>
+          </View>
+
+          {insurancePolicies.length === 0 ? (
+            <View style={styles.insuranceEmptyBox}>
+              <View style={styles.shieldIconCircle}>
+                <Shield size={36} color="#94A3B8" strokeWidth={1.8} />
+              </View>
+              <Text style={styles.insuranceEmptyTitle}>No Insurance Policy Linked Yet</Text>
+              <Text style={styles.insuranceEmptySub}>
+                This customer does not have an active insurance policy on record.
+              </Text>
+              <TouchableOpacity
+                style={styles.checkPendingInsuranceBtn}
+                onPress={() => navigation?.navigate('pending-insurance')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.checkPendingInsuranceBtnText}>
+                  🛡️ Check Pending Insurance Deals
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {insurancePolicies.map((pol: any, idx: number) => (
+                <View key={pol.id || idx} style={styles.policyCard}>
+                  <View style={styles.policyCardHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.policyProviderName}>
+                        {pol.provider_name || pol.company_name || pol.insurance_company?.name || 'Insurance'}
+                      </Text>
+                      <Text style={styles.policyNumber}>#{pol.policy_number || 'POL-PENDING'}</Text>
+                    </View>
+                    <View style={styles.policyStatusBadge}>
+                      <Text style={styles.policyStatusText}>{pol.status || 'Active'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.policyMetaGrid}>
+                    <View style={styles.policyMetaItem}>
+                      <Text style={styles.policyMetaLabel}>Plan / Type</Text>
+                      <Text style={styles.policyMetaVal}>{pol.plan_type || pol.insurance_plan || 'Comprehensive'}</Text>
+                    </View>
+                    <View style={styles.policyMetaItem}>
+                      <Text style={styles.policyMetaLabel}>Chassis / Reg</Text>
+                      <Text style={styles.policyMetaVal}>{pol.vehicle_reg_no || pol.chassis_no || lead?.chassis_number || '-'}</Text>
+                    </View>
+                    <View style={styles.policyMetaItem}>
+                      <Text style={styles.policyMetaLabel}>Validity</Text>
+                      <Text style={styles.policyMetaVal}>
+                        {pol.policy_start_date || 'Start'} → {pol.policy_expiry_date || 'Expiry'}
+                      </Text>
+                    </View>
+                    <View style={styles.policyMetaItem}>
+                      <Text style={styles.policyMetaLabel}>Premium Amount</Text>
+                      <Text style={[styles.policyMetaVal, { color: '#059669', fontWeight: '700' }]}>
+                        {pol.premium_amount ? `₹${Number(pol.premium_amount).toLocaleString('en-IN')}` : '-'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* 8. Deal Ledger & Invoices Section (Screenshot 2) */}
+        {activeDeal && (
+          <View style={styles.sectionCard}>
+            {/* Header */}
+            <View style={styles.dealLedgerHeader}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <FolderKanban size={16} color="#0284C7" />
+                  <Text style={styles.dealLedgerTitle}>
+                    Deal Ledger & Invoices: {activeDeal.deal_number || `DEAL-${activeDeal.id}`}
+                  </Text>
+                  <View style={styles.dealStageBadge}>
+                    <Text style={styles.dealStageBadgeText}>
+                      {activeDeal.delivery_stage || activeDeal.status || 'Booking Confirmed'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.dealLedgerSubtitle}>
+                  Customer: {lead.name} • {activeDeal.vehicle_name || lead.model_variant || 'Vehicle'}
+                </Text>
+              </View>
+
+              <View style={styles.dealLedgerHeaderBtns}>
+                <TouchableOpacity
+                  style={styles.dealHeaderActionBtn}
+                  onPress={() => navigation?.navigate('deals')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.dealHeaderActionBtnText}>🏆 Deals & Bookings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dealHeaderActionBtn}
+                  onPress={() => navigation?.navigate('generate-invoice')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.dealHeaderActionBtnText}>All Invoices</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* 3 Summary Financial KPI Cards */}
+            <View style={styles.dealKpiCardsRow}>
+              {/* Card 1: NET DEAL AMOUNT */}
+              <View style={styles.dealKpiCardWhite}>
+                <Text style={styles.dealKpiLabel}>NET DEAL AMOUNT</Text>
+                <Text style={styles.dealKpiAmount}>
+                  ₹{Number(activeDeal.net_amount || activeDeal.total_amount || 0).toLocaleString('en-IN')}
+                </Text>
+                <Text style={styles.dealKpiSub} numberOfLines={1}>
+                  {activeDeal.vehicle_name || lead.model_variant || 'Vehicle'}
+                </Text>
+              </View>
+
+              {/* Card 2: TOTAL PAID */}
+              <View style={styles.dealKpiCardGreen}>
+                <Text style={[styles.dealKpiLabel, { color: '#059669' }]}>TOTAL PAID</Text>
+                <Text style={[styles.dealKpiAmount, { color: '#059669' }]}>
+                  ₹{Number(activeDeal.total_paid || activeDeal.paid_amount || 0).toLocaleString('en-IN')}
+                </Text>
+                <Text style={[styles.dealKpiSub, { color: '#059669' }]}>
+                  {dealPayments.length} Invoices Cleared
+                </Text>
+              </View>
+
+              {/* Card 3: BALANCE DUE */}
+              <View style={styles.dealKpiCardRed}>
+                <Text style={[styles.dealKpiLabel, { color: '#DC2626' }]}>BALANCE DUE</Text>
+                <Text style={[styles.dealKpiAmount, { color: '#DC2626' }]}>
+                  ₹{Number(
+                    activeDeal.balance_due ??
+                    Math.max(
+                      0,
+                      (activeDeal.net_amount || activeDeal.total_amount || 0) -
+                      (activeDeal.total_paid || activeDeal.paid_amount || 0)
+                    )
+                  ).toLocaleString('en-IN')}
+                </Text>
+                <Text style={[styles.dealKpiSub, { color: '#DC2626' }]}>
+                  Pending Receivables
+                </Text>
+              </View>
+            </View>
+
+            {/* Invoices List / Table */}
+            <View style={styles.invoicesContainer}>
+              <View style={styles.invoicesHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Receipt size={14} color="#0284C7" />
+                  <Text style={styles.invoicesHeaderText}>
+                    All Invoices Issued for this Deal ({dealPayments.length} Invoices)
+                  </Text>
+                </View>
+              </View>
+
+              {dealPayments.length === 0 ? (
+                <View style={styles.invoicesEmptyBox}>
+                  <Text style={styles.invoicesEmptyText}>No invoices issued for this deal yet.</Text>
+                </View>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {dealPayments.map((p: any, idx: number) => (
+                    <View key={p.id || idx} style={styles.invoiceItemCard}>
+                      <View style={styles.invoiceItemTopRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.invoiceIndexText}>#{idx + 1}</Text>
+                          <Text style={styles.invoiceNumberText}>
+                            {p.receipt_number || p.invoice_number || `DAL-INV-${p.id}`}
+                          </Text>
+                        </View>
+                        <View style={styles.invoicePaidBadge}>
+                          <Text style={styles.invoicePaidBadgeText}>
+                            {p.status || 'Paid'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.invoiceDetailsGrid}>
+                        <View style={styles.invoiceDetailCol}>
+                          <Text style={styles.invoiceDetailLabel}>DATE</Text>
+                          <Text style={styles.invoiceDetailVal}>
+                            {p.payment_date || (p.created_at ? p.created_at.split('T')[0] : '-')}
+                          </Text>
+                        </View>
+                        <View style={styles.invoiceDetailCol}>
+                          <Text style={styles.invoiceDetailLabel}>PAYMENT TYPE</Text>
+                          <Text style={styles.invoiceDetailVal}>{p.payment_type || p.type || 'Payment'}</Text>
+                        </View>
+                        <View style={styles.invoiceDetailCol}>
+                          <Text style={styles.invoiceDetailLabel}>PAYMENT MODE</Text>
+                          <Text style={styles.invoiceDetailVal}>{p.payment_mode || p.mode || 'UPI'}</Text>
+                        </View>
+                        <View style={styles.invoiceDetailCol}>
+                          <Text style={styles.invoiceDetailLabel}>REFERENCE / UTR</Text>
+                          <Text style={styles.invoiceDetailVal}>{p.transaction_reference || p.utr_number || p.reference || '-'}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.invoiceBottomActionRow}>
+                        <View>
+                          <Text style={styles.invoiceAmountLabel}>AMOUNT PAID</Text>
+                          <Text style={styles.invoiceAmountVal}>
+                            ₹{Number(p.amount || 0).toLocaleString('en-IN')}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.viewBillBtn}
+                          onPress={() => handleViewInvoiceBill(p)}
+                          activeOpacity={0.8}
+                        >
+                          <FileText size={12} color="#0284C7" />
+                          <Text style={styles.viewBillBtnText}>View Bill</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* 6. Sticky Floating + Add Follow-Up Button */}
@@ -804,7 +1170,7 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
         <TouchableOpacity
           style={styles.stickyAddBtn}
           activeOpacity={0.8}
-          onPress={() => setShowModal(true)}
+          onPress={() => setShowFollowUpModal(true)}
         >
           <Text style={styles.stickyAddIcon}>＋</Text>
           <Text style={styles.stickyAddText}>Add Follow-Up</Text>
@@ -1052,6 +1418,14 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
           onClose={() => setSelectedQuotationForPreview(null)}
         />
       )}
+
+      {/* Follow-Up Modal (No icons on type, full discount integration, date/time pickers) */}
+      <FollowUpModal
+        visible={showFollowUpModal}
+        lead={lead}
+        onClose={() => setShowFollowUpModal(false)}
+        onSubmit={handleSaveFollowUpModal}
+      />
     </View>
   );
 };
@@ -1756,6 +2130,404 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Follow-Up Screen 1 replication
+  followUpCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  followUpTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  followUpBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  followUpTypeBadge: {
+    backgroundColor: '#58632A', // Defence Army Olive
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  followUpTypeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  followUpOutcomeBadge: {
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  followUpOutcomeBadgeText: {
+    color: '#0284C7',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  followUpDateText: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  followUpNotesText: {
+    color: '#1E293B',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 8,
+  },
+  followUpFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  followUpLoggedByText: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  followUpNextBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  followUpNextText: {
+    color: '#D97706',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  // Screenshot 2: Insurance Section Styles
+  headerQueueBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  headerQueueBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  insuranceEmptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+  },
+  shieldIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  insuranceEmptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  insuranceEmptySub: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  checkPendingInsuranceBtn: {
+    backgroundColor: '#58632A',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 6,
+  },
+  checkPendingInsuranceBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  policyCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 12,
+  },
+  policyCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  policyProviderName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  policyNumber: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  policyStatusBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  policyStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  policyMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  policyMetaItem: {
+    width: '48%',
+  },
+  policyMetaLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  policyMetaVal: {
+    fontSize: 12,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+
+  // Screenshot 2: Deal Ledger & Invoices Styles
+  dealLedgerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 12,
+  },
+  dealLedgerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  dealStageBadge: {
+    backgroundColor: '#D1FAE5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  dealStageBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  dealLedgerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  dealLedgerHeaderBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dealHeaderActionBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  dealHeaderActionBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  dealKpiCardsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  dealKpiCardWhite: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  dealKpiCardGreen: {
+    flex: 1,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  dealKpiCardRed: {
+    flex: 1,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    padding: 10,
+  },
+  dealKpiLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 3,
+  },
+  dealKpiAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  dealKpiSub: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  invoicesContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 12,
+  },
+  invoicesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  invoicesHeaderText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  invoicesEmptyBox: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  invoicesEmptyText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  invoiceItemCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  invoiceItemTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  invoiceIndexText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  invoiceNumberText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  invoicePaidBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  invoicePaidBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  invoiceDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  invoiceDetailCol: {
+    width: '48%',
+  },
+  invoiceDetailLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  invoiceDetailVal: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  invoiceBottomActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  invoiceAmountLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  invoiceAmountVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  viewBillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    backgroundColor: '#F0F9FF',
+  },
+  viewBillBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
   },
 });
 

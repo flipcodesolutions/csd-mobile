@@ -54,15 +54,24 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
 
   // Keyboard avoidance tracking
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      (e) => {
+        setKeyboardVisible(true);
+        if (e?.endCoordinates?.height) {
+          setKeyboardHeight(e.endCoordinates.height);
+        }
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
     );
     return () => {
       showSub.remove();
@@ -107,7 +116,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
 
   const [policyNumber, setPolicyNumber] = useState('');
-  const [insuranceType, setInsuranceType] = useState('Standard');
+  const [insuranceType, setInsuranceType] = useState('Comprehensive');
   const [showTypePicker, setShowTypePicker] = useState(false);
 
   const [regChassisNo, setRegChassisNo] = useState('');
@@ -140,11 +149,11 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
       setStartDate(today);
       setExpiryDate(calculateExpiryFromStart(today));
       setPolicyNumber('');
-      setInsuranceType('Standard');
+      setInsuranceType('Comprehensive');
       setRegChassisNo(deal.registration_number || deal.vin_chassis_number || '');
       setPremiumAmount('');
       setReminderDays(15);
-      setNotes(`Insurance added post deal conversion for deal #${deal.deal_number}`);
+      setNotes('');
     }
   }, [visible, deal?.id]);
 
@@ -348,7 +357,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
                   ]}
                 >
                   <Text style={styles.snapshotLabel}>Chassis / Reg: </Text>
-                  {deal.vin_chassis_number || deal.registration_number || '—'}
+                  {deal.registration_number || deal.vin_chassis_number || '—'}
                 </Text>
               </View>
             </View>
@@ -707,17 +716,31 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
         visible={showCompanyPicker}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowCompanyPicker(false)}
+        statusBarTranslucent
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowCompanyPicker(false);
+        }}
       >
-        <TouchableOpacity
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCompanyPicker(false)}
         >
+          <TouchableOpacity
+            style={styles.overlayBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowCompanyPicker(false);
+            }}
+          />
           <View
             style={[
               styles.pickerContainer,
               { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
+              Platform.OS === 'android' && keyboardVisible && {
+                marginBottom: Math.max(keyboardHeight, 20),
+              },
             ]}
           >
             <View style={styles.pickerHeader}>
@@ -729,7 +752,12 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
               >
                 Select Insurance Provider
               </Text>
-              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowCompanyPicker(false);
+                }}
+              >
                 <X size={20} color={isDark ? '#94A3B8' : '#64748B'} />
               </TouchableOpacity>
             </View>
@@ -761,7 +789,10 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
               ) : null}
             </View>
 
-            <ScrollView style={{ maxHeight: 340 }}>
+            <ScrollView
+              style={{ maxHeight: keyboardVisible ? 220 : 340 }}
+              keyboardShouldPersistTaps="handled"
+            >
               {companySearch.trim() &&
               !companyList.some(
                 (c) => c.toLowerCase() === companySearch.trim().toLowerCase()
@@ -779,6 +810,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
                     const customComp = companySearch.trim();
                     setCompany(customComp);
                     setCompanyList((prev) => [customComp, ...prev]);
+                    Keyboard.dismiss();
                     setShowCompanyPicker(false);
                     setCompanySearch('');
                   }}
@@ -812,6 +844,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
                     ]}
                     onPress={() => {
                       setCompany(item);
+                      Keyboard.dismiss();
                       setShowCompanyPicker(false);
                       setCompanySearch('');
                     }}
@@ -835,7 +868,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
                 ))}
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Type Selection Modal */}
@@ -843,13 +876,15 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
         visible={showTypePicker}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => setShowTypePicker(false)}
       >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowTypePicker(false)}
-        >
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity
+            style={styles.overlayBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowTypePicker(false)}
+          />
           <View
             style={[
               styles.pickerContainer,
@@ -898,7 +933,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
               ))}
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Reminder Days Picker */}
@@ -906,13 +941,15 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
         visible={showReminderPicker}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => setShowReminderPicker(false)}
       >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowReminderPicker(false)}
-        >
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity
+            style={styles.overlayBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowReminderPicker(false)}
+          />
           <View
             style={[
               styles.pickerContainer,
@@ -961,7 +998,7 @@ export const AddInsuranceModal: React.FC<AddInsuranceModalProps> = ({
               ))}
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </Modal>
   );
@@ -1149,6 +1186,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFill,
   },
   pickerContainer: {
     borderTopLeftRadius: 18,

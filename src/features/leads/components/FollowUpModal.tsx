@@ -356,7 +356,6 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
               <View style={styles.typesRow}>
                 {INTERACTION_TYPES.map((t) => {
                   const isSel = interactionType === t.label;
-                  const IconComp = t.icon;
                   return (
                     <TouchableOpacity
                       key={t.label}
@@ -377,11 +376,6 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
                       ]}
                       onPress={() => setInteractionType(t.label)}
                     >
-                      <IconComp
-                        size={14}
-                        color={isSel ? '#FFFFFF' : colors.textSecondary}
-                        strokeWidth={2}
-                      />
                       <Text
                         style={[
                           styles.typeBtnText,
@@ -617,112 +611,117 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
               />
             </View>
 
-            {/* Discount Request Switch Card */}
-            <View
-              style={[
-                styles.discountBox,
-                {
-                  backgroundColor: isDiscountRequested
-                    ? isDark
-                      ? 'rgba(234, 179, 8, 0.12)'
-                      : '#FEFCE8'
-                    : isDark
-                    ? '#101726'
-                    : '#F8FAFC',
-                  borderColor: isDiscountRequested
-                    ? isDark
-                      ? '#EAB308'
-                      : '#FDE047'
-                    : isDark
-                    ? '#1E293B'
-                    : '#E2E8F0',
-                },
-              ]}
-            >
-              <View style={styles.discountSwitchRow}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Tag
-                      size={15}
-                      color={isDiscountRequested ? '#EAB308' : colors.textSecondary}
-                      strokeWidth={2}
-                    />
-                    <Text
-                      style={[
-                        styles.discountTitle,
-                        {
-                          color: isDiscountRequested
-                            ? isDark
-                              ? '#FDE047'
-                              : '#854D0E'
-                            : colors.textPrimary,
-                        },
-                      ]}
-                    >
-                      Customer Demanded Discount?
+            {/* Discount Request Switch Card - only visible when Price Negotiation / Discussion is selected */}
+            {(outcome === 'Price Negotiation' ||
+              outcome === 'Negotiation / Price Discussion' ||
+              outcome.toLowerCase().includes('price') ||
+              outcome.toLowerCase().includes('negotiat')) && (
+              <View
+                style={[
+                  styles.discountBox,
+                  {
+                    backgroundColor: isDiscountRequested
+                      ? isDark
+                        ? 'rgba(234, 179, 8, 0.12)'
+                        : '#FEFCE8'
+                      : isDark
+                      ? '#101726'
+                      : '#F8FAFC',
+                    borderColor: isDiscountRequested
+                      ? isDark
+                        ? '#EAB308'
+                        : '#FDE047'
+                      : isDark
+                      ? '#1E293B'
+                      : '#E2E8F0',
+                  },
+                ]}
+              >
+                <View style={styles.discountSwitchRow}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Tag
+                        size={15}
+                        color={isDiscountRequested ? '#EAB308' : colors.textSecondary}
+                        strokeWidth={2}
+                      />
+                      <Text
+                        style={[
+                          styles.discountTitle,
+                          {
+                            color: isDiscountRequested
+                              ? isDark
+                                ? '#FDE047'
+                                : '#854D0E'
+                              : colors.textPrimary,
+                          },
+                        ]}
+                      >
+                        Customer Demanded Discount?
+                      </Text>
+                    </View>
+                    <Text style={[styles.discountSub, { color: colors.textSecondary }]}>
+                      Sends approval notification to Sales Manager & Admin
                     </Text>
                   </View>
-                  <Text style={[styles.discountSub, { color: colors.textSecondary }]}>
-                    Sends approval notification to Sales Manager & Admin
-                  </Text>
+                  <Switch
+                    value={isDiscountRequested}
+                    onValueChange={(val) => {
+                      triggerHaptic('selection');
+                      setIsDiscountRequested(val);
+                    }}
+                    trackColor={{ false: '#71717A', true: colors.primary }}
+                    thumbColor="#FFFFFF"
+                  />
                 </View>
-                <Switch
-                  value={isDiscountRequested}
-                  onValueChange={(val) => {
-                    triggerHaptic('selection');
-                    setIsDiscountRequested(val);
-                  }}
-                  trackColor={{ false: '#71717A', true: colors.primary }}
-                  thumbColor="#FFFFFF"
-                />
+
+                {/* Conditional Discount Fields */}
+                {isDiscountRequested && (
+                  <View style={styles.discountFields}>
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                        REQUESTED DISCOUNT AMOUNT (₹) <Text style={styles.reqStar}>*</Text>
+                      </Text>
+                      <StartAlignedInput
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                            borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                            color: colors.textPrimary,
+                          },
+                        ]}
+                        value={discountAmount}
+                        onChangeText={setDiscountAmount}
+                        placeholder="e.g. 15000"
+                        placeholderTextColor={colors.textMuted}
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                        DISCOUNT REASON / JUSTIFICATION
+                      </Text>
+                      <StartAlignedInput
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
+                            borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                            color: colors.textPrimary,
+                          },
+                        ]}
+                        value={discountReason}
+                        onChangeText={setDiscountReason}
+                        placeholder="e.g. Closing today if ₹15k dealer discount given"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </View>
+                  </View>
+                )}
               </View>
-
-              {/* Conditional Discount Fields */}
-              {isDiscountRequested && (
-                <View style={styles.discountFields}>
-                  <View style={styles.fieldGroup}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      REQUESTED DISCOUNT AMOUNT (₹) <Text style={styles.reqStar}>*</Text>
-                    </Text>
-                    <StartAlignedInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
-                          borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                          color: colors.textPrimary,
-                        },
-                      ]}
-                      value={discountAmount}
-                      onChangeText={setDiscountAmount}
-                      placeholder="e.g. 15000"
-                      placeholderTextColor={colors.textMuted}
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  <View style={styles.fieldGroup}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      DISCOUNT REASON / JUSTIFICATION
-                    </Text>
-                    <StartAlignedInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
-                          borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                          color: colors.textPrimary,
-                        },
-                      ]}
-                      value={discountReason}
-                      onChangeText={setDiscountReason}
-                      placeholder="e.g. Closing today if ₹15k dealer discount given"
-                      placeholderTextColor={colors.textMuted}
-                    />
-                  </View>
-                </View>
-              )}
-            </View>
+            )}
           </ScrollView>
 
           {/* Footer */}
@@ -786,6 +785,7 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
           } else if (timePickerTarget === 'nextAction') {
             setNextActionTime(formattedTime);
           }
+          setTimePickerTarget(null);
         }}
       />
 
@@ -801,7 +801,7 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
           datePickerTarget === 'interaction' ? interactionDate : nextActionDate
         }
         allowFuture={true}
-        allowPast={false}
+        allowPast={true}
         onClose={() => setDatePickerTarget(null)}
         onSelectDate={(formattedDate) => {
           if (datePickerTarget === 'interaction') {
@@ -809,6 +809,7 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
           } else if (datePickerTarget === 'nextAction') {
             setNextActionDate(formattedDate);
           }
+          setDatePickerTarget(null);
         }}
       />
     </Modal>

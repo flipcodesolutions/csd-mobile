@@ -103,30 +103,43 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   const [endDate, setEndDate] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [isTrashView, setIsTrashView] = useState(false);
-  const [datePickerTarget, setDatePickerTarget] = useState<'from' | 'to' | null>(null);
+  const [datePickerTarget, setDatePickerTarget] = useState<
+    'from' | 'to' | null
+  >(null);
 
   // Modals
   const [logModalVisible, setLogModalVisible] = useState(false);
-  const [activePrefillItem, setActivePrefillItem] = useState<FollowUpItem | null>(null);
+  const [activePrefillItem, setActivePrefillItem] =
+    useState<FollowUpItem | null>(null);
 
   const [actionsModalVisible, setActionsModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState<FollowUpItem | null>(null);
-  const [selectedActionItem, setSelectedActionItem] = useState<FollowUpItem | null>(null);
-  const [historyCounts, setHistoryCounts] = useState<Record<number, number>>({});
+  const [selectedHistoryItem, setSelectedHistoryItem] =
+    useState<FollowUpItem | null>(null);
+  const [selectedActionItem, setSelectedActionItem] =
+    useState<FollowUpItem | null>(null);
+  const [historyCounts, setHistoryCounts] = useState<Record<number, number>>(
+    {},
+  );
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
-  const [activeProfileLead, setActiveProfileLead] = useState<CustomerLead | null>(null);
+  const [activeProfileLead, setActiveProfileLead] =
+    useState<CustomerLead | null>(null);
 
   // Modals for actions inside LeadProfileModal
   const [dealModalVisible, setDealModalVisible] = useState(false);
-  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(null);
+  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(
+    null,
+  );
 
-  const [leadFollowUpModalVisible, setLeadFollowUpModalVisible] = useState(false);
-  const [activeLeadForFollowUp, setActiveLeadForFollowUp] = useState<CustomerLead | null>(null);
+  const [leadFollowUpModalVisible, setLeadFollowUpModalVisible] =
+    useState(false);
+  const [activeLeadForFollowUp, setActiveLeadForFollowUp] =
+    useState<CustomerLead | null>(null);
 
   const [quotationModalVisible, setQuotationModalVisible] = useState(false);
-  const [activeQuotationLead, setActiveQuotationLead] = useState<CustomerLead | null>(null);
+  const [activeQuotationLead, setActiveQuotationLead] =
+    useState<CustomerLead | null>(null);
 
   const [editLeadModalVisible, setEditLeadModalVisible] = useState(false);
   const [editingLead, setEditingLead] = useState<CustomerLead | null>(null);
@@ -152,27 +165,39 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         ]);
         if (bRes.status === 'fulfilled') {
           const val: any = bRes.value;
-          setBrandsList(Array.isArray(val?.data) ? val.data : val?.data?.data || []);
+          setBrandsList(
+            Array.isArray(val?.data) ? val.data : val?.data?.data || [],
+          );
         }
         if (mRes.status === 'fulfilled') {
           const val: any = mRes.value;
-          setModelsList(Array.isArray(val?.data) ? val.data : val?.data?.data || []);
+          setModelsList(
+            Array.isArray(val?.data) ? val.data : val?.data?.data || [],
+          );
         }
         if (vRes.status === 'fulfilled') {
           const val: any = vRes.value;
-          setVariantsList(Array.isArray(val?.data) ? val.data : val?.data?.data || []);
+          setVariantsList(
+            Array.isArray(val?.data) ? val.data : val?.data?.data || [],
+          );
         }
         if (sRes.status === 'fulfilled') {
           const val: any = sRes.value;
-          setSourcesList(Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
+          setSourcesList(
+            Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : [],
+          );
         }
         if (stRes.status === 'fulfilled') {
           const val: any = stRes.value;
-          setStatusesList(Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
+          setStatusesList(
+            Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : [],
+          );
         }
         if (uRes.status === 'fulfilled') {
           const val: any = uRes.value;
-          setUsersList(Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
+          setUsersList(
+            Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : [],
+          );
         }
       } catch (e) {
         console.log('Error fetching masters in FollowUpScreen:', e);
@@ -182,12 +207,17 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   }, []);
 
   // Synchronize history counts
-  const handleHistoryCountFetched = useCallback((leadId: number, count: number) => {
-    setHistoryCounts((prev) => ({ ...prev, [leadId]: count }));
-    setItems((prev) =>
-      prev.map((it) => (it.lead_id === leadId ? { ...it, calls_count: count } : it))
-    );
-  }, []);
+  const handleHistoryCountFetched = useCallback(
+    (leadId: number, count: number) => {
+      setHistoryCounts(prev => ({ ...prev, [leadId]: count }));
+      setItems(prev =>
+        prev.map(it =>
+          it.lead_id === leadId ? { ...it, calls_count: count } : it,
+        ),
+      );
+    },
+    [],
+  );
 
   // Calculate live counts for the 8 Status Cards
   const outcomeCounts = useMemo(() => {
@@ -202,7 +232,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
       'Lost to Competitor': 0,
     };
 
-    items.forEach((item) => {
+    items.forEach(item => {
       const canonical = normalizeOutcome(item.status);
       if (canonical && counts[canonical] !== undefined) {
         counts[canonical] += 1;
@@ -216,7 +246,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
   const displayedItems = useMemo(() => {
     if (selectedOutcome === 'all') return items;
     return items.filter(
-      (item) => normalizeOutcome(item.status) === selectedOutcome
+      item => normalizeOutcome(item.status) === selectedOutcome,
     );
   }, [items, selectedOutcome]);
 
@@ -331,7 +361,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         }
       }
 
-      const matched = item.lead || leadsList.find((l) => l.id === item.lead_id);
+      const matched = item.lead || leadsList.find(l => l.id === item.lead_id);
       if (matched) {
         setActiveProfileLead(matched);
         setProfileModalVisible(true);
@@ -353,7 +383,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         setProfileModalVisible(true);
       }
     },
-    [leadsList]
+    [leadsList],
   );
 
   const handleSendQuotation = useCallback(
@@ -364,7 +394,9 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         return;
       }
       if (navigation) {
-        (navigation as any).navigate('send-quotation', { leadId: item.lead_id });
+        (navigation as any).navigate('send-quotation', {
+          leadId: item.lead_id,
+        });
         return;
       }
       if (item.lead_id) {
@@ -381,7 +413,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         }
       }
 
-      const matched = item.lead || leadsList.find((l) => l.id === item.lead_id);
+      const matched = item.lead || leadsList.find(l => l.id === item.lead_id);
       if (matched) {
         setActiveQuotationLead(matched);
         setQuotationModalVisible(true);
@@ -403,7 +435,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         setQuotationModalVisible(true);
       }
     },
-    [onNavigateToQuotation, navigation, leadsList]
+    [onNavigateToQuotation, navigation, leadsList],
   );
 
   const handleOpenDealWon = useCallback(
@@ -423,7 +455,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         }
       }
 
-      const matched = item.lead || leadsList.find((l) => l.id === item.lead_id);
+      const matched = item.lead || leadsList.find(l => l.id === item.lead_id);
       if (matched) {
         setActiveDealLead(matched);
         setDealModalVisible(true);
@@ -445,7 +477,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         setDealModalVisible(true);
       }
     },
-    [leadsList]
+    [leadsList],
   );
 
   const handleRestoreFollowUp = useCallback(async (item: FollowUpItem) => {
@@ -461,14 +493,20 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
           onPress: async () => {
             try {
               await followUpService.restore(item.id);
-              setItems((prev) => prev.filter((i) => i.id !== item.id));
-              Alert.alert('Restored', 'Follow-up interaction restored successfully.');
+              setItems(prev => prev.filter(i => i.id !== item.id));
+              Alert.alert(
+                'Restored',
+                'Follow-up interaction restored successfully.',
+              );
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to restore follow-up.');
+              Alert.alert(
+                'Error',
+                err?.message || 'Failed to restore follow-up.',
+              );
             }
           },
         },
-      ]
+      ],
     );
   }, []);
 
@@ -479,9 +517,9 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         'Follow-Up Recorded!',
         payload.is_discount_requested
           ? `Follow-up logged and discount approval request (₹${payload.discount_amount?.toLocaleString(
-              'en-IN'
+              'en-IN',
             )}) dispatched to Sales Manager & Admin!`
-          : `Call interaction with ${payload.customer_name} logged successfully.`
+          : `Call interaction with ${payload.customer_name} logged successfully.`,
       );
       loadFollowUps();
     } catch (err: any) {
@@ -491,7 +529,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
 
   const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    const rows = items.map((item) => [
+    const rows = items.map(item => [
       item.id,
       item.customer_name || 'N/A',
       item.phone || 'N/A',
@@ -502,7 +540,15 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     ]);
     await exportCsvToFile({
       filename: `follow_ups_${new Date().toISOString().split('T')[0]}`,
-      headers: ['ID', 'Customer Name', 'Phone', 'Stage', 'Next Follow-up', 'Notes', 'Status'],
+      headers: [
+        'ID',
+        'Customer Name',
+        'Phone',
+        'Stage',
+        'Next Follow-up',
+        'Notes',
+        'Status',
+      ],
       rows,
     });
   };
@@ -512,17 +558,25 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     try {
       await dealApi.create(dealData);
       setDealModalVisible(false);
-      Alert.alert('Deal Created!', 'Lead converted to deal dossier successfully.');
+      Alert.alert(
+        'Deal Created!',
+        'Lead converted to deal dossier successfully.',
+      );
       loadFollowUps();
     } catch (err: any) {
       Alert.alert(
         'Conversion Failed',
-        err?.response?.data?.message || err?.message || 'Failed to convert lead to deal.'
+        err?.response?.data?.message ||
+          err?.message ||
+          'Failed to convert lead to deal.',
       );
     }
   };
 
-  const handleSaveFollowUpForLead = async (leadId: number, followUpData: any) => {
+  const handleSaveFollowUpForLead = async (
+    leadId: number,
+    followUpData: any,
+  ) => {
     try {
       await leadApi.addFollowUp(leadId, followUpData);
       setLeadFollowUpModalVisible(false);
@@ -531,7 +585,9 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     } catch (err: any) {
       Alert.alert(
         'Follow-Up Error',
-        err?.response?.data?.message || err?.message || 'Failed to log follow-up.'
+        err?.response?.data?.message ||
+          err?.message ||
+          'Failed to log follow-up.',
       );
     }
   };
@@ -558,7 +614,9 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     } catch (err: any) {
       Alert.alert(
         'Update Failed',
-        err?.response?.data?.message || err?.message || 'Failed to update lead.'
+        err?.response?.data?.message ||
+          err?.message ||
+          'Failed to update lead.',
       );
     }
   };
@@ -579,7 +637,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
     >
       <FlatList
         data={displayedItems}
-        keyExtractor={(item) => `followup-${item.id}`}
+        keyExtractor={item => `followup-${item.id}`}
         renderItem={({ item }) => {
           const syncCount =
             historyCounts[item.lead_id || item.id] || item.calls_count || 1;
@@ -616,7 +674,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
             <FollowUpStatusDeck
               counts={outcomeCounts}
               selectedStatus={selectedOutcome}
-              onSelectStatus={(status) => setSelectedOutcome(status)}
+              onSelectStatus={status => setSelectedOutcome(status)}
             />
 
             {/* 3. Search & Filter Bar */}
@@ -643,7 +701,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                     ]}
                     value={searchTerm}
                     onChangeText={setSearchTerm}
-                    placeholder="Search customer, phone, vehicle..."
+                    placeholder="Search customer ... "
                     placeholderTextColor={colors.textMuted}
                   />
                   {searchTerm ? (
@@ -687,7 +745,9 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                 >
                   <SlidersHorizontal
                     size={14}
-                    color={activeFiltersCount > 0 ? '#FFFFFF' : colors.textPrimary}
+                    color={
+                      activeFiltersCount > 0 ? '#FFFFFF' : colors.textPrimary
+                    }
                     strokeWidth={2.2}
                   />
                   <Text
@@ -745,12 +805,21 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                   style={[
                     styles.trashBanner,
                     {
-                      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                      backgroundColor: isDark
+                        ? 'rgba(239, 68, 68, 0.15)'
+                        : '#FEE2E2',
                       borderColor: '#EF4444',
                     },
                   ]}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      flex: 1,
+                    }}
+                  >
                     <Trash2 size={14} color="#DC2626" strokeWidth={2.4} />
                     <Text style={styles.trashBannerText}>
                       Trash Folder — Viewing Deleted Follow-Ups
@@ -848,7 +917,10 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
                           { color: colors.primary },
                         ]}
                       >
-                        {startDate} {endDate && endDate !== startDate ? `to ${endDate}` : ''}
+                        {startDate}{' '}
+                        {endDate && endDate !== startDate
+                          ? `to ${endDate}`
+                          : ''}
                       </Text>
                       <TouchableOpacity
                         onPress={() => {
@@ -939,12 +1011,12 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         visible={actionsModalVisible}
         item={selectedActionItem}
         onClose={() => setActionsModalVisible(false)}
-        onCall={(phone) => handleCall(phone)}
-        onCallAndLog={(item) => {
+        onCall={phone => handleCall(phone)}
+        onCallAndLog={item => {
           handleCall(item.phone);
           handleOpenLogNext(item);
         }}
-        onLogAction={(item) => handleOpenLogNext(item)}
+        onLogAction={item => handleOpenLogNext(item)}
         onSendQuotation={handleSendQuotation}
         onViewProfile={handleViewProfile}
       />
@@ -954,7 +1026,7 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         item={selectedHistoryItem}
         onClose={() => setHistoryModalVisible(false)}
         onCall={handleCall}
-        onLogNewFollowUp={(item) => {
+        onLogNewFollowUp={item => {
           setHistoryModalVisible(false);
           handleOpenLogNext(item);
         }}
@@ -991,20 +1063,20 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
         lead={activeProfileLead}
         onClose={() => setProfileModalVisible(false)}
         onCall={handleCall}
-        onConvertToDeal={(ld) => {
+        onConvertToDeal={ld => {
           setProfileModalVisible(false);
           setActiveDealLead(ld);
           setDealModalVisible(true);
         }}
-        onLogFollowUp={(ld) => {
+        onLogFollowUp={ld => {
           setProfileModalVisible(false);
           setActiveLeadForFollowUp(ld);
           setLeadFollowUpModalVisible(true);
         }}
-        onSendQuotation={(ld) => {
+        onSendQuotation={ld => {
           handleSendQuotationForLead(ld);
         }}
-        onEditLead={(ld) => {
+        onEditLead={ld => {
           setProfileModalVisible(false);
           setEditingLead(ld);
           setEditLeadModalVisible(true);
@@ -1057,21 +1129,24 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
           label: 'Log Call',
           onPress: handleOpenLogNew,
         }}
-        secondaryAction={{
-          label: 'Download CSV',
-          onPress: handleExportCSV,
-        }}
       />
-    
+
       {/* Date Filter Calendar Modal */}
       <DatePickerModal
         visible={datePickerTarget !== null}
-        title={datePickerTarget === 'from' ? 'Select Start Date (From)' : 'Select End Date (To)'}
-        initialDate={(datePickerTarget === 'from' ? startDate : endDate) || new Date().toISOString().split('T')[0]}
+        title={
+          datePickerTarget === 'from'
+            ? 'Select Start Date (From)'
+            : 'Select End Date (To)'
+        }
+        initialDate={
+          (datePickerTarget === 'from' ? startDate : endDate) ||
+          new Date().toISOString().split('T')[0]
+        }
         allowFuture={true}
         allowPast={true}
         onClose={() => setDatePickerTarget(null)}
-        onSelectDate={(formattedDate) => {
+        onSelectDate={formattedDate => {
           if (datePickerTarget === 'from') {
             setStartDate(formattedDate);
           } else {
@@ -1080,7 +1155,6 @@ export const FollowUpScreen: React.FC<FollowUpScreenProps> = ({
           setDatePickerTarget(null);
         }}
       />
-
     </View>
   );
 };

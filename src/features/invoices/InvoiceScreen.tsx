@@ -44,6 +44,7 @@ import { MasterInvoiceCard } from './components/MasterInvoiceCard';
 import { GenerateInvoiceModal } from './components/GenerateInvoiceModal';
 import { DealInvoicesLedgerModal } from './components/DealInvoicesLedgerModal';
 import { PrintableInvoiceModal } from './components/PrintableInvoiceModal';
+import { FabSpeedDial } from '../../shared';
 
 export const InvoiceScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
@@ -376,29 +377,7 @@ export const InvoiceScreen: React.FC = () => {
   // Render Full Header (KPIs, Tabs, Search & Filters, Section Title)
   const renderListHeader = () => (
     <View style={styles.headerContainer}>
-      {/* 1. Screen Title Bar: Title on left, "+ Generate New Invoice" button on right (NO export or refresh) */}
-      <View style={styles.screenTitleRow}>
-        <View style={styles.titleLeft}>
-          <Text style={[styles.screenHeading, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-            Vehicle Deals & Invoices Register
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.generateNewBtn}
-          onPress={() => {
-            triggerHaptic('impactLight');
-            setSelectedDealForInvoice(null);
-            setGenerateModalVisible(true);
-          }}
-          activeOpacity={0.8}
-        >
-          <Plus size={14} color="#FFFFFF" strokeWidth={2.5} />
-          <Text style={styles.generateNewBtnText}>Generate New Invoice</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. Four KPI Cards - Follow-up style horizontal scrollable single line */}
+      {/* 1. Four KPI Cards - Follow-up style horizontal scrollable single line */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -850,6 +829,19 @@ export const InvoiceScreen: React.FC = () => {
         activeFiltersCount={activeFiltersCount}
         onReset={handleResetFilters}
         onApply={() => setFilterModalVisible(false)}
+      />
+
+      {/* Material 3 Expressive FAB Button (Like Leads / Follow-up / Quotations page) */}
+      <FabSpeedDial
+        primaryAction={{
+          label: 'Generate New Invoice',
+          onPress: () => {
+            triggerHaptic('impactMedium');
+            setSelectedDealForInvoice(null);
+            setGenerateModalVisible(true);
+          },
+        }}
+        bottomOffset={Math.max(insets.bottom + 12, 20)}
       />
     </View>
   );

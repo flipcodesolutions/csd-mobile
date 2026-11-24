@@ -60,7 +60,13 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = memo(({
     : 'CU';
 
   const isHot = item.priority === 'Hot' || !item.priority;
-  const callsCount = item.calls_count || 1;
+  const callsCount =
+    (item as any).follow_ups_count ??
+    (item as any).followups_count ??
+    (Array.isArray((item as any).follow_ups) ? (item as any).follow_ups.length : null) ??
+    (Array.isArray((item as any).followups) ? (item as any).followups.length : null) ??
+    item.calls_count ??
+    1;
 
   const canonicalOutcome =
     normalizeOutcome(item.status) ||

@@ -41,8 +41,6 @@ interface EditInsuranceModalProps {
   onSuccess: () => void;
 }
 
-const STATUS_OPTIONS = ['Pending', 'Renewed', 'Active', 'Expired'];
-
 export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
   visible,
   record,
@@ -54,15 +52,24 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
 
   // Keyboard avoidance tracking
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      (e) => {
+        setKeyboardVisible(true);
+        if (e?.endCoordinates?.height) {
+          setKeyboardHeight(e.endCoordinates.height);
+        }
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
     );
     return () => {
       showSub.remove();
@@ -113,9 +120,6 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
   const [reminderDays, setReminderDays] = useState(15);
   const [showReminderPicker, setShowReminderPicker] = useState(false);
 
-  const [renewalStatus, setRenewalStatus] = useState('Pending');
-  const [showStatusPicker, setShowStatusPicker] = useState(false);
-
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -146,8 +150,7 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
       setExpiryDate(toDisplayDate(record.policy_expiry_date || record.insurance_expire_date));
       setPremiumAmount(record.premium_amount ? String(record.premium_amount) : '');
       setReminderDays(record.reminder_days_before || 15);
-      setRenewalStatus(record.renewal_status || record.status || 'Pending');
-      setNotes(record.notes || '');
+      setNotes('');
     }
   }, [visible, record?.id]);
 
@@ -193,7 +196,6 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
         premium_amount: premiumAmount ? Number(premiumAmount) : undefined,
         reminder_days_before: reminderDays,
         reminder_date: isoReminder,
-        renewal_status: renewalStatus,
         notes: notes.trim() || undefined,
       });
 
@@ -575,68 +577,34 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
               </View>
             </View>
 
-            {/* Row 5: Calculated Reminder Date & Status */}
-            <View style={styles.twoColRow}>
-              <View style={styles.col}>
+            {/* Row 5: Calculated Reminder Date */}
+            <View style={styles.formGroup}>
+              <Text
+                style={[
+                  styles.formLabel,
+                  { color: isDark ? '#E2E8F0' : '#1E293B' },
+                ]}
+              >
+                Calculated Reminder Date
+              </Text>
+              <View
+                style={[
+                  styles.readOnlyInputBox,
+                  {
+                    backgroundColor: isDark ? '#0F172A' : '#F1F5F9',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                  },
+                ]}
+              >
                 <Text
                   style={[
-                    styles.formLabel,
-                    { color: isDark ? '#E2E8F0' : '#1E293B' },
+                    styles.dateText,
+                    { color: isDark ? '#94A3B8' : '#64748B' },
                   ]}
                 >
-                  Calculated Reminder Date
+                  {calculatedReminderDate || '—'}
                 </Text>
-                <View
-                  style={[
-                    styles.readOnlyInputBox,
-                    {
-                      backgroundColor: isDark ? '#0F172A' : '#F1F5F9',
-                      borderColor: isDark ? '#334155' : '#E2E8F0',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dateText,
-                      { color: isDark ? '#94A3B8' : '#64748B' },
-                    ]}
-                  >
-                    {calculatedReminderDate || '—'}
-                  </Text>
-                  <Calendar size={16} color={isDark ? '#64748B' : '#94A3B8'} />
-                </View>
-              </View>
-
-              <View style={styles.col}>
-                <Text
-                  style={[
-                    styles.formLabel,
-                    { color: isDark ? '#E2E8F0' : '#1E293B' },
-                  ]}
-                >
-                  Status
-                </Text>
-                <TouchableOpacity
-                  style={[
-                    styles.selectInput,
-                    {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? '#334155' : '#CBD5E1',
-                    },
-                  ]}
-                  onPress={() => setShowStatusPicker(true)}
-                >
-                  <Text
-                    style={[
-                      styles.selectValue,
-                      { color: isDark ? '#F1F5F9' : '#0F172A' },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {renewalStatus}
-                  </Text>
-                  <ChevronDown size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                </TouchableOpacity>
+                <Calendar size={16} color={isDark ? '#64748B' : '#94A3B8'} />
               </View>
             </View>
 
@@ -723,24 +691,24 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
       <DatePickerModal
         visible={showStartDatePicker}
         title="Start Date"
-        initialDate={startDate}
+        initialDate={toIsoDate(startDate)}
         allowPast={true}
         allowFuture={true}
         onClose={() => setShowStartDatePicker(false)}
         onSelectDate={(d) => {
-          setStartDate(d);
+          setStartDate(toDisplayDate(d));
           setShowStartDatePicker(false);
         }}
       />
       <DatePickerModal
         visible={showExpiryDatePicker}
         title="Expiry Date"
-        initialDate={expiryDate}
+        initialDate={toIsoDate(expiryDate)}
         allowPast={true}
         allowFuture={true}
         onClose={() => setShowExpiryDatePicker(false)}
         onSelectDate={(d) => {
-          setExpiryDate(d);
+          setExpiryDate(toDisplayDate(d));
           setShowExpiryDatePicker(false);
         }}
       />
@@ -750,17 +718,31 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
         visible={showCompanyPicker}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowCompanyPicker(false)}
+        statusBarTranslucent
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowCompanyPicker(false);
+        }}
       >
-        <TouchableOpacity
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCompanyPicker(false)}
         >
+          <TouchableOpacity
+            style={styles.overlayBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowCompanyPicker(false);
+            }}
+          />
           <View
             style={[
               styles.pickerContainer,
               { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
+              Platform.OS === 'android' && keyboardVisible && {
+                marginBottom: Math.max(keyboardHeight, 20),
+              },
             ]}
           >
             <View style={styles.pickerHeader}>
@@ -772,7 +754,12 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
               >
                 Select Insurance Provider
               </Text>
-              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowCompanyPicker(false);
+                }}
+              >
                 <X size={20} color={isDark ? '#94A3B8' : '#64748B'} />
               </TouchableOpacity>
             </View>
@@ -878,7 +865,7 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
                 ))}
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Type Selector */}
@@ -1012,76 +999,6 @@ export const EditInsuranceModal: React.FC<EditInsuranceModalProps> = ({
                     {opt.label}
                   </Text>
                   {reminderDays === opt.value && (
-                    <Check size={18} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Status Picker */}
-      <Modal
-        visible={showStatusPicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowStatusPicker(false)}
-      >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowStatusPicker(false)}
-        >
-          <View
-            style={[
-              styles.pickerContainer,
-              { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
-            ]}
-          >
-            <View style={styles.pickerHeader}>
-              <Text
-                style={[
-                  styles.pickerTitle,
-                  { color: isDark ? '#F1F5F9' : '#0F172A' },
-                ]}
-              >
-                Select Status
-              </Text>
-              <TouchableOpacity onPress={() => setShowStatusPicker(false)}>
-                <X size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ maxHeight: 240 }}>
-              {STATUS_OPTIONS.map((st) => (
-                <TouchableOpacity
-                  key={st}
-                  style={[
-                    styles.pickerItem,
-                    renewalStatus === st && {
-                      backgroundColor: isDark
-                        ? 'rgba(88, 99, 42, 0.2)'
-                        : '#EFF3DF',
-                    },
-                  ]}
-                  onPress={() => {
-                    setRenewalStatus(st);
-                    setShowStatusPicker(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.pickerItemText,
-                      { color: isDark ? '#F1F5F9' : '#0F172A' },
-                      renewalStatus === st && {
-                        color: colors.primary,
-                        fontWeight: '700',
-                      },
-                    ]}
-                  >
-                    {st}
-                  </Text>
-                  {renewalStatus === st && (
                     <Check size={18} color={colors.primary} />
                   )}
                 </TouchableOpacity>
@@ -1303,6 +1220,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFill,
   },
   pickerContainer: {
     borderTopLeftRadius: 18,

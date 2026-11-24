@@ -384,8 +384,8 @@ export const DealRefundCancelModal: React.FC<DealRefundCancelModalProps> = ({
                           borderColor: isAmountOverPaid
                             ? '#DC2626'
                             : isDark
-                            ? '#374151'
-                            : '#D1D5DB',
+                              ? '#374151'
+                              : '#D1D5DB',
                         },
                       ]}
                     >
@@ -440,8 +440,8 @@ export const DealRefundCancelModal: React.FC<DealRefundCancelModalProps> = ({
                           borderColor: showModeDropdown
                             ? '#2563EB'
                             : isDark
-                            ? '#374151'
-                            : '#D1D5DB',
+                              ? '#374151'
+                              : '#D1D5DB',
                         },
                       ]}
                     >
@@ -495,8 +495,8 @@ export const DealRefundCancelModal: React.FC<DealRefundCancelModalProps> = ({
                                     color: isSelected
                                       ? '#2563EB'
                                       : isDark
-                                      ? '#E5E7EB'
-                                      : '#1F2937',
+                                        ? '#E5E7EB'
+                                        : '#1F2937',
                                     fontWeight: isSelected ? '700' : '500',
                                   },
                                 ]}

@@ -16,20 +16,20 @@ export const normalizeFollowUpItem = (raw: any, idx = 0): FollowUpItem => {
     (Array.isArray(lead.interactions) ? lead.interactions : null);
 
   const rawCalls =
+    raw.follow_ups_count ??
+    raw.followups_count ??
+    raw.follow_up_count ??
     (rawFollowUpsList ? rawFollowUpsList.length : null) ??
     raw.calls_count ??
     raw.call_count ??
     raw.calls ??
     raw.total_calls ??
-    raw.follow_ups_count ??
-    raw.followups_count ??
-    raw.follow_up_count ??
     raw.interactions_count ??
-    lead.calls_count ??
-    lead.call_count ??
     lead.follow_ups_count ??
     lead.followups_count ??
     lead.follow_up_count ??
+    lead.calls_count ??
+    lead.call_count ??
     lead.interactions_count ??
     lead.total_calls ??
     1;

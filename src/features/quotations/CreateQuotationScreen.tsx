@@ -38,6 +38,7 @@ import { triggerHaptic } from '../../core/utils/haptics';
 import { showErrorToast, showSuccessToast } from '../../core/utils/toast';
 import { brandApi, modelApi, variantApi } from '../masters/masterService';
 import { leadApi } from '../leads/leadService';
+import { DatePickerModal } from '../leads/components/DatePickerModal';
 import { quotationService } from './quotationService';
 import { appStorage } from '../../core/storage/storage';
 import { QuotationFormData, QuotationPriceBreakdown } from './types';
@@ -83,6 +84,7 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     const yy = String(today.getFullYear()).slice(-2);
     return `${dd}.${mm}.${yy}`;
   });
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Vehicle Selection State
   const [selectedBrand, setSelectedBrand] = useState<{ id: number; name: string } | null>(null);
@@ -127,7 +129,10 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
         const user = await appStorage.getUserProfile();
         if (user) {
           if (user.name) setExecutiveName(user.name);
-          if (user.phone) setExecutivePhone(user.phone);
+          if (user.phone) {
+            const digits = user.phone.replace(/\D/g, '');
+            setExecutivePhone(digits.length > 10 ? digits.slice(-10) : digits);
+          }
         }
       } catch (e) {
         console.log('Error loading user profile in quotation builder:', e);
@@ -270,7 +275,8 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     setLeadId(lead.id);
     setSelectedLeadItem(lead);
     setClientName(lead.name || '');
-    setClientMobile(lead.phone || '');
+    const rawPhone = (lead.phone || '').replace(/\D/g, '');
+    setClientMobile(rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone);
     setClientEmail(lead.email || '');
     setCityJurisdiction(lead.city || lead.home_town || lead.posting || lead.state || '');
 
@@ -965,10 +971,11 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                   },
                 ]}
                 value={clientMobile}
-                onChangeText={setClientMobile}
+                onChangeText={(t) => setClientMobile(t.replace(/\D/g, '').slice(0, 10))}
+                maxLength={10}
                 placeholder="98XXXXXXXX"
                 placeholderTextColor="#94A3B8"
-                keyboardType="phone-pad"
+                keyboardType="number-pad"
               />
             </View>
           </View>
@@ -998,20 +1005,35 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
               <Text style={[styles.label, { color: isDark ? '#CBD5E1' : '#334155' }]}>
                 Quotation Date
               </Text>
-              <TextInput
+              <TouchableOpacity
                 style={[
                   styles.input,
+                  styles.dateInputContainer,
                   {
                     backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-                    color: isDark ? '#FFFFFF' : '#0F172A',
                     borderColor: isDark ? '#334155' : '#CBD5E1',
                   },
                 ]}
-                value={quotationDate}
-                onChangeText={setQuotationDate}
-                placeholder="DD.MM.YY"
-                placeholderTextColor="#94A3B8"
-              />
+                onPress={() => {
+                  triggerHaptic('selection');
+                  setShowDatePicker(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.dateInputText,
+                    {
+                      color: quotationDate
+                        ? isDark ? '#FFFFFF' : '#0F172A'
+                        : '#94A3B8',
+                    },
+                  ]}
+                >
+                  {quotationDate || 'DD.MM.YY'}
+                </Text>
+                <Calendar size={16} color={isDark ? '#94A3B8' : '#64748B'} strokeWidth={2} />
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -1236,9 +1258,11 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                   },
                 ]}
                 value={executivePhone}
-                onChangeText={setExecutivePhone}
-                placeholder="+91 98000 11112"
+                onChangeText={(t) => setExecutivePhone(t.replace(/\D/g, '').slice(0, 10))}
+                maxLength={10}
+                placeholder="98XXXXXXXX"
                 placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
               />
             </View>
           </View>
@@ -1396,9 +1420,12 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                   },
                 ]}
                 value={breakdown.accessories}
-                onChangeText={(t) => setBreakdown((p) => ({ ...p, accessories: t }))}
-                placeholder="25000 or FREE KIT"
+                onChangeText={(t) =>
+                  setBreakdown((p) => ({ ...p, accessories: t.replace(/\D/g, '') }))
+                }
+                placeholder="0"
                 placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
               />
             </View>
           </View>
@@ -1608,13 +1635,13 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
                             ? '#172554'
                             : '#EFF6FF'
                           : isDark
-                          ? '#0F172A'
-                          : '#F8FAFC',
+                            ? '#0F172A'
+                            : '#F8FAFC',
                         borderColor: isCurrent
                           ? '#3B82F6'
                           : isDark
-                          ? '#334155'
-                          : '#E2E8F0',
+                            ? '#334155'
+                            : '#E2E8F0',
                       },
                     ]}
                   >
@@ -1673,19 +1700,20 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
               })}
             </ScrollView>
           )}
-        </View>
-      </ScrollView>
+        </View >
+      </ScrollView >
 
       {/* Sticky Bottom Actions Bar */}
-      <View
-        style={[
-          styles.stickyFooter,
-          {
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            borderTopColor: isDark ? '#334155' : '#E2E8F0',
-            paddingBottom: Math.max(insets.bottom, 12),
-          },
-        ]}
+      < View
+        style={
+          [
+            styles.stickyFooter,
+            {
+              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+              borderTopColor: isDark ? '#334155' : '#E2E8F0',
+              paddingBottom: Math.max(insets.bottom, 12),
+            },
+          ]}
       >
         <View style={styles.footerTotalBox}>
           <Text style={styles.footerTotalLabel}>Estimated Total</Text>
@@ -1721,10 +1749,10 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </View >
 
       {/* Universal Searchable Picker Modal */}
-      <Modal
+      < Modal
         visible={pickerType !== null}
         animationType="slide"
         transparent
@@ -1871,10 +1899,10 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
             />
           </View>
         </KeyboardAvoidingView>
-      </Modal>
+      </Modal >
 
       {/* Official Sheet Print / Preview Modal */}
-      <QuotationSheetView
+      < QuotationSheetView
         visible={showPreviewModal}
         data={currentFormData}
         quotationId={savedQuotationId}
@@ -1887,16 +1915,52 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
       />
 
       {/* Email Customer Modal */}
-      {savedQuotationId && (
-        <EmailQuotationModal
-          visible={showEmailModal}
-          quotationId={savedQuotationId}
-          initialEmail={clientEmail}
-          vehicleName={sheetCarTitle || selectedBrand?.name}
-          onClose={() => setShowEmailModal(false)}
-        />
-      )}
-    </View>
+      {
+        savedQuotationId && (
+          <EmailQuotationModal
+            visible={showEmailModal}
+            quotationId={savedQuotationId}
+            initialEmail={clientEmail}
+            vehicleName={sheetCarTitle || selectedBrand?.name}
+            onClose={() => setShowEmailModal(false)}
+          />
+        )
+      }
+
+      {/* Date Picker Modal for Quotation Date */}
+      <DatePickerModal
+        visible={showDatePicker}
+        title="Select Quotation Date"
+        initialDate={(() => {
+          if (quotationDate && quotationDate.includes('.')) {
+            const parts = quotationDate.split('.');
+            if (parts.length === 3) {
+              const dd = parts[0];
+              const mm = parts[1];
+              let yyyy = parts[2];
+              if (yyyy.length === 2) yyyy = '20' + yyyy;
+              return `${yyyy}-${mm}-${dd}`;
+            }
+          }
+          return undefined;
+        })()}
+        allowPast={true}
+        allowFuture={true}
+        onClose={() => setShowDatePicker(false)}
+        onSelectDate={(dateStr) => {
+          if (dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+              const [yyyy, mm, dd] = parts;
+              setQuotationDate(`${dd}.${mm}.${yyyy.slice(-2)}`);
+            } else {
+              setQuotationDate(dateStr);
+            }
+          }
+          setShowDatePicker(false);
+        }}
+      />
+    </View >
   );
 };
 
@@ -2015,6 +2079,16 @@ const styles = StyleSheet.create({
   },
   numericInput: {
     fontWeight: '600',
+  },
+  dateInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  dateInputText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   dropdownSelector: {
     flexDirection: 'row',

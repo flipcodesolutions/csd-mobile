@@ -16,10 +16,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { Calendar } from 'lucide-react-native';
 import { StartAlignedInput } from '../../../shared';
 import { quotationApi } from '../../quotations/quotationService';
 import { appStorage } from '../../../core/storage/storage';
 import { BrandItem, CustomerLead, ModelItem, VariantItem } from '../types';
+import { DatePickerModal } from './DatePickerModal';
 
 interface SendQuotationModalProps {
   visible: boolean;
@@ -65,7 +67,14 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
   const [clientName, setClientName] = useState('');
   const [clientMobile, setClientMobile] = useState('');
   const [city, setCity] = useState('');
-  const [quotationDate, setQuotationDate] = useState('10.10.26');
+  const [quotationDate, setQuotationDate] = useState(() => {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yy = String(today.getFullYear()).slice(-2);
+    return `${dd}.${mm}.${yy}`;
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Vehicle Selection
   const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
@@ -97,7 +106,10 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
         const u = await appStorage.getUserProfile();
         if (u) {
           if (!execName && u.name) setExecName(u.name);
-          if (!execPhone && u.phone) setExecPhone(u.phone);
+          if (!execPhone && u.phone) {
+            const d = u.phone.replace(/\D/g, '');
+            setExecPhone(d.length > 10 ? d.slice(-10) : d);
+          }
         }
       } catch (e) {
         console.log('Error loading user profile in SendQuotationModal:', e);
@@ -110,7 +122,8 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
   useEffect(() => {
     if (lead) {
       setClientName(lead.name || '');
-      setClientMobile(lead.phone || '');
+      const rawMobile = (lead.phone || '').replace(/\D/g, '');
+      setClientMobile(rawMobile.length > 10 ? rawMobile.slice(-10) : rawMobile);
       setCity(lead.city || lead.home_town || '');
       setQuotationDate(
         lead.created_at
@@ -355,8 +368,11 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                           },
                         ]}
                         value={clientMobile}
-                        onChangeText={setClientMobile}
-                        keyboardType="phone-pad"
+                        onChangeText={(t) => setClientMobile(t.replace(/\D/g, '').slice(0, 10))}
+                        maxLength={10}
+                        placeholder="98XXXXXXXX"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="number-pad"
                       />
                     </View>
                   </View>
@@ -384,18 +400,32 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                       <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                         Quotation Date
                       </Text>
-                      <StartAlignedInput
+                      <TouchableOpacity
                         style={[
                           styles.input,
+                          styles.datePickerBtn,
                           {
                             backgroundColor: isDark ? '#131B2E' : '#FFFFFF',
                             borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                            color: colors.textPrimary,
                           },
                         ]}
-                        value={quotationDate}
-                        onChangeText={setQuotationDate}
-                      />
+                        onPress={() => setShowDatePicker(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.datePickerText,
+                            {
+                              color: quotationDate
+                                ? colors.textPrimary
+                                : colors.textSecondary,
+                            },
+                          ]}
+                        >
+                          {quotationDate || 'DD.MM.YY'}
+                        </Text>
+                        <Calendar size={15} color={colors.textSecondary} strokeWidth={2} />
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>
@@ -547,8 +577,11 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                           },
                         ]}
                         value={execPhone}
-                        onChangeText={setExecPhone}
-                        keyboardType="phone-pad"
+                        onChangeText={(t) => setExecPhone(t.replace(/\D/g, '').slice(0, 10))}
+                        maxLength={10}
+                        placeholder="98XXXXXXXX"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="number-pad"
                       />
                     </View>
                   </View>
@@ -644,8 +677,10 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
                           },
                         ]}
                         value={accessories}
-                        onChangeText={setAccessories}
-                        keyboardType="numeric"
+                        onChangeText={(t) => setAccessories(t.replace(/\D/g, ''))}
+                        placeholder="0"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="number-pad"
                       />
                     </View>
                   </View>
@@ -810,6 +845,40 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
               </View>
             </View>
           </KeyboardAvoidingView>
+
+          {/* Date Picker Modal for Quotation Date */}
+          <DatePickerModal
+            visible={showDatePicker}
+            title="Select Quotation Date"
+            initialDate={(() => {
+              if (quotationDate && quotationDate.includes('.')) {
+                const parts = quotationDate.split('.');
+                if (parts.length === 3) {
+                  const dd = parts[0];
+                  const mm = parts[1];
+                  let yyyy = parts[2];
+                  if (yyyy.length === 2) yyyy = '20' + yyyy;
+                  return `${yyyy}-${mm}-${dd}`;
+                }
+              }
+              return undefined;
+            })()}
+            allowPast={true}
+            allowFuture={true}
+            onClose={() => setShowDatePicker(false)}
+            onSelectDate={(dateStr) => {
+              if (dateStr) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                  const [yyyy, mm, dd] = parts;
+                  setQuotationDate(`${dd}.${mm}.${yyyy.slice(-2)}`);
+                } else {
+                  setQuotationDate(dateStr);
+                }
+              }
+              setShowDatePicker(false);
+            }}
+          />
         </Modal>
   );
 };
@@ -909,6 +978,15 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlign: 'left',
     textAlignVertical: 'center',
+  },
+  datePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  datePickerText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   fuelChipsRow: {
     flexDirection: 'row',

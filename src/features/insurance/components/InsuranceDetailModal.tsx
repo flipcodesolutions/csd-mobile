@@ -66,7 +66,9 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     expDate.setHours(0, 0, 0, 0);
-    const diff = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const diff = Math.ceil(
+      (expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
     return diff;
   };
 
@@ -79,7 +81,10 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
       }
       if (daysRemaining <= 15) {
         return {
-          label: daysRemaining === 0 ? 'Expires Today' : `Expires in ${daysRemaining}d`,
+          label:
+            daysRemaining === 0
+              ? 'Expires Today'
+              : `Expires in ${daysRemaining}d`,
           bg: '#FEF3C7',
           text: '#D97706',
         };
@@ -106,16 +111,16 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
             policy_start_date:
               record.policy_start_date || record.delivery_date || '—',
             policy_expiry_date:
-              record.policy_expiry_date ||
-              record.insurance_expire_date ||
-              '—',
+              record.policy_expiry_date || record.insurance_expire_date || '—',
             premium_amount: record.premium_amount || 0,
             renewed_at: record.created_at
               ? record.created_at.replace('T', ' ').slice(0, 16)
               : '—',
             notes:
               record.notes ||
-              `Insurance policy linked for deal #${record.deal?.deal_number || record.deal_id || ''}`,
+              `Insurance policy linked for deal #${
+                record.deal?.deal_number || record.deal_id || ''
+              }`,
           },
         ]
       : [];
@@ -133,9 +138,17 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
     if (phone) {
       triggerHaptic('impactLight');
       const cleanPhone = phone.replace(/[^0-9]/g, '');
-      const expDate = toDisplayDate(record.policy_expiry_date || record.insurance_expire_date);
+      const expDate = toDisplayDate(
+        record.policy_expiry_date || record.insurance_expire_date,
+      );
       const text = encodeURIComponent(
-        `Dear ${record.customer_name},\nThis is a friendly reminder regarding your vehicle insurance policy (#${record.policy_number || ''}) for ${record.model_variant || 'your vehicle'}, which expires on ${expDate}.\nPlease contact us to renew your policy.\n- Defence Autolink Team`
+        `Dear ${
+          record.customer_name
+        },\nThis is a friendly reminder regarding your vehicle insurance policy (#${
+          record.policy_number || ''
+        }) for ${
+          record.model_variant || 'your vehicle'
+        }, which expires on ${expDate}.\nPlease contact us to renew your policy.\n- Defence Autolink Team`,
       );
       Linking.openURL(`https://wa.me/91${cleanPhone.slice(-10)}?text=${text}`);
     }
@@ -192,14 +205,18 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            >
               <View
                 style={[
                   styles.statusBadge,
                   { backgroundColor: statusBadge.bg },
                 ]}
               >
-                <Text style={[styles.statusBadgeText, { color: statusBadge.text }]}>
+                <Text
+                  style={[styles.statusBadgeText, { color: statusBadge.text }]}
+                >
                   {statusBadge.label}
                 </Text>
               </View>
@@ -245,7 +262,10 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                 <Text
                   style={[
                     styles.infoValue,
-                    { color: isDark ? '#F1F5F9' : '#0F172A', fontWeight: '700' },
+                    {
+                      color: isDark ? '#F1F5F9' : '#0F172A',
+                      fontWeight: '700',
+                    },
                   ]}
                 >
                   {record.customer_name}
@@ -267,19 +287,29 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                     <View style={styles.quickContactRow}>
                       <TouchableOpacity
                         onPress={handleCall}
-                        style={[styles.contactPill, { backgroundColor: '#DCFCE7' }]}
+                        style={[
+                          styles.contactPill,
+                          { backgroundColor: '#DCFCE7' },
+                        ]}
                       >
                         <Phone size={13} color="#16A34A" />
-                        <Text style={[styles.contactPillText, { color: '#16A34A' }]}>
+                        <Text
+                          style={[styles.contactPillText, { color: '#16A34A' }]}
+                        >
                           Call
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={handleWhatsApp}
-                        style={[styles.contactPill, { backgroundColor: '#D1FAE5' }]}
+                        style={[
+                          styles.contactPill,
+                          { backgroundColor: '#D1FAE5' },
+                        ]}
                       >
                         <MessageCircle size={13} color="#059669" />
-                        <Text style={[styles.contactPillText, { color: '#059669' }]}>
+                        <Text
+                          style={[styles.contactPillText, { color: '#059669' }]}
+                        >
                           WhatsApp
                         </Text>
                       </TouchableOpacity>
@@ -342,7 +372,10 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                 <Text
                   style={[
                     styles.infoValue,
-                    { color: isDark ? '#F1F5F9' : '#0F172A', fontWeight: '600' },
+                    {
+                      color: isDark ? '#F1F5F9' : '#0F172A',
+                      fontWeight: '600',
+                    },
                   ]}
                 >
                   {record.model_variant || record.vehicle_name || '—'}
@@ -350,7 +383,7 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
               </View>
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Reg / Vehicle #:</Text>
+                <Text style={styles.infoLabel}>Reg / Vehicle:</Text>
                 <Text
                   style={[
                     styles.infoValue,
@@ -361,21 +394,9 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                 </Text>
               </View>
 
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>VIN / Chassis #:</Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    { color: isDark ? '#CBD5E1' : '#475569' },
-                  ]}
-                >
-                  {record.vin_chassis_number || '—'}
-                </Text>
-              </View>
-
               {record.engine_number && (
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Engine #:</Text>
+                  <Text style={styles.infoLabel}>Engine:</Text>
                   <Text
                     style={[
                       styles.infoValue,
@@ -415,7 +436,10 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                 <Text
                   style={[
                     styles.infoValue,
-                    { color: isDark ? '#F1F5F9' : '#0F172A', fontWeight: '700' },
+                    {
+                      color: isDark ? '#F1F5F9' : '#0F172A',
+                      fontWeight: '700',
+                    },
                   ]}
                 >
                   {record.insurance_company || '—'}
@@ -503,7 +527,9 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                     { color: isDark ? '#F1F5F9' : '#0F172A' },
                   ]}
                 >
-                  {toDisplayDate(record.policy_start_date || record.delivery_date)}
+                  {toDisplayDate(
+                    record.policy_start_date || record.delivery_date,
+                  )}
                 </Text>
               </View>
 
@@ -513,12 +539,19 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                   style={[
                     styles.infoValue,
                     {
-                      color: daysRemaining !== null && daysRemaining <= 15 ? '#DC2626' : isDark ? '#F1F5F9' : '#0F172A',
+                      color:
+                        daysRemaining !== null && daysRemaining <= 15
+                          ? '#DC2626'
+                          : isDark
+                          ? '#F1F5F9'
+                          : '#0F172A',
                       fontWeight: '700',
                     },
                   ]}
                 >
-                  {toDisplayDate(record.policy_expiry_date || record.insurance_expire_date)}
+                  {toDisplayDate(
+                    record.policy_expiry_date || record.insurance_expire_date,
+                  )}
                 </Text>
               </View>
 
@@ -598,9 +631,7 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                       backgroundColor: isDark
                         ? 'rgba(88, 99, 42, 0.25)'
                         : '#EFF3DF',
-                      borderColor: isDark
-                        ? 'rgba(88, 99, 42, 0.4)'
-                        : '#DCE9A2',
+                      borderColor: isDark ? 'rgba(88, 99, 42, 0.4)' : '#DCE9A2',
                     },
                   ]}
                 >
@@ -625,7 +656,9 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                     >
                       <View style={styles.historyTopRow}>
                         <View style={styles.historyIndexPill}>
-                          <Text style={styles.historyIndexText}>#{idx + 1}</Text>
+                          <Text style={styles.historyIndexText}>
+                            #{idx + 1}
+                          </Text>
                         </View>
                         <Text
                           style={[
@@ -685,7 +718,8 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                               { color: isDark ? '#94A3B8' : '#64748B' },
                             ]}
                           >
-                            {hist.renewed_at || toDisplayDate(record.created_at)}
+                            {hist.renewed_at ||
+                              toDisplayDate(record.created_at)}
                           </Text>
                         </View>
                       </View>
@@ -714,7 +748,8 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                       { color: isDark ? '#94A3B8' : '#64748B' },
                     ]}
                   >
-                    No previous renewal history records yet. (This is the original policy)
+                    No previous renewal history records yet. (This is the
+                    original policy)
                   </Text>
                 </View>
               )}
@@ -778,7 +813,10 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
               <TouchableOpacity
                 style={[
                   styles.footerBtn,
-                  { backgroundColor: colors.orange, borderColor: colors.orange },
+                  {
+                    backgroundColor: colors.orange,
+                    borderColor: colors.orange,
+                  },
                 ]}
                 onPress={() => {
                   onClose();
@@ -786,7 +824,12 @@ export const InsuranceDetailModal: React.FC<InsuranceDetailModalProps> = ({
                 }}
               >
                 <RefreshCw size={15} color="#FFFFFF" />
-                <Text style={[styles.footerBtnText, { color: '#FFFFFF', fontWeight: '700' }]}>
+                <Text
+                  style={[
+                    styles.footerBtnText,
+                    { color: '#FFFFFF', fontWeight: '700' },
+                  ]}
+                >
                   Renew Policy
                 </Text>
               </TouchableOpacity>

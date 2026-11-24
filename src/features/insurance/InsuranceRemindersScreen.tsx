@@ -34,10 +34,7 @@ import { DatePickerModal } from '../leads/components/DatePickerModal';
 import { EditInsuranceModal } from './components/EditInsuranceModal';
 import { InsuranceDetailModal } from './components/InsuranceDetailModal';
 import { RenewPolicyModal } from './components/RenewPolicyModal';
-import {
-  formatIndianCurrency,
-  insuranceService,
-} from './insuranceService';
+import { formatIndianCurrency, insuranceService } from './insuranceService';
 import { InsurancePagination, InsuranceRecord } from './types';
 
 export const InsuranceRemindersScreen: React.FC = () => {
@@ -60,7 +57,9 @@ export const InsuranceRemindersScreen: React.FC = () => {
   const [showToPicker, setShowToPicker] = useState(false);
 
   // Modals state
-  const [selectedRecord, setSelectedRecord] = useState<InsuranceRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<InsuranceRecord | null>(
+    null,
+  );
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -69,13 +68,16 @@ export const InsuranceRemindersScreen: React.FC = () => {
     if (!displayStr) return '';
     const parts = displayStr.split('/');
     if (parts.length === 3) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(
+        2,
+        '0',
+      )}`;
     }
     return displayStr;
   };
 
   const toDisplayDate = (isoStr?: string | null): string => {
-    if (!isoStr) return '—';
+    if (!isoStr) return '';
     if (isoStr.includes('-')) {
       const parts = isoStr.split('T')[0].split('-');
       if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -89,7 +91,7 @@ export const InsuranceRemindersScreen: React.FC = () => {
       isLoadMore: boolean = false,
       search: string = searchTerm,
       from: string = fromDate,
-      to: string = toDate
+      to: string = toDate,
     ) => {
       try {
         if (isLoadMore) {
@@ -109,7 +111,7 @@ export const InsuranceRemindersScreen: React.FC = () => {
 
         if (res && res.status) {
           if (isLoadMore) {
-            setRecords((prev) => [...prev, ...res.data]);
+            setRecords(prev => [...prev, ...res.data]);
           } else {
             setRecords(res.data);
             setTotalCount(res.pagination.total);
@@ -125,7 +127,7 @@ export const InsuranceRemindersScreen: React.FC = () => {
         setIsRefreshing(false);
       }
     },
-    [searchTerm, fromDate, toDate, isRefreshing]
+    [searchTerm, fromDate, toDate, isRefreshing],
   );
 
   useEffect(() => {
@@ -153,7 +155,9 @@ export const InsuranceRemindersScreen: React.FC = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     expDate.setHours(0, 0, 0, 0);
-    return Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.ceil(
+      (expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
   };
 
   const renderReminderCard = ({ item }: { item: InsuranceRecord }) => {
@@ -238,7 +242,9 @@ export const InsuranceRemindersScreen: React.FC = () => {
                 style={[styles.quickContactBtn, { backgroundColor: '#DCFCE7' }]}
                 onPress={() => {
                   triggerHaptic('impactLight');
-                  Linking.openURL(`tel:${item.customer_phone || item.customer_number}`);
+                  Linking.openURL(
+                    `tel:${item.customer_phone || item.customer_number}`,
+                  );
                 }}
               >
                 <Phone size={14} color="#16A34A" />
@@ -247,12 +253,24 @@ export const InsuranceRemindersScreen: React.FC = () => {
                 style={[styles.quickContactBtn, { backgroundColor: '#D1FAE5' }]}
                 onPress={() => {
                   triggerHaptic('impactLight');
-                  const p = (item.customer_phone || item.customer_number || '').replace(/[^0-9]/g, '');
-                  const expDate = toDisplayDate(item.policy_expiry_date || item.insurance_expire_date);
-                  const text = encodeURIComponent(
-                    `Dear ${item.customer_name},\nThis is a renewal reminder regarding vehicle insurance policy (#${item.policy_number || ''}) which expires on ${expDate}.\nPlease contact us to renew.\n- Defence Autolink`
+                  const p = (
+                    item.customer_phone ||
+                    item.customer_number ||
+                    ''
+                  ).replace(/[^0-9]/g, '');
+                  const expDate = toDisplayDate(
+                    item.policy_expiry_date || item.insurance_expire_date,
                   );
-                  Linking.openURL(`https://wa.me/91${p.slice(-10)}?text=${text}`);
+                  const text = encodeURIComponent(
+                    `Dear ${
+                      item.customer_name
+                    },\nThis is a renewal reminder regarding vehicle insurance policy (#${
+                      item.policy_number || ''
+                    }) which expires on ${expDate}.\nPlease contact us to renew.\n- Defence Autolink`,
+                  );
+                  Linking.openURL(
+                    `https://wa.me/91${p.slice(-10)}?text=${text}`,
+                  );
                 }}
               >
                 <MessageCircle size={14} color="#059669" />
@@ -302,8 +320,12 @@ export const InsuranceRemindersScreen: React.FC = () => {
         <View style={styles.metaRow}>
           <View>
             <Text style={styles.metaLabel}>Policy Expiry</Text>
-            <Text style={[styles.metaVal, { color: '#DC2626', fontWeight: '700' }]}>
-              {toDisplayDate(item.policy_expiry_date || item.insurance_expire_date)}
+            <Text
+              style={[styles.metaVal, { color: '#DC2626', fontWeight: '700' }]}
+            >
+              {toDisplayDate(
+                item.policy_expiry_date || item.insurance_expire_date,
+              )}
             </Text>
           </View>
 
@@ -392,7 +414,7 @@ export const InsuranceRemindersScreen: React.FC = () => {
     >
       <FlatList
         data={records}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={item => String(item.id)}
         renderItem={renderReminderCard}
         contentContainerStyle={[
           styles.listContainer,
@@ -425,28 +447,24 @@ export const InsuranceRemindersScreen: React.FC = () => {
               >
                 Insurance & Renewal Reminders
               </Text>
+
               <View style={styles.windowBadge}>
                 <Text style={styles.windowBadgeText}>
                   15 Days Expiry Window ({totalCount})
                 </Text>
               </View>
             </View>
-            <Text
-              style={[
-                styles.pageSubtitle,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Vehicle policies expiring within the next 15 days requiring customer renewal reminders.
-            </Text>
 
             {/* Filter Row: Search & Date Range */}
             <View
               style={[
                 styles.searchBox,
                 {
+                  marginTop: 12,
                   backgroundColor: isDark ? '#131C27' : '#FFFFFF',
-                  borderColor: isDark ? 'rgba(217, 221, 204, 0.2)' : colors.border,
+                  borderColor: isDark
+                    ? 'rgba(217, 221, 204, 0.2)'
+                    : colors.border,
                 },
               ]}
             >
@@ -475,7 +493,11 @@ export const InsuranceRemindersScreen: React.FC = () => {
                   styles.datePill,
                   {
                     backgroundColor: isDark ? '#131C27' : '#FFFFFF',
-                    borderColor: fromDate ? colors.primary : isDark ? '#334155' : '#CBD5E1',
+                    borderColor: fromDate
+                      ? colors.primary
+                      : isDark
+                      ? '#334155'
+                      : '#CBD5E1',
                   },
                 ]}
                 onPress={() => setShowFromPicker(true)}
@@ -504,7 +526,11 @@ export const InsuranceRemindersScreen: React.FC = () => {
                   styles.datePill,
                   {
                     backgroundColor: isDark ? '#131C27' : '#FFFFFF',
-                    borderColor: toDate ? colors.primary : isDark ? '#334155' : '#CBD5E1',
+                    borderColor: toDate
+                      ? colors.primary
+                      : isDark
+                      ? '#334155'
+                      : '#CBD5E1',
                   },
                 ]}
                 onPress={() => setShowToPicker(true)}
@@ -598,24 +624,24 @@ export const InsuranceRemindersScreen: React.FC = () => {
       <DatePickerModal
         visible={showFromPicker}
         title="Filter From Date"
-        initialDate={fromDate}
+        initialDate={toIsoDate(fromDate)}
         allowPast={true}
         allowFuture={true}
         onClose={() => setShowFromPicker(false)}
-        onSelectDate={(d) => {
-          setFromDate(d);
+        onSelectDate={d => {
+          setFromDate(toDisplayDate(d));
           setShowFromPicker(false);
         }}
       />
       <DatePickerModal
         visible={showToPicker}
         title="Filter To Date"
-        initialDate={toDate}
+        initialDate={toIsoDate(toDate)}
         allowPast={true}
         allowFuture={true}
         onClose={() => setShowToPicker(false)}
-        onSelectDate={(d) => {
-          setToDate(d);
+        onSelectDate={d => {
+          setToDate(toDisplayDate(d));
           setShowToPicker(false);
         }}
       />
@@ -628,11 +654,11 @@ export const InsuranceRemindersScreen: React.FC = () => {
           setShowDetailModal(false);
           setSelectedRecord(null);
         }}
-        onEdit={(rec) => {
+        onEdit={rec => {
           setSelectedRecord(rec);
           setShowEditModal(true);
         }}
-        onRenew={(rec) => {
+        onRenew={rec => {
           setSelectedRecord(rec);
           setShowRenewModal(true);
         }}
