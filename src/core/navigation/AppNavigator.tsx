@@ -192,7 +192,9 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
         {({ navigation }) => (
           <DashboardScreen
             userRole={userRole || 'Super Admin'}
-            onNavigate={screen => (navigation as any).navigate(screen)}
+            onNavigate={(screen, params) =>
+              (navigation as any).navigate(screen, params)
+            }
           />
         )}
       </Drawer.Screen>
@@ -210,9 +212,10 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       </Drawer.Screen>
 
       <Drawer.Screen name="leads">
-        {({ navigation }) => (
+        {({ navigation, route }) => (
           <LeadsScreen
             navigation={navigation}
+            route={route}
             onOpenDrawer={() => (navigation as any).openDrawer()}
           />
         )}

@@ -203,7 +203,23 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
 
       // Defaults (blank per requirements)
       setTotalAmount('');
-      setDiscountAmount('0');
+
+      // Task 3: Auto-fill approved discount into Discount Amount (₹)
+      let approvedDiscVal = 0;
+      if (lead.discount_approval_status === 'approved') {
+        approvedDiscVal = Number(
+          lead.approved_discount ||
+            lead.requested_discount ||
+            lead.demanded_discount ||
+            lead.discount_amount ||
+            (lead as any).discount ||
+            0,
+        );
+      } else if (Number(lead.approved_discount || 0) > 0) {
+        approvedDiscVal = Number(lead.approved_discount);
+      }
+      setDiscountAmount(approvedDiscVal > 0 ? String(approvedDiscVal) : '0');
+
       setSelectedQuotationId(null);
       setVehicleColor('Standard');
       setVinChassis('');
@@ -255,12 +271,32 @@ export const ConvertToDealModal: React.FC<ConvertToDealModalProps> = ({
     setSelectedQuotationId(q.id);
     const grand = q.final_on_road_price || q.grand_total || q.total_amount || q.total;
     if (grand) setTotalAmount(String(grand));
+
+    const qDisc = q.discount_amount || q.discount || q.ms_reward || q.ms_reword;
+    if (qDisc && Number(qDisc) > 0) {
+      setDiscountAmount(String(qDisc));
+    }
   };
 
   const handleClearQuotation = () => {
     triggerHaptic('selection');
     setSelectedQuotationId(null);
     setTotalAmount('');
+
+    let approvedDiscVal = 0;
+    if (lead?.discount_approval_status === 'approved') {
+      approvedDiscVal = Number(
+        lead.approved_discount ||
+          lead.requested_discount ||
+          lead.demanded_discount ||
+          lead.discount_amount ||
+          (lead as any).discount ||
+          0,
+      );
+    } else if (Number(lead?.approved_discount || 0) > 0) {
+      approvedDiscVal = Number(lead?.approved_discount);
+    }
+    setDiscountAmount(approvedDiscVal > 0 ? String(approvedDiscVal) : '0');
   };
 
   // Convert deal final execution

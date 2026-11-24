@@ -280,58 +280,142 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     setClientEmail(lead.email || '');
     setCityJurisdiction(lead.city || lead.home_town || lead.posting || lead.state || '');
 
-    // 1. Match Brand
+    // 1. Ensure brands are loaded
+    let availableBrands = brandsList;
+    if (!availableBrands || availableBrands.length === 0) {
+      try {
+        const bRes = await brandApi.getAll({ per_page: 100 });
+        const items = bRes?.data?.data || bRes?.data || [];
+        if (Array.isArray(items) && items.length > 0) {
+          availableBrands = items;
+          setBrandsList(items);
+        }
+      } catch (err) {
+        console.log('Error fetching brands on lead select:', err);
+      }
+    }
+
+    // 2. Match Brand (by brand_id, brand.id, brand_name, brand.name)
+    const leadBrandId = lead.brand_id || lead.brand?.id;
+    const leadBrandName = lead.brand_name || lead.brand?.name;
+
     let matchedBrand: any = null;
-    if (lead.brand_id) {
-      matchedBrand = brandsList.find((b) => b.id === lead.brand_id);
-    } else if (lead.brand_name) {
-      matchedBrand = brandsList.find(
-        (b) => b.name?.toLowerCase() === lead.brand_name?.toLowerCase()
+    if (leadBrandId && availableBrands && availableBrands.length > 0) {
+      matchedBrand = availableBrands.find((b) => Number(b.id) === Number(leadBrandId));
+    }
+    if (!matchedBrand && leadBrandName && availableBrands && availableBrands.length > 0) {
+      matchedBrand = availableBrands.find(
+        (b) => b.name?.toLowerCase() === leadBrandName.toLowerCase()
       );
+    }
+    // Fallback: use lead.brand object or construct from brand_id/brand_name
+    if (!matchedBrand && (lead.brand || leadBrandId || leadBrandName)) {
+      matchedBrand = lead.brand || {
+        id: Number(leadBrandId || 0),
+        name: leadBrandName || 'Brand',
+      };
+      if (matchedBrand.id) {
+        setBrandsList((prev) => [matchedBrand, ...(prev || [])]);
+      }
     }
 
     if (matchedBrand) {
       setSelectedBrand(matchedBrand);
       setSheetCarTitle(matchedBrand.name);
 
-      // Fetch models for matched brand to auto-match model
+      // 3. Fetch models for matched brand to auto-match model
       try {
         const mRes = await modelApi.getAll({ brand_id: matchedBrand.id, per_page: 100 });
-        const models = mRes?.data?.data || mRes?.data || [];
-        setModelsList(models);
+        let models = mRes?.data?.data || mRes?.data || [];
+        if (!Array.isArray(models)) models = [];
+
+        const leadModelId = lead.model_id || lead.model?.id;
+        const leadModelName = lead.model?.name || lead.model_name;
 
         let matchedModel: any = null;
-        if (lead.model_id) {
-          matchedModel = models.find((m: any) => m.id === lead.model_id);
-        } else if (lead.model_name) {
+        if (leadModelId && models.length > 0) {
+          matchedModel = models.find((m: any) => Number(m.id) === Number(leadModelId));
+        }
+        if (!matchedModel && leadModelName && models.length > 0) {
           matchedModel = models.find(
-            (m: any) => m.name?.toLowerCase() === lead.model_name?.toLowerCase()
+            (m: any) => m.name?.toLowerCase() === leadModelName.toLowerCase()
           );
         }
+        // Fallback: use lead.model object
+        if (!matchedModel && (lead.model || leadModelId || leadModelName)) {
+          matchedModel = lead.model || {
+            id: Number(leadModelId || 0),
+            name: leadModelName || 'Model',
+            brand_id: matchedBrand.id,
+          };
+          models = [matchedModel, ...models];
+        }
+
+        setModelsList(models);
 
         if (matchedModel) {
           setSelectedModel(matchedModel);
           setSheetModelTitle(matchedModel.name);
 
-          // Fetch variants for matched model to auto-match variant
+          // 4. Fetch variants for matched model to auto-match variant
           const vRes = await variantApi.getAll({ model_id: matchedModel.id, per_page: 100 });
-          const variants = vRes?.data?.data || vRes?.data || [];
-          setVariantsList(variants);
+          let variants = vRes?.data?.data || vRes?.data || [];
+          if (!Array.isArray(variants)) variants = [];
+
+          const leadVariantId = lead.variant_id || lead.variant?.id;
+          const leadVariantName = lead.variant?.name || lead.variant_name;
 
           let matchedVariant: any = null;
-          if (lead.variant_id) {
-            matchedVariant = variants.find((v: any) => v.id === lead.variant_id);
-          } else if (lead.variant_name) {
+          if (leadVariantId && variants.length > 0) {
+            matchedVariant = variants.find((v: any) => Number(v.id) === Number(leadVariantId));
+          }
+          if (!matchedVariant && leadVariantName && variants.length > 0) {
             matchedVariant = variants.find(
-              (v: any) => v.name?.toLowerCase() === lead.variant_name?.toLowerCase()
+              (v: any) => v.name?.toLowerCase() === leadVariantName.toLowerCase()
             );
           }
+          // Fallback: use lead.variant object
+          if (!matchedVariant && (lead.variant || leadVariantId || leadVariantName)) {
+            matchedVariant = lead.variant || {
+              id: Number(leadVariantId || 0),
+              name: leadVariantName || 'Variant',
+              model_id: matchedModel.id,
+              price: lead.variant?.price,
+            };
+            variants = [matchedVariant, ...variants];
+          }
+
+          setVariantsList(variants);
 
           if (matchedVariant) {
             setSelectedVariant(matchedVariant);
-            setSheetModelTitle(matchedVariant.name);
-            if (matchedVariant.price) {
-              setBreakdown((prev) => ({ ...prev, csdPrice: String(matchedVariant.price) }));
+            const variantDisplayTitle = `${matchedModel.name} ${matchedVariant.name}`.trim();
+            setSheetModelTitle(variantDisplayTitle);
+
+            const vPrice =
+              matchedVariant.price ||
+              matchedVariant.csd_price ||
+              matchedVariant.ex_showroom_price ||
+              lead.variant?.price ||
+              lead.variant?.csd_price;
+            if (vPrice) {
+              setBreakdown((prev) => ({ ...prev, csdPrice: String(vPrice) }));
+            }
+
+            // Auto-detect fuel type
+            const variantNameLower = (matchedVariant.name || '').toLowerCase();
+            if (variantNameLower.includes('diesel')) {
+              setFuelType('DIESEL');
+            } else if (variantNameLower.includes('cng')) {
+              setFuelType('CNG');
+            } else if (variantNameLower.includes('ev') || variantNameLower.includes('electric')) {
+              setFuelType('ELECTRIC');
+            } else if (
+              variantNameLower.includes('petrol') ||
+              variantNameLower.includes('patrrol') ||
+              variantNameLower.includes('patrol')
+            ) {
+              setFuelType('PETROL');
             }
           }
         }
@@ -340,6 +424,29 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
       }
     } else if (lead.model_variant) {
       setSheetCarTitle(lead.model_variant);
+    }
+
+    // Task 3: Auto-fill approved discount into M.S REWORD (Disc)
+    let approvedDiscVal = 0;
+    if (lead.discount_approval_status === 'approved') {
+      approvedDiscVal = Number(
+        lead.approved_discount ||
+          lead.requested_discount ||
+          lead.demanded_discount ||
+          lead.discount_amount ||
+          lead.discount ||
+          0,
+      );
+    } else if (Number(lead.approved_discount || 0) > 0) {
+      approvedDiscVal = Number(lead.approved_discount);
+    }
+
+    if (approvedDiscVal > 0) {
+      setBreakdown((prev) => ({
+        ...prev,
+        msReward: String(approvedDiscVal),
+        msReword: String(approvedDiscVal),
+      }));
     }
 
     setPickerType(null);

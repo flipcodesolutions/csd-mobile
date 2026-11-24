@@ -13,10 +13,13 @@ export interface CustomerLead {
   vehicle_segment: '2 Wheeler' | '4 Wheeler';
   brand_id?: number;
   brand_name?: string;
+  brand?: { id?: number; name?: string };
   model_id?: number;
   model_name?: string;
+  model?: { id?: number; name?: string; brand_id?: number };
   variant_id?: number;
   variant_name?: string;
+  variant?: { id?: number; name?: string; price?: number; csd_price?: number; ex_showroom_price?: number };
   model_variant: string;
   priority: 'Hot' | 'Warm' | 'Cold';
   purchase_timeline?: string;
@@ -32,6 +35,9 @@ export interface CustomerLead {
   assigned_user_name?: string;
   discount_approval_status?: string;
   requested_discount?: number | string;
+  approved_discount?: number | string;
+  demanded_discount?: number | string;
+  discount_amount?: number | string;
   notes?: string;
   is_converted?: boolean;
   created_at?: string;

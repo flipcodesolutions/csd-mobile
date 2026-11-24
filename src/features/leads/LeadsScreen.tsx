@@ -68,6 +68,7 @@ import { CreateLeadScreen } from './CreateLeadScreen';
 interface LeadsScreenProps {
   onOpenDrawer?: () => void;
   navigation?: any;
+  route?: any;
 }
 
 const getCleanLeadStatus = (
@@ -154,6 +155,7 @@ const STATUS_TABS: StatusTabDef[] = [
 export const LeadsScreen: React.FC<LeadsScreenProps> = ({
   onOpenDrawer,
   navigation,
+  route,
 }) => {
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -253,6 +255,25 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({
   useEffect(() => {
     loadAllData();
   }, []);
+
+  // Handle status filter passed via navigation params (e.g. from Dashboard "NEW LEADS" card)
+  useEffect(() => {
+    if (route?.params?.status) {
+      const target = route.params.status;
+      if (
+        [
+          'All',
+          'New',
+          'Follow-up',
+          'Quotation Sent',
+          'Deal & Booking',
+          'Lost',
+        ].includes(target)
+      ) {
+        setSelectedStatusTab(target as StatusTabKey);
+      }
+    }
+  }, [route?.params?.status]);
 
   const loadAllData = async () => {
     try {

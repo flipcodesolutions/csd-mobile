@@ -54,6 +54,7 @@ const THEME = {
 // Data Interfaces
 export interface DashboardStats {
   totalLeads: number;
+  newLeads: number;
   totalLeadsGrowth: string;
   totalFollowUp: number;
   totalQuotation: number;
@@ -109,7 +110,7 @@ export interface RecentActivity {
 export type ActivityTimelineItem = RecentActivity;
 
 interface Props {
-  onNavigate: (screen: ScreenName) => void;
+  onNavigate: (screen: ScreenName, params?: any) => void;
   stats?: any;
   isLoading?: boolean;
   onSwitchRole?: (role: string) => void;
@@ -117,11 +118,12 @@ interface Props {
 
 // Fallback Default Datasets
 const DEFAULT_STATS: DashboardStats = {
-  totalLeads: 32,
-  totalLeadsGrowth: '↑ 15%',
-  totalFollowUp: 8,
-  totalQuotation: 1,
-  totalDealAndBooking: 24,
+  totalLeads: 0,
+  newLeads: 0,
+  totalLeadsGrowth: '↑ 100%',
+  totalFollowUp: 0,
+  totalQuotation: 0,
+  totalDealAndBooking: 0,
   totalLost: 0,
 };
 
@@ -129,14 +131,14 @@ const DEFAULT_PIPELINE: PipelineStage[] = [
   {
     id: 'interested',
     label: 'Interested',
-    count: 6,
+    count: 0,
     bg: '#0D1554',
     textColor: '#FFFFFF',
   },
   {
     id: 'quote_req',
     label: 'Quote Req.',
-    count: 2,
+    count: 0,
     bg: '#F3F4F6',
     textColor: '#1E293B',
   },
@@ -164,84 +166,15 @@ const DEFAULT_PIPELINE: PipelineStage[] = [
   {
     id: 'deal_won',
     label: 'Deal Won',
-    count: 29,
+    count: 0,
     bg: '#DCFCE7',
     textColor: '#16A34A',
   },
 ];
 
-const DEFAULT_APPROVALS: PendingApproval[] = [
-  {
-    id: 1,
-    customer_name: 'Jinal pujara',
-    vehicle_model: 'Tata Motors Nexon EV Max Dark Edition',
-    request_type: 'DISCOUNT',
-    discount_amount: 20000,
-    reason: 'test',
-    requested_by: 'Admin User (Super Admin)',
-  },
-  {
-    id: 2,
-    customer_name: 'Rahul Sharma',
-    vehicle_model: 'Maruti Suzuki Swift VXi',
-    request_type: 'DISCOUNT',
-    discount_amount: 500,
-    reason: 'brother if booked create 1 or 2 accounts',
-    requested_by: 'Admin User (Super Admin)',
-  },
-  {
-    id: 3,
-    customer_name: 'Rahul Sharma',
-    vehicle_model: 'Maruti Suzuki Swift VXi',
-    request_type: 'DISCOUNT',
-    discount_amount: 100,
-    reason: 'hi',
-    requested_by: 'Admin User (Super Admin)',
-  },
-];
-
-const DEFAULT_DELIVERIES: UpcomingDelivery[] = [
-  {
-    id: 1,
-    customer_name: 'jinal pujara',
-    delivery_date: '06 Nov',
-    city: 'Surendranagar',
-    vehicle_variant: 'Mercedes-AMG GT GT 63 S E Performance',
-    status: 'In Transit',
-  },
-  {
-    id: 2,
-    customer_name: 'rohit sharma',
-    delivery_date: '04 Nov',
-    city: 'delhi',
-    vehicle_variant: 'Brezza ZXi Dual Tone',
-    status: 'Booking Confirmed',
-  },
-  {
-    id: 3,
-    customer_name: 'rohit sharma',
-    delivery_date: '01 Nov',
-    city: 'delhi',
-    vehicle_variant: 'Brezza ZXi Dual Tone',
-    status: 'Booking Confirmed',
-  },
-  {
-    id: 4,
-    customer_name: 'manav',
-    delivery_date: '01 Nov',
-    city: 'pune',
-    vehicle_variant: 'Brezza ZXi Dual Tone',
-    status: 'Booking Confirmed',
-  },
-];
-
-const DEFAULT_ACTIVITIES: ActivityTimelineItem[] = [
-  { id: 1, action: 'login of user - Admin User', time_ago: '24 minutes ago' },
-  { id: 2, action: 'login of user - Admin User', time_ago: '34 minutes ago' },
-  { id: 3, action: 'login of user - Admin User', time_ago: '56 minutes ago' },
-  { id: 4, action: 'logout of user - Amit Patel', time_ago: '56 minutes ago' },
-  { id: 5, action: 'login of user - Amit Patel', time_ago: '56 minutes ago' },
-];
+const DEFAULT_APPROVALS: PendingApproval[] = [];
+const DEFAULT_DELIVERIES: UpcomingDelivery[] = [];
+const DEFAULT_ACTIVITIES: ActivityTimelineItem[] = [];
 
 export const SuperAdminDashboardView: React.FC<Props> = ({
   onNavigate,
@@ -259,6 +192,7 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
     useState<UpcomingDelivery[]>(DEFAULT_DELIVERIES);
   const [activities, setActivities] =
     useState<ActivityTimelineItem[]>(DEFAULT_ACTIVITIES);
+  const [dateDisplay, setDateDisplay] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -304,32 +238,76 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
 
       if (statsRes.status === 'fulfilled' && statsRes.value?.data) {
         const d = statsRes.value.data?.data || statsRes.value.data;
+        const kpis = d?.kpis || d;
 
-        // Core KPI Counts
-        setStatsData(prev => ({
-          totalLeads:
-            typeof d.total_leads === 'number' ? d.total_leads : prev.totalLeads,
-          totalLeadsGrowth: d.leads_growth || prev.totalLeadsGrowth,
-          totalFollowUp:
-            typeof d.total_follow_ups === 'number'
-              ? d.total_follow_ups
-              : prev.totalFollowUp,
-          totalQuotation:
-            typeof d.total_quotations === 'number'
-              ? d.total_quotations
-              : prev.totalQuotation,
-          totalDealAndBooking:
-            typeof d.total_deals === 'number'
-              ? d.total_deals
-              : typeof d.total_bookings === 'number'
-              ? d.total_bookings
-              : prev.totalDealAndBooking,
-          totalLost:
-            typeof d.total_lost === 'number' ? d.total_lost : prev.totalLost,
-        }));
+        if (d?.date_display) {
+          setDateDisplay(d.date_display);
+        }
 
-        // Pipeline Stages
-        if (d.pipeline_stages && Array.isArray(d.pipeline_stages)) {
+        // Core KPI Counts (dynamic from backend /dashboard/stats)
+        setStatsData({
+          totalLeads: Number(kpis.total_leads ?? 0),
+          newLeads: Number(kpis.new_leads ?? 0),
+          totalLeadsGrowth: kpis.lead_growth || kpis.leads_growth || '↑ 100%',
+          totalFollowUp: Number(kpis.total_follow_up ?? kpis.total_follow_ups ?? 0),
+          totalQuotation: Number(kpis.total_quotation ?? kpis.total_quotations ?? 0),
+          totalDealAndBooking: Number(
+            kpis.total_deal_booking ??
+              kpis.total_deals ??
+              kpis.total_bookings ??
+              0,
+          ),
+          totalLost: Number(kpis.total_lost ?? 0),
+        });
+
+        // Pipeline Stages (dynamic from backend /dashboard/stats)
+        if (d?.pipeline && typeof d.pipeline === 'object') {
+          const pipe = d.pipeline;
+          setPipelineStages([
+            {
+              id: 'interested',
+              label: 'Interested',
+              count: Number(pipe.interested ?? 0),
+              bg: '#0D1554',
+              textColor: '#FFFFFF',
+            },
+            {
+              id: 'quote_req',
+              label: 'Quote Req.',
+              count: Number(pipe.quotation_requested ?? pipe.quote_req ?? 0),
+              bg: '#F3F4F6',
+              textColor: '#1E293B',
+            },
+            {
+              id: 'negotiation',
+              label: 'Negotiation',
+              count: Number(pipe.negotiation ?? 0),
+              bg: '#F3F4F6',
+              textColor: '#1E293B',
+            },
+            {
+              id: 'not_reachable',
+              label: 'Not Reachable',
+              count: Number(pipe.not_reachable ?? 0),
+              bg: '#FEF3C7',
+              textColor: '#D97706',
+            },
+            {
+              id: 'lost_lead',
+              label: 'Lost Lead',
+              count: Number(pipe.lost ?? pipe.lost_lead ?? 0),
+              bg: '#FEE2E2',
+              textColor: '#DC2626',
+            },
+            {
+              id: 'deal_won',
+              label: 'Deal Won',
+              count: Number(pipe.deal_won ?? 0),
+              bg: '#DCFCE7',
+              textColor: '#16A34A',
+            },
+          ]);
+        } else if (d.pipeline_stages && Array.isArray(d.pipeline_stages)) {
           setPipelineStages(prev =>
             prev.map(stage => {
               const matched = d.pipeline_stages.find(
@@ -403,24 +381,36 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
       // 2. Request Pending Approvals
       if (approvalsRes.status === 'fulfilled' && approvalsRes.value?.data) {
         const apData = approvalsRes.value.data?.data || approvalsRes.value.data;
-        if (Array.isArray(apData) && apData.length > 0) {
+        if (Array.isArray(apData)) {
           setApprovals(
             apData.map((item: any) => ({
               id: item.id,
               customer_name:
-                item.customer_name || item.lead?.customer_name || 'Customer',
+                item.customer_name ||
+                item.name ||
+                item.lead?.customer_name ||
+                'Customer',
               vehicle_model:
+                item.vehicle_name ||
+                item.vehicle ||
                 item.vehicle_model ||
                 item.lead?.vehicle_model ||
                 item.model?.name ||
                 'Vehicle',
-              request_type: (item.request_type || 'DISCOUNT').toUpperCase(),
+              request_type: (
+                item.request_type ||
+                item.badge ||
+                'DISCOUNT'
+              ).toUpperCase(),
               discount_amount: Number(
                 item.discount_amount || item.demanded_discount || 0,
               ),
               reason: item.reason || item.notes || 'Approval requested',
               requested_by:
-                item.requested_by || item.user?.name || 'Sales Executive',
+                item.requested_by_name ||
+                item.requested_by ||
+                item.user?.name ||
+                'Sales Executive',
               proposed_price: item.proposed_price,
             })),
           );
@@ -494,7 +484,7 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
         </View>
         <View style={styles.dateBadge}>
           <Calendar size={13} color={THEME.textSecondary} strokeWidth={2} />
-          <Text style={styles.dateBadgeText}>{getFormattedDate()}</Text>
+          <Text style={styles.dateBadgeText}>{dateDisplay || getFormattedDate()}</Text>
         </View>
       </View>
 
@@ -523,7 +513,7 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             style={[styles.quickBtn, styles.quickBtnBordered]}
             onPress={() => {
               triggerHaptic('impactLight');
-              onNavigate('leads');
+              onNavigate('send-quotation');
             }}
             activeOpacity={0.7}
           >
@@ -549,7 +539,7 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             style={[styles.quickBtn, styles.quickBtnBordered]}
             onPress={() => {
               triggerHaptic('impactLight');
-              onNavigate('leads');
+              onNavigate('deals');
             }}
             activeOpacity={0.7}
           >
@@ -559,16 +549,16 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
         </ScrollView>
       </View>
 
-      {/* 3. Core KPI Stat Cards (2 Cards Per Row, Last Card 1 Full Width) */}
+      {/* 3. Core KPI Stat Cards (6 Cards: 3 Rows of 2 Cards Each, 1:1 with Web) */}
       <View style={styles.kpiGridContainer}>
-        {/* Row 1: TOTAL LEADS & TOTAL FOLLOW UP */}
+        {/* Row 1: TOTAL LEADS & NEW LEADS */}
         <View style={styles.kpiRow}>
           {/* 1. TOTAL LEADS */}
           <TouchableOpacity
             style={styles.kpiCardCol}
             onPress={() => {
               triggerHaptic('impactLight');
-              onNavigate('leads');
+              onNavigate('leads', { status: 'All' });
             }}
             activeOpacity={0.85}
           >
@@ -597,7 +587,44 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
             </View>
           </TouchableOpacity>
 
-          {/* 2. TOTAL FOLLOW UP */}
+          {/* 2. NEW LEADS */}
+          <TouchableOpacity
+            style={styles.kpiCardCol}
+            onPress={() => {
+              triggerHaptic('impactLight');
+              onNavigate('leads', { status: 'New' });
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.kpiCardTopRow}>
+              <Text style={styles.kpiLabel} numberOfLines={1}>
+                NEW LEADS
+              </Text>
+              <View
+                style={[styles.kpiBadge, { backgroundColor: THEME.infoBg }]}
+              >
+                <Text style={[styles.kpiBadgeText, { color: THEME.info }]}>
+                  New
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.kpiValue}>
+              {isLoading ? '...' : statsData.newLeads}
+            </Text>
+            <View style={styles.kpiBottomRow}>
+              <View
+                style={[styles.kpiDot, { backgroundColor: THEME.info }]}
+              />
+              <Text style={styles.kpiSubtext} numberOfLines={1}>
+                Fresh Inquiries
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Row 2: TOTAL FOLLOW UP & TOTAL QUOTATION */}
+        <View style={styles.kpiRow}>
+          {/* 3. TOTAL FOLLOW UP */}
           <TouchableOpacity
             style={styles.kpiCardCol}
             onPress={() => {
@@ -630,11 +657,8 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
               </Text>
             </View>
           </TouchableOpacity>
-        </View>
 
-        {/* Row 2: TOTAL QUOTATION & TOTAL DEAL & BOOKING */}
-        <View style={styles.kpiRow}>
-          {/* 3. TOTAL QUOTATION */}
+          {/* 4. TOTAL QUOTATION */}
           <TouchableOpacity
             style={styles.kpiCardCol}
             onPress={() => {
@@ -665,13 +689,16 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
               </Text>
             </View>
           </TouchableOpacity>
+        </View>
 
-          {/* 4. TOTAL DEAL & BOOKING */}
+        {/* Row 3: TOTAL DEAL & BOOKING & TOTAL LOST */}
+        <View style={styles.kpiRow}>
+          {/* 5. TOTAL DEAL & BOOKING */}
           <TouchableOpacity
             style={styles.kpiCardCol}
             onPress={() => {
               triggerHaptic('impactLight');
-              onNavigate('leads');
+              onNavigate('deals');
             }}
             activeOpacity={0.85}
           >
@@ -683,7 +710,7 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
                 style={[styles.kpiBadge, { backgroundColor: THEME.successBg }]}
               >
                 <Text style={[styles.kpiBadgeText, { color: THEME.success }]}>
-                  WON
+                  Won
                 </Text>
               </View>
             </View>
@@ -695,39 +722,43 @@ export const SuperAdminDashboardView: React.FC<Props> = ({
                 style={[styles.kpiDot, { backgroundColor: THEME.success }]}
               />
               <Text style={styles.kpiSubtext} numberOfLines={1}>
-                Invoiced
+                Booked
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* 6. TOTAL LOST */}
+          <TouchableOpacity
+            style={styles.kpiCardCol}
+            onPress={() => {
+              triggerHaptic('impactLight');
+              onNavigate('leads');
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.kpiCardTopRow}>
+              <Text style={styles.kpiLabel} numberOfLines={1}>
+                TOTAL LOST
+              </Text>
+              <View
+                style={[styles.kpiBadge, { backgroundColor: THEME.dangerBg }]}
+              >
+                <Text style={[styles.kpiBadgeText, { color: THEME.danger }]}>
+                  Lost
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.kpiValue, { color: THEME.danger }]}>
+              {isLoading ? '...' : statsData.totalLost}
+            </Text>
+            <View style={styles.kpiBottomRow}>
+              <View style={[styles.kpiDot, { backgroundColor: THEME.danger }]} />
+              <Text style={styles.kpiSubtext} numberOfLines={1}>
+                Closed
               </Text>
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* Row 3: Last 1 Card (TOTAL LOST - Full Width) */}
-        <TouchableOpacity
-          style={styles.kpiCardFull}
-          onPress={() => {
-            triggerHaptic('impactLight');
-            onNavigate('leads');
-          }}
-          activeOpacity={0.85}
-        >
-          <View style={styles.kpiCardTopRow}>
-            <Text style={styles.kpiLabel}>TOTAL LOST</Text>
-            <View
-              style={[styles.kpiBadge, { backgroundColor: THEME.dangerBg }]}
-            >
-              <Text style={[styles.kpiBadgeText, { color: THEME.danger }]}>
-                Lost
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.kpiValue, { color: THEME.danger }]}>
-            {isLoading ? '...' : statsData.totalLost}
-          </Text>
-          <View style={styles.kpiBottomRow}>
-            <View style={[styles.kpiDot, { backgroundColor: THEME.danger }]} />
-            <Text style={styles.kpiSubtext}>Closed Inquiries</Text>
-          </View>
-        </TouchableOpacity>
       </View>
 
       {/* 4. Follow-Up Pipeline Stages (6 Circle Metrics) */}

@@ -134,38 +134,81 @@ export const SendQuotationModal: React.FC<SendQuotationModalProps> = ({
         setExecName(lead.assigned_user_name);
       }
 
+      const leadBrandId = lead.brand_id || lead.brand?.id;
+      const leadBrandName = lead.brand_name || lead.brand?.name;
       const brand = brands.find(
-        (b) => b.id === lead.brand_id || b.name === lead.brand_name
+        (b) =>
+          Number(b.id) === Number(leadBrandId) ||
+          b.name?.toLowerCase() === leadBrandName?.toLowerCase()
       );
       if (brand) setSelectedBrandId(brand.id);
+      else if (leadBrandId) setSelectedBrandId(Number(leadBrandId));
 
+      const leadModelId = lead.model_id || lead.model?.id;
+      const leadModelName = lead.model?.name || lead.model_name;
       const model = models.find(
-        (m) => m.id === lead.model_id || m.name === lead.model_name
+        (m) =>
+          Number(m.id) === Number(leadModelId) ||
+          m.name?.toLowerCase() === leadModelName?.toLowerCase()
       );
       if (model) setSelectedModelId(model.id);
+      else if (leadModelId) setSelectedModelId(Number(leadModelId));
 
+      const leadVariantId = lead.variant_id || lead.variant?.id;
+      const leadVariantName = lead.variant?.name || lead.variant_name;
       const variant = variants.find(
-        (v) => v.id === lead.variant_id || v.name === lead.variant_name
+        (v) =>
+          Number(v.id) === Number(leadVariantId) ||
+          v.name?.toLowerCase() === leadVariantName?.toLowerCase()
       );
       if (variant) {
         setSelectedVariantId(variant.id);
-        if (variant.price) {
-          setCsdPrice(variant.price.toString().replace(/[^0-9]/g, ''));
+        const vPrice = variant.price || lead.variant?.price;
+        if (vPrice) {
+          setCsdPrice(vPrice.toString().replace(/[^0-9]/g, ''));
+        }
+      } else if (leadVariantId) {
+        setSelectedVariantId(Number(leadVariantId));
+        if (lead.variant?.price) {
+          setCsdPrice(lead.variant.price.toString().replace(/[^0-9]/g, ''));
         }
       }
 
-      setSheetCarTitle(
-        lead.brand_name
-          ? `${lead.brand_name.toUpperCase()} ${lead.model_name || ''}`.trim()
-          : 'MARUTI SUZUKI BREZZA'
-      );
-      setSheetModelTitle(
-        lead.variant_name
-          ? lead.variant_name.toUpperCase()
-          : lead.model_variant
-          ? lead.model_variant.toUpperCase()
-          : 'ZXI DUAL TONE'
-      );
+      const finalBrandName = leadBrandName || brand?.name || '';
+      const finalModelName = leadModelName || model?.name || '';
+      const finalVariantName = leadVariantName || variant?.name || '';
+
+      if (finalBrandName) {
+        setSheetCarTitle(
+          finalModelName
+            ? `${finalBrandName.toUpperCase()} ${finalModelName.toUpperCase()}`.trim()
+            : finalBrandName.toUpperCase()
+        );
+      }
+      if (finalVariantName) {
+        setSheetModelTitle(finalVariantName.toUpperCase());
+      } else if (lead.model_variant) {
+        setSheetModelTitle(lead.model_variant.toUpperCase());
+      }
+
+      // Task 3: Auto-fill approved discount into M.S REWORD (Disc)
+      let approvedDiscVal = 0;
+      if (lead.discount_approval_status === 'approved') {
+        approvedDiscVal = Number(
+          lead.approved_discount ||
+            lead.requested_discount ||
+            lead.demanded_discount ||
+            lead.discount_amount ||
+            (lead as any).discount ||
+            0,
+        );
+      } else if (Number(lead.approved_discount || 0) > 0) {
+        approvedDiscVal = Number(lead.approved_discount);
+      }
+
+      if (approvedDiscVal > 0) {
+        setMsReword(String(approvedDiscVal));
+      }
     }
   }, [lead, brands, models, variants]);
 

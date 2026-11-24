@@ -45,6 +45,7 @@ import {
   userApi,
   variantApi,
 } from '../masters/masterService';
+import { triggerHaptic } from '../../core/utils/haptics';
 import { SendQuotationModal } from './components/SendQuotationModal';
 import { EditProspectModal } from './components/EditProspectModal';
 import { ConvertToDealModal } from './components/ConvertToDealModal';
@@ -355,6 +356,23 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
         },
       ]
     );
+  };
+
+  const handleOpenQuotation = () => {
+    const targetLeadId = lead?.id || leadId;
+    triggerHaptic('selection');
+    if (navigation?.navigate) {
+      try {
+        navigation.navigate('MainDrawer', {
+          screen: 'send-quotation',
+          params: { leadId: targetLeadId },
+        });
+        return;
+      } catch (e) {
+        console.log('Navigation to send-quotation failed:', e);
+      }
+    }
+    setShowQuotationModal(true);
   };
 
   const handleDeleteQuotation = (q: any) => {
@@ -789,7 +807,7 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
             </View>
             <TouchableOpacity
               style={styles.generateQuoteBtn}
-              onPress={() => setShowQuotationModal(true)}
+              onPress={handleOpenQuotation}
               activeOpacity={0.8}
             >
               <Text style={styles.generateQuoteBtnText}>+ Generate New Quotation</Text>
@@ -802,7 +820,7 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
               <Text style={styles.emptyHistoryText}>No quotations sent for this lead yet.</Text>
               <TouchableOpacity
                 style={styles.addFirstBtn}
-                onPress={() => setShowQuotationModal(true)}
+                onPress={handleOpenQuotation}
               >
                 <Text style={styles.addFirstBtnText}>+ Create First Quotation</Text>
               </TouchableOpacity>

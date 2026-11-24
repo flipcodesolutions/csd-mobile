@@ -19,23 +19,19 @@ import {
   Clock,
   CreditCard,
   FileSpreadsheet,
-  HelpCircle,
   IndianRupee,
   Kanban,
   LayoutDashboard,
   ListFilter,
   LogOut,
   Mail,
-  Moon,
   PhoneForwarded,
   Radio,
   Receipt,
   ReceiptText,
-  Settings,
   Shield,
   ShieldAlert,
   ShieldCheck,
-  Sun,
   Trophy,
   User,
   UserCheck,
@@ -162,7 +158,6 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             title: 'ACCOUNT',
             items: [
               { id: 'profile', label: 'My Profile', icon: User },
-              { id: 'help-support', label: 'Help & Support', icon: HelpCircle },
             ],
           },
         ];
@@ -206,7 +201,6 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             title: 'ACCOUNT',
             items: [
               { id: 'profile', label: 'My Profile', icon: User },
-              { id: 'help-support', label: 'Help & Support', icon: HelpCircle },
             ],
           },
         ];
@@ -233,7 +227,6 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             title: 'ACCOUNT',
             items: [
               { id: 'profile', label: 'My Profile', icon: User },
-              { id: 'help-support', label: 'Help & Support', icon: HelpCircle },
             ],
           },
         ];
@@ -263,7 +256,6 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             title: 'ACCOUNT',
             items: [
               { id: 'profile', label: 'My Profile', icon: User },
-              { id: 'help-support', label: 'Help & Support', icon: HelpCircle },
             ],
           },
         ];
@@ -311,14 +303,12 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             title: 'MANAGEMENT',
             items: [
               { id: 'activity-logs', label: 'Activity Logs', icon: Clock },
-              { id: 'settings', label: 'Settings', icon: Settings },
             ],
           },
           {
             title: 'ACCOUNT',
             items: [
               { id: 'profile', label: 'My Profile', icon: User },
-              { id: 'help-support', label: 'Help & Support', icon: HelpCircle },
             ],
           },
         ];
@@ -543,30 +533,8 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           </View>
         </View>
 
-        {/* Action Buttons: Dark Mode & Sign Out */}
+        {/* Action Button: Sign Out */}
         <View style={styles.footerActionRow}>
-          {/* Theme Toggle Button */}
-          <TouchableOpacity
-            style={[
-              styles.footerSquareBtn,
-              {
-                backgroundColor: isDark ? '#162030' : '#F1F5F9',
-                borderColor: isDark ? '#1E293B' : '#E2E8F0',
-              },
-            ]}
-            onPress={() => {
-              triggerHaptic('selection');
-              toggleTheme();
-            }}
-            activeOpacity={0.7}
-          >
-            {isDark ? (
-              <Sun size={16} color="#F59E0B" strokeWidth={2.2} />
-            ) : (
-              <Moon size={16} color="#6366F1" strokeWidth={2.2} />
-            )}
-          </TouchableOpacity>
-
           {/* Sign Out Button */}
           <TouchableOpacity
             style={[

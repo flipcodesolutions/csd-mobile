@@ -196,7 +196,17 @@ export const LeadCard: React.FC<LeadCardProps> = React.memo(({
   const brandName = item.brand_name || 'MARUTI SUZUKI';
   const vehicleText = item.model_variant || 'Vehicle Requirement';
   const sourceName = item.source?.title || item.source?.name || item.source_name || item.lead_source || 'Direct';
-  const isDiscountPending = item.discount_approval_status === 'pending' || Number(item.requested_discount || 0) > 0;
+  const isDiscountApproved =
+    item.discount_approval_status === 'approved' ||
+    Number(item.approved_discount || 0) > 0;
+  const isDiscountPending =
+    !isDiscountApproved &&
+    (item.discount_approval_status === 'pending' ||
+      Number(item.requested_discount || 0) > 0);
+  const approvedDisc = Number(
+    item.approved_discount || item.requested_discount || 0,
+  );
+  const pendingDisc = Number(item.requested_discount || 0);
 
   return (
     <View style={[styles.card, isSelected && styles.cardSelected]}>
@@ -322,12 +332,27 @@ export const LeadCard: React.FC<LeadCardProps> = React.memo(({
             <Text style={styles.sourcePillText}>{sourceName}</Text>
           </View>
 
-          {/* Discount Pending Badge (If applicable) */}
-          {isDiscountPending && (
+          {/* Discount Approved Badge */}
+          {isDiscountApproved && approvedDisc > 0 && (
+            <View
+              style={[
+                styles.discountPendingPill,
+                { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' },
+              ]}
+            >
+              <Tag size={10} color="#16A34A" strokeWidth={2.4} />
+              <Text style={[styles.discountPendingText, { color: '#16A34A' }]}>
+                🏷️ Discount Approved (₹{approvedDisc.toLocaleString('en-IN')})
+              </Text>
+            </View>
+          )}
+
+          {/* Discount Pending Badge */}
+          {isDiscountPending && pendingDisc > 0 && (
             <View style={styles.discountPendingPill}>
               <Tag size={10} color={THEME.warning} strokeWidth={2.4} />
               <Text style={styles.discountPendingText}>
-                🏷️ Discount Pending (₹{Number(item.requested_discount || 0).toLocaleString('en-IN')})
+                🏷️ Discount Pending (₹{pendingDisc.toLocaleString('en-IN')})
               </Text>
             </View>
           )}

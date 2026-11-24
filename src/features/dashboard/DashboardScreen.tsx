@@ -31,7 +31,7 @@ import { ReceptionistDashboardView } from './views/ReceptionistDashboardView';
 import { AccountantDashboardView } from './views/AccountantDashboardView';
 
 interface DashboardProps {
-  onNavigate: (screen: ScreenName) => void;
+  onNavigate: (screen: ScreenName, params?: any) => void;
   userRole?: string;
 }
 
