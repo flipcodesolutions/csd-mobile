@@ -60,15 +60,24 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
   const insets = useSafeAreaInsets();
 
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      (e) => {
+        setKeyboardVisible(true);
+        if (e?.endCoordinates?.height) {
+          setKeyboardHeight(e.endCoordinates.height);
+        }
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
     );
     return () => {
       showSub.remove();
@@ -269,10 +278,10 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
     >
       <KeyboardAvoidingView
         style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableOpacity
-          style={StyleSheet.absoluteFill}
+          style={styles.overlayBackdrop}
           activeOpacity={1}
           onPress={onClose}
         />
@@ -328,7 +337,7 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
             style={styles.formScroll}
             contentContainerStyle={[
               styles.formContent,
-              keyboardVisible && { paddingBottom: 60 },
+              keyboardVisible ? { paddingBottom: 24 } : undefined,
             ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -698,6 +707,8 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
                       ]}
                       value={referenceNo}
                       onChangeText={setReferenceNo}
+                      placeholder="e.g. UTR / UPI Ref / Transaction ID"
+                      placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                     />
                   </View>
 
@@ -722,6 +733,8 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
                       ]}
                       value={remark}
                       onChangeText={setRemark}
+                      placeholder="Enter optional remark"
+                      placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                     />
                   </View>
                 </View>
@@ -800,7 +813,9 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
         visible={showCategoryPicker}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => {
+          Keyboard.dismiss();
           setShowCategoryPicker(false);
           setCategorySearch('');
         }}
@@ -810,9 +825,10 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <TouchableOpacity
-            style={StyleSheet.absoluteFill}
+            style={styles.overlayBackdrop}
             activeOpacity={1}
             onPress={() => {
+              Keyboard.dismiss();
               setShowCategoryPicker(false);
               setCategorySearch('');
             }}
@@ -823,6 +839,9 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
               {
                 backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                 paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom, 24),
+              },
+              Platform.OS === 'android' && keyboardVisible && {
+                marginBottom: Math.max(keyboardHeight, 20),
               },
             ]}
           >
@@ -837,6 +856,7 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
               </Text>
               <TouchableOpacity
                 onPress={() => {
+                  Keyboard.dismiss();
                   setShowCategoryPicker(false);
                   setCategorySearch('');
                 }}
@@ -873,7 +893,7 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
             </View>
 
             <ScrollView
-              style={{ maxHeight: keyboardVisible ? 180 : 300 }}
+              style={{ maxHeight: keyboardVisible ? 160 : 280 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
@@ -905,6 +925,7 @@ export const AddEditExpenseModal: React.FC<AddEditExpenseModalProps> = ({
                         },
                       ]}
                       onPress={() => {
+                        Keyboard.dismiss();
                         setSelectedCatId(cat.id);
                         setTitle(cat.name || cat.title || '');
                         setShowCategoryPicker(false);
@@ -982,6 +1003,8 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   formScroll: {
+    flexGrow: 1,
+    flexShrink: 1,
     maxHeight: 520,
   },
   formContent: {
@@ -1159,6 +1182,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13.5,
     fontWeight: '700',
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFill,
   },
   pickerOverlay: {
     flex: 1,

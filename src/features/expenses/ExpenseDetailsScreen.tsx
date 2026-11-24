@@ -10,13 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Filter,
-  Plus,
-  Receipt,
-  Search,
-  X,
-} from 'lucide-react-native';
+import { Filter, Plus, Receipt, Search, X } from 'lucide-react-native';
 import { colors } from '../../core/theme/colors';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../core/utils/haptics';
@@ -25,7 +19,10 @@ import { AddEditExpenseModal } from './components/AddEditExpenseModal';
 import { DeleteExpenseModal } from './components/DeleteExpenseModal';
 import { ExpenseCard } from './components/ExpenseCard';
 import { ExpenseDetailModal } from './components/ExpenseDetailModal';
-import { ExpenseFilterModal, ExpenseFilters } from './components/ExpenseFilterModal';
+import {
+  ExpenseFilterModal,
+  ExpenseFilters,
+} from './components/ExpenseFilterModal';
 import { expenseService } from './expenseService';
 import {
   CreateExpensePayload,
@@ -139,9 +136,9 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
         const res = await expenseService.getExpenses(queryParams);
 
         if (append) {
-          setExpenses((prev) => {
-            const existingIds = new Set(prev.map((e) => e.id));
-            const newRecords = res.data.filter((e) => !existingIds.has(e.id));
+          setExpenses(prev => {
+            const existingIds = new Set(prev.map(e => e.id));
+            const newRecords = res.data.filter(e => !existingIds.has(e.id));
             return [...prev, ...newRecords];
           });
         } else {
@@ -162,7 +159,7 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
         setIsLoadingMore(false);
       }
     },
-    [searchTerm, filters]
+    [searchTerm, filters],
   );
 
   // Re-fetch on filter or search term update
@@ -187,7 +184,7 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
   // Add / Edit submission
   const handleSubmitExpense = async (
     payload: CreateExpensePayload | UpdateExpensePayload,
-    isEdit: boolean
+    isEdit: boolean,
   ) => {
     if (isEdit && editingItem) {
       await expenseService.updateExpense(editingItem.id, payload);
@@ -202,11 +199,15 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
   const handleConfirmDelete = async (item: ExpenseRecord) => {
     try {
       await expenseService.deleteExpense(item.id);
-      showSuccessToast(`Expense voucher for "${item.party_name}" permanently deleted.`);
+      showSuccessToast(
+        `Expense voucher for "${item.party_name}" permanently deleted.`,
+      );
       fetchExpenses(1, false);
     } catch (err: any) {
       console.error('Delete Expense Error:', err);
-      showErrorToast(err?.response?.data?.message || 'Failed to delete expense record.');
+      showErrorToast(
+        err?.response?.data?.message || 'Failed to delete expense record.',
+      );
       throw err;
     }
   };
@@ -216,15 +217,15 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
       <ExpenseCard
         index={index}
         item={item}
-        onView={(exp) => setDetailItem(exp)}
-        onEdit={(exp) => {
+        onView={exp => setDetailItem(exp)}
+        onEdit={exp => {
           setEditingItem(exp);
           setShowAddEditModal(true);
         }}
-        onDelete={(exp) => setDeleteTarget(exp)}
+        onDelete={exp => setDeleteTarget(exp)}
       />
     ),
-    []
+    [],
   );
 
   return (
@@ -260,7 +261,7 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
               styles.searchInput,
               { color: isDark ? '#F1F5F9' : '#0F172A' },
             ]}
-            placeholder="Search party, invoice, category..."
+            placeholder="Search party, invoice .."
             placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
             value={searchTerm}
             onChangeText={setSearchTerm}
@@ -277,14 +278,16 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
           style={[
             styles.filterBtn,
             {
-              backgroundColor: activeFiltersCount > 0
-                ? colors.primary
-                : isDark
+              backgroundColor:
+                activeFiltersCount > 0
+                  ? colors.primary
+                  : isDark
                   ? '#0F172A'
                   : '#F8FAFC',
-              borderColor: activeFiltersCount > 0
-                ? colors.primaryHover
-                : isDark
+              borderColor:
+                activeFiltersCount > 0
+                  ? colors.primaryHover
+                  : isDark
                   ? '#334155'
                   : '#CBD5E1',
             },
@@ -297,7 +300,13 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
         >
           <Filter
             size={16}
-            color={activeFiltersCount > 0 ? '#FFFFFF' : isDark ? '#CBD5E1' : '#334155'}
+            color={
+              activeFiltersCount > 0
+                ? '#FFFFFF'
+                : isDark
+                ? '#CBD5E1'
+                : '#334155'
+            }
           />
           {activeFiltersCount > 0 && (
             <View style={styles.filterBadge}>
@@ -336,9 +345,7 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
             style={[
               styles.recordsBadge,
               {
-                backgroundColor: isDark
-                  ? 'rgba(88, 99, 42, 0.25)'
-                  : '#EFF3DF',
+                backgroundColor: isDark ? 'rgba(88, 99, 42, 0.25)' : '#EFF3DF',
               },
             ]}
           >
@@ -347,23 +354,12 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
             </Text>
           </View>
         </View>
-
-        {totalAmount > 0 && (
-          <Text
-            style={[
-              styles.totalSpendText,
-              { color: isDark ? '#94A3B8' : '#64748B' },
-            ]}
-          >
-            Total: <Text style={styles.boldAmount}>₹{totalAmount.toLocaleString('en-IN')}</Text>
-          </Text>
-        )}
       </View>
 
       {/* Infinite Scroll Expense FlatList */}
       <FlatList
         data={expenses}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={[
           styles.listContent,
@@ -423,7 +419,10 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
                   : 'Start by recording your first showroom operational expenditure.'}
               </Text>
               <TouchableOpacity
-                style={[styles.emptyAddBtn, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.emptyAddBtn,
+                  { backgroundColor: colors.primary },
+                ]}
                 onPress={() => {
                   triggerHaptic('selection');
                   setEditingItem(null);
@@ -467,11 +466,11 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
         visible={Boolean(detailItem)}
         item={detailItem}
         onClose={() => setDetailItem(null)}
-        onEdit={(item) => {
+        onEdit={item => {
           setEditingItem(item);
           setShowAddEditModal(true);
         }}
-        onDelete={(item) => setDeleteTarget(item)}
+        onDelete={item => setDeleteTarget(item)}
       />
 
       <DeleteExpenseModal
@@ -486,7 +485,7 @@ export const ExpenseDetailsScreen: React.FC<ExpenseDetailsScreenProps> = ({
         filters={filters}
         categories={categories}
         onClose={() => setShowFilterModal(false)}
-        onApply={(newFilters) => setFilters(newFilters)}
+        onApply={newFilters => setFilters(newFilters)}
         onReset={() => setFilters(DEFAULT_FILTERS)}
       />
     </View>

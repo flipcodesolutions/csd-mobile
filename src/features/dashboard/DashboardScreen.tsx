@@ -79,16 +79,23 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
     }
 
     try {
-      const [leadsRes, brandsRes, modelsRes, variantsRes, usersRes, sourcesRes, statusesRes] =
-        await Promise.all([
-          leadApi.getAll().catch(() => null),
-          brandApi.getAll().catch(() => null),
-          modelApi.getAll().catch(() => null),
-          variantApi.getAll().catch(() => null),
-          userApi.getAll().catch(() => null),
-          leadSourceApi.getAll().catch(() => null),
-          leadStatusApi.getAll().catch(() => null),
-        ]);
+      const [
+        leadsRes,
+        brandsRes,
+        modelsRes,
+        variantsRes,
+        usersRes,
+        sourcesRes,
+        statusesRes,
+      ] = await Promise.all([
+        leadApi.getAll().catch(() => null),
+        brandApi.getAll().catch(() => null),
+        modelApi.getAll().catch(() => null),
+        variantApi.getAll().catch(() => null),
+        userApi.getAll().catch(() => null),
+        leadSourceApi.getAll().catch(() => null),
+        leadStatusApi.getAll().catch(() => null),
+      ]);
 
       const getList = (res: any) =>
         res && res.status && Array.isArray(res.data)
@@ -106,7 +113,9 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
       const usersList = getList(usersRes);
       const sourcesList = getList(sourcesRes);
       const statusesList = getList(statusesRes);
-      const hotCount = leadsList.filter((l: any) => l.priority === 'Hot').length;
+      const hotCount = leadsList.filter(
+        (l: any) => l.priority === 'Hot',
+      ).length;
 
       setStats({
         leads: leadsList.length,
@@ -135,23 +144,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
       <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
         <SuperAdminDashboardView
           onNavigate={onNavigate}
-          onSwitchRole={(role) => setSelectedRole(role)}
-        />
-        <FabSpeedDial
-          primaryAction={{
-            label: 'Customer Leads',
-            onPress: () => {
-              triggerHaptic('impactLight');
-              onNavigate('leads');
-            },
-          }}
-          secondaryAction={{
-            label: 'Follow-Up Queue',
-            onPress: () => {
-              triggerHaptic('impactLight');
-              onNavigate('follow-ups');
-            },
-          }}
+          onSwitchRole={role => setSelectedRole(role)}
         />
       </View>
     );
@@ -176,8 +169,12 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
         {/* Role Switcher Toolbar */}
         <View style={styles.roleBar}>
           <Text style={styles.roleBarTitle}>ROLE DASHBOARD VIEW:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rolePillScroll}>
-            {ROLES.map((r) => {
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.rolePillScroll}
+          >
+            {ROLES.map(r => {
               const isActive = selectedRole === r.id;
               return (
                 <TouchableOpacity
@@ -186,7 +183,12 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
                   onPress={() => setSelectedRole(r.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.rolePillText, isActive && styles.rolePillTextActive]}>
+                  <Text
+                    style={[
+                      styles.rolePillText,
+                      isActive && styles.rolePillTextActive,
+                    ]}
+                  >
                     {r.label}
                   </Text>
                 </TouchableOpacity>

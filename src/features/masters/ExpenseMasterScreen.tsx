@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -27,12 +33,48 @@ import { exportCsvToFile } from '../../core/utils/csvExporter';
 import { showErrorToast, showSuccessToast } from '../../core/utils/toast';
 
 const DEFAULT_SEED_EXPENSES: ExpenseCategory[] = [
-  { id: 1, title: 'Office Rent', name: 'Office Rent', description: 'Monthly dealership showroom and office rent', status: 'Active' },
-  { id: 2, title: 'Electricity Bill', name: 'Electricity Bill', description: 'Showroom light, power, and AC monthly billing', status: 'Active' },
-  { id: 3, title: 'Staff Welfare & Food', name: 'Staff Welfare & Food', description: 'Tea, refreshments, snacks, and team lunch expenses', status: 'Active' },
-  { id: 4, title: 'Showroom Maintenance', name: 'Showroom Maintenance', description: 'Housekeeping, facility repairs, and sanitization', status: 'Active' },
-  { id: 5, title: 'Internet & Telephony', name: 'Internet & Telephony', description: 'Broadband, VoIP calling desk, and cellular bills', status: 'Active' },
-  { id: 6, title: 'Printing & Stationary', name: 'Printing & Stationary', description: 'Brochures, quotation print pads, and office supplies', status: 'Active' },
+  {
+    id: 1,
+    title: 'Office Rent',
+    name: 'Office Rent',
+    description: 'Monthly dealership showroom and office rent',
+    status: 'Active',
+  },
+  {
+    id: 2,
+    title: 'Electricity Bill',
+    name: 'Electricity Bill',
+    description: 'Showroom light, power, and AC monthly billing',
+    status: 'Active',
+  },
+  {
+    id: 3,
+    title: 'Staff Welfare & Food',
+    name: 'Staff Welfare & Food',
+    description: 'Tea, refreshments, snacks, and team lunch expenses',
+    status: 'Active',
+  },
+  {
+    id: 4,
+    title: 'Showroom Maintenance',
+    name: 'Showroom Maintenance',
+    description: 'Housekeeping, facility repairs, and sanitization',
+    status: 'Active',
+  },
+  {
+    id: 5,
+    title: 'Internet & Telephony',
+    name: 'Internet & Telephony',
+    description: 'Broadband, VoIP calling desk, and cellular bills',
+    status: 'Active',
+  },
+  {
+    id: 6,
+    title: 'Printing & Stationary',
+    name: 'Printing & Stationary',
+    description: 'Brochures, quotation print pads, and office supplies',
+    status: 'Active',
+  },
 ];
 
 interface ExpenseMasterScreenProps {
@@ -45,7 +87,9 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
   const flatListRef = useRef<FlatList>(null);
 
   // Data states
-  const [categories, setCategories] = useState<ExpenseCategory[]>(DEFAULT_SEED_EXPENSES);
+  const [categories, setCategories] = useState<ExpenseCategory[]>(
+    DEFAULT_SEED_EXPENSES,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -66,7 +110,9 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
 
   // Delete modal state
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<ExpenseCategory | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ExpenseCategory | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   // 1. Fetch Expense Categories API with Server Pagination
@@ -74,12 +120,13 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
     pageNumber: number = 1,
     isPull = false,
     newPerPage: number = perPage,
-    overrideSearch?: string
+    overrideSearch?: string,
   ) => {
     if (isPull) setIsRefreshing(true);
     else if (pageNumber === 1) setIsLoading(true);
 
-    const currentSearch = overrideSearch !== undefined ? overrideSearch : search;
+    const currentSearch =
+      overrideSearch !== undefined ? overrideSearch : search;
 
     try {
       const res = await expenseCategoryApi.getAll({
@@ -126,13 +173,18 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
       if (pagination) {
         const tot = Number(pagination.total) || parsed.length;
         const curP = Number(pagination.current_page) || pageNumber;
-        const lastP = Number(pagination.last_page) || Math.max(1, Math.ceil(tot / newPerPage));
+        const lastP =
+          Number(pagination.last_page) ||
+          Math.max(1, Math.ceil(tot / newPerPage));
         setTotalCount(tot);
         setTotalPages(lastP);
         setHasMore(curP < lastP);
       } else {
         setHasMore(parsed.length >= newPerPage);
-        const computedTotal = pageNumber === 1 ? parsed.length : Math.max(parsed.length, totalCount);
+        const computedTotal =
+          pageNumber === 1
+            ? parsed.length
+            : Math.max(parsed.length, totalCount);
         setTotalCount(computedTotal);
         setTotalPages(Math.max(1, Math.ceil(computedTotal / newPerPage)));
       }
@@ -154,58 +206,63 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
     fetchCategories(1, true, perPage);
   }, [search, perPage]);
 
-
-
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore && !isLoading && !isRefreshing) {
       setIsLoadingMore(true);
-      expenseCategoryApi.getAll({
-        page: page + 1,
-        per_page: perPage,
-        search: search.trim() || undefined,
-      }).then((res) => {
-        const raw = res;
-        const rawList =
-          raw && raw.status && Array.isArray(raw.data)
-            ? raw.data
-            : Array.isArray(raw?.data)
-            ? raw.data
-            : Array.isArray(raw?.data?.data)
-            ? raw.data.data
-            : Array.isArray(raw)
-            ? raw
-            : [];
-        const parsed: ExpenseCategory[] = rawList.map((c: any) => ({
-          id: Number(c.id),
-          title: c.name || c.title || 'Expense Category',
-          name: c.name || c.title,
-          description: c.description || '',
-          status: c.status === 1 || c.status === 'Active' ? 'Active' : 'Inactive',
-          created_at: c.created_at,
-        }));
-        setCategories((prev) => {
-          const ids = new Set(prev.map((item) => item.id));
-          const newOnes = parsed.filter((item) => !ids.has(item.id));
-          return [...prev, ...newOnes];
+      expenseCategoryApi
+        .getAll({
+          page: page + 1,
+          per_page: perPage,
+          search: search.trim() || undefined,
+        })
+        .then(res => {
+          const raw = res;
+          const rawList =
+            raw && raw.status && Array.isArray(raw.data)
+              ? raw.data
+              : Array.isArray(raw?.data)
+              ? raw.data
+              : Array.isArray(raw?.data?.data)
+              ? raw.data.data
+              : Array.isArray(raw)
+              ? raw
+              : [];
+          const parsed: ExpenseCategory[] = rawList.map((c: any) => ({
+            id: Number(c.id),
+            title: c.name || c.title || 'Expense Category',
+            name: c.name || c.title,
+            description: c.description || '',
+            status:
+              c.status === 1 || c.status === 'Active' ? 'Active' : 'Inactive',
+            created_at: c.created_at,
+          }));
+          setCategories(prev => {
+            const ids = new Set(prev.map(item => item.id));
+            const newOnes = parsed.filter(item => !ids.has(item.id));
+            return [...prev, ...newOnes];
+          });
+          const pagination = raw?.pagination || raw?.data?.pagination;
+          if (pagination) {
+            setHasMore(
+              Number(pagination.current_page) < Number(pagination.last_page),
+            );
+          } else {
+            setHasMore(parsed.length >= perPage);
+          }
+          setPage(p => p + 1);
+        })
+        .catch(e => {
+          console.log('Error loading more expenses:', e);
+        })
+        .finally(() => {
+          setIsLoadingMore(false);
         });
-        const pagination = raw?.pagination || raw?.data?.pagination;
-        if (pagination) {
-          setHasMore(Number(pagination.current_page) < Number(pagination.last_page));
-        } else {
-          setHasMore(parsed.length >= perPage);
-        }
-        setPage((p) => p + 1);
-      }).catch((e) => {
-        console.log('Error loading more expenses:', e);
-      }).finally(() => {
-        setIsLoadingMore(false);
-      });
     }
   };
 
   // Client-Side Filter
   const filteredCategories = useMemo(() => {
-    return categories.filter((c) => {
+    return categories.filter(c => {
       const q = search.toLowerCase().trim();
       if (!q) return true;
       return (
@@ -229,13 +286,13 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
   };
 
   const handleSaveCategory = async (
-    payload: CreateExpenseCategoryPayload | UpdateExpenseCategoryPayload
+    payload: CreateExpenseCategoryPayload | UpdateExpenseCategoryPayload,
   ) => {
     try {
       if (editingItem) {
         await expenseCategoryApi.update(editingItem.id, payload);
-        setCategories((prev) =>
-          prev.map((c) =>
+        setCategories(prev =>
+          prev.map(c =>
             c.id === editingItem.id
               ? {
                   ...c,
@@ -244,16 +301,23 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
                   description: payload.description,
                   status: payload.status === 1 ? 'Active' : 'Inactive',
                 }
-              : c
-          )
+              : c,
+          ),
         );
         triggerHaptic('notificationSuccess');
-        showSuccessToast('Category Updated', `Expense title "${payload.name}" updated successfully.`);
+        showSuccessToast(
+          'Category Updated',
+          `Expense title "${payload.name}" updated successfully.`,
+        );
       } else {
-        const res = await expenseCategoryApi.create(payload as CreateExpenseCategoryPayload);
+        const res = await expenseCategoryApi.create(
+          payload as CreateExpenseCategoryPayload,
+        );
         const newId =
           res?.data?.id ||
-          (categories.length > 0 ? Math.max(...categories.map((c) => c.id)) + 1 : 1);
+          (categories.length > 0
+            ? Math.max(...categories.map(c => c.id)) + 1
+            : 1);
         const newCat: ExpenseCategory = {
           id: newId,
           title: payload.name,
@@ -261,9 +325,12 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
           description: payload.description,
           status: payload.status === 1 ? 'Active' : 'Inactive',
         };
-        setCategories((prev) => [newCat, ...prev]);
+        setCategories(prev => [newCat, ...prev]);
         triggerHaptic('notificationSuccess');
-        showSuccessToast('Category Saved', `Expense category "${payload.name}" registered.`);
+        showSuccessToast(
+          'Category Saved',
+          `Expense category "${payload.name}" registered.`,
+        );
       }
     } catch (err: any) {
       console.log('Error saving expense category:', err);
@@ -282,13 +349,13 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
     try {
       setIsDeleting(true);
       await expenseCategoryApi.delete(deleteTarget.id);
-      setCategories((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setCategories(prev => prev.filter(c => c.id !== deleteTarget.id));
       triggerHaptic('notificationSuccess');
       setDeleteModalVisible(false);
       setDeleteTarget(null);
       showSuccessToast(
         'Category Deleted',
-        `Expense title "${deleteTarget.title}" removed from catalog.`
+        `Expense title "${deleteTarget.title}" removed from catalog.`,
       );
     } catch (err: any) {
       console.log('Error deleting expense category:', err);
@@ -306,7 +373,7 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
   // CSV Export Action
   const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    const rows = filteredCategories.map((c) => [
+    const rows = filteredCategories.map(c => [
       c.id,
       c.title || c.name || 'Expense',
       c.description || 'N/A',
@@ -330,7 +397,7 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
       <FlatList
         ref={flatListRef}
         data={filteredCategories}
-        keyExtractor={(item) => `expense-cat-${item.id}`}
+        keyExtractor={item => `expense-cat-${item.id}`}
         renderItem={({ item, index }) => (
           <ExpenseCategoryCard
             item={item}
@@ -373,7 +440,10 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
                 value={search}
                 onChangeText={setSearch}
                 onSubmitEditing={() => {
-                  flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                  flatListRef.current?.scrollToOffset({
+                    offset: 0,
+                    animated: true,
+                  });
                   fetchCategories(1, false, perPage, search);
                 }}
                 returnKeyType="search"
@@ -384,7 +454,10 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
                 <TouchableOpacity
                   onPress={() => {
                     setSearch('');
-                    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    flatListRef.current?.scrollToOffset({
+                      offset: 0,
+                      animated: true,
+                    });
                     fetchCategories(1, false, perPage, '');
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -458,7 +531,13 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
         }
         ListFooterComponent={
           isLoadingMore ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                paddingVertical: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : !hasMore && categories.length > 5 ? (
@@ -502,10 +581,6 @@ export const ExpenseMasterScreen: React.FC<ExpenseMasterScreenProps> = () => {
         primaryAction={{
           label: 'Add Category',
           onPress: handleOpenAdd,
-        }}
-        secondaryAction={{
-          label: 'Download CSV',
-          onPress: handleExportCSV,
         }}
       />
     </View>

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -29,14 +35,49 @@ import { AddEditLeadSourceModal } from './components/AddEditLeadSourceModal';
 import { DeleteLeadSourceModal } from './components/DeleteLeadSourceModal';
 
 const DEFAULT_SEED_SOURCES: LeadSource[] = [
-  { id: 1, title: 'Showroom Walk-in', name: 'Showroom Walk-in', status: 'Active' },
-  { id: 2, title: 'Website Inquiry', name: 'Website Inquiry', status: 'Active' },
+  {
+    id: 1,
+    title: 'Showroom Walk-in',
+    name: 'Showroom Walk-in',
+    status: 'Active',
+  },
+  {
+    id: 2,
+    title: 'Website Inquiry',
+    name: 'Website Inquiry',
+    status: 'Active',
+  },
   { id: 3, title: 'Facebook Ads', name: 'Facebook Ads', status: 'Active' },
-  { id: 4, title: 'Instagram Campaign', name: 'Instagram Campaign', status: 'Active' },
-  { id: 5, title: 'Defence Reference', name: 'Defence Reference', status: 'Active' },
-  { id: 6, title: 'Canteen Telecalling', name: 'Canteen Telecalling', status: 'Active' },
-  { id: 7, title: 'Google Search Ads', name: 'Google Search Ads', status: 'Active' },
-  { id: 8, title: 'Newspaper Print', name: 'Newspaper Print', status: 'Inactive' },
+  {
+    id: 4,
+    title: 'Instagram Campaign',
+    name: 'Instagram Campaign',
+    status: 'Active',
+  },
+  {
+    id: 5,
+    title: 'Defence Reference',
+    name: 'Defence Reference',
+    status: 'Active',
+  },
+  {
+    id: 6,
+    title: 'Canteen Telecalling',
+    name: 'Canteen Telecalling',
+    status: 'Active',
+  },
+  {
+    id: 7,
+    title: 'Google Search Ads',
+    name: 'Google Search Ads',
+    status: 'Active',
+  },
+  {
+    id: 8,
+    title: 'Newspaper Print',
+    name: 'Newspaper Print',
+    status: 'Inactive',
+  },
 ];
 
 interface LeadSourceScreenProps {
@@ -94,7 +135,7 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
     pageNumber = 1,
     isPull = false,
     newPerPage = perPage,
-    overrideSearch?: string
+    overrideSearch?: string,
   ) => {
     if (isPull) {
       setIsRefreshing(true);
@@ -102,7 +143,8 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
       setIsLoading(true);
     }
 
-    const currentSearch = overrideSearch !== undefined ? overrideSearch : search;
+    const currentSearch =
+      overrideSearch !== undefined ? overrideSearch : search;
 
     try {
       const res = await leadSourceApi.getAll({
@@ -116,12 +158,12 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
         raw && raw.status && Array.isArray(raw.data)
           ? raw.data
           : Array.isArray(raw?.data)
-            ? raw.data
-            : Array.isArray(raw?.data?.data)
-              ? raw.data.data
-              : Array.isArray(raw)
-                ? raw
-                : [];
+          ? raw.data
+          : Array.isArray(raw?.data?.data)
+          ? raw.data.data
+          : Array.isArray(raw)
+          ? raw
+          : [];
 
       const pagination =
         raw?.pagination ||
@@ -148,13 +190,18 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
       if (pagination) {
         const tot = Number(pagination.total) || parsed.length;
         const curP = Number(pagination.current_page) || pageNumber;
-        const lastP = Number(pagination.last_page) || Math.max(1, Math.ceil(tot / newPerPage));
+        const lastP =
+          Number(pagination.last_page) ||
+          Math.max(1, Math.ceil(tot / newPerPage));
         setTotalCount(tot);
         setTotalPages(lastP);
         setHasMore(curP < lastP);
       } else {
         setHasMore(parsed.length >= newPerPage);
-        const computedTotal = pageNumber === 1 ? parsed.length : Math.max(parsed.length, totalCount);
+        const computedTotal =
+          pageNumber === 1
+            ? parsed.length
+            : Math.max(parsed.length, totalCount);
         setTotalCount(computedTotal);
         setTotalPages(Math.max(1, Math.ceil(computedTotal / newPerPage)));
       }
@@ -178,70 +225,76 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
     fetchSources(1, true, perPage);
   }, [search, perPage]);
 
-
-
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore && !isLoading && !isRefreshing) {
       setIsLoadingMore(true);
-      leadSourceApi.getAll({
-        page: page + 1,
-        per_page: perPage,
-        search: search.trim() || undefined,
-      }).then((res) => {
-        const raw = res;
-        const rawList =
-          raw && raw.status && Array.isArray(raw.data)
-            ? raw.data
-            : Array.isArray(raw?.data)
+      leadSourceApi
+        .getAll({
+          page: page + 1,
+          per_page: perPage,
+          search: search.trim() || undefined,
+        })
+        .then(res => {
+          const raw = res;
+          const rawList =
+            raw && raw.status && Array.isArray(raw.data)
+              ? raw.data
+              : Array.isArray(raw?.data)
               ? raw.data
               : Array.isArray(raw?.data?.data)
-                ? raw.data.data
-                : Array.isArray(raw)
-                  ? raw
-                  : [];
-        const parsed: LeadSource[] = rawList.map((s: any) => ({
-          id: Number(s.id),
-          title: s.title || s.name || 'Marketing Channel',
-          name: s.title || s.name,
-          status: s.status || 'Active',
-          created_at: s.created_at,
-        }));
-        setSources((prev) => {
-          const existingIds = new Set(prev.map((item) => item.id));
-          const newItems = parsed.filter((item) => !existingIds.has(item.id));
-          return [...prev, ...newItems];
+              ? raw.data.data
+              : Array.isArray(raw)
+              ? raw
+              : [];
+          const parsed: LeadSource[] = rawList.map((s: any) => ({
+            id: Number(s.id),
+            title: s.title || s.name || 'Marketing Channel',
+            name: s.title || s.name,
+            status: s.status || 'Active',
+            created_at: s.created_at,
+          }));
+          setSources(prev => {
+            const existingIds = new Set(prev.map(item => item.id));
+            const newItems = parsed.filter(item => !existingIds.has(item.id));
+            return [...prev, ...newItems];
+          });
+          setPage(prev => prev + 1);
+          const pagination =
+            raw?.pagination ||
+            raw?.data?.pagination ||
+            (typeof raw?.current_page === 'number' ? raw : null);
+          if (pagination) {
+            setHasMore(
+              (Number(pagination.current_page) || page + 1) <
+                (Number(pagination.last_page) || 1),
+            );
+          } else {
+            setHasMore(parsed.length >= perPage);
+          }
+        })
+        .catch(err => {
+          console.log('Error loading more lead sources:', err);
+        })
+        .finally(() => {
+          setIsLoadingMore(false);
         });
-        setPage((prev) => prev + 1);
-        const pagination =
-          raw?.pagination ||
-          raw?.data?.pagination ||
-          (typeof raw?.current_page === 'number' ? raw : null);
-        if (pagination) {
-          setHasMore((Number(pagination.current_page) || page + 1) < (Number(pagination.last_page) || 1));
-        } else {
-          setHasMore(parsed.length >= perPage);
-        }
-      }).catch((err) => {
-        console.log('Error loading more lead sources:', err);
-      }).finally(() => {
-        setIsLoadingMore(false);
-      });
     }
   };
 
   // Fallback Computed Stats
   const computedStats: LeadSourceStats = useMemo(() => {
     const total = sources.length;
-    const active = sources.filter((s) => s.status === 'Active').length;
+    const active = sources.filter(s => s.status === 'Active').length;
     return {
       total_channels: stats.total_channels > 0 ? stats.total_channels : total,
-      active_channels: stats.active_channels > 0 ? stats.active_channels : active,
+      active_channels:
+        stats.active_channels > 0 ? stats.active_channels : active,
     };
   }, [sources, stats]);
 
   // Client-Side Filter
   const filteredSources = useMemo(() => {
-    return sources.filter((s) => {
+    return sources.filter(s => {
       const q = search.toLowerCase().trim();
       if (!q) return true;
       return s.title.toLowerCase().includes(q);
@@ -262,38 +315,47 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
   };
 
   const handleSaveSource = async (
-    payload: CreateLeadSourcePayload | UpdateLeadSourcePayload
+    payload: CreateLeadSourcePayload | UpdateLeadSourcePayload,
   ) => {
     try {
       if (editingItem) {
         await leadSourceApi.update(editingItem.id, payload);
-        setSources((prev) =>
-          prev.map((s) =>
+        setSources(prev =>
+          prev.map(s =>
             s.id === editingItem.id
               ? {
-                ...s,
-                title: payload.title,
-                name: payload.title,
-                status: payload.status,
-              }
-              : s
-          )
+                  ...s,
+                  title: payload.title,
+                  name: payload.title,
+                  status: payload.status,
+                }
+              : s,
+          ),
         );
         triggerHaptic('notificationSuccess');
-        showSuccessToast('Channel Updated', `Lead source "${payload.title}" updated.`);
+        showSuccessToast(
+          'Channel Updated',
+          `Lead source "${payload.title}" updated.`,
+        );
       } else {
-        const res = await leadSourceApi.create(payload as CreateLeadSourcePayload);
+        const res = await leadSourceApi.create(
+          payload as CreateLeadSourcePayload,
+        );
         const newId =
-          res?.data?.id || (sources.length > 0 ? Math.max(...sources.map((s) => s.id)) + 1 : 1);
+          res?.data?.id ||
+          (sources.length > 0 ? Math.max(...sources.map(s => s.id)) + 1 : 1);
         const newSource: LeadSource = {
           id: newId,
           title: payload.title,
           name: payload.title,
           status: payload.status,
         };
-        setSources((prev) => [newSource, ...prev]);
+        setSources(prev => [newSource, ...prev]);
         triggerHaptic('notificationSuccess');
-        showSuccessToast('Channel Saved', `Lead source "${payload.title}" registered.`);
+        showSuccessToast(
+          'Channel Saved',
+          `Lead source "${payload.title}" registered.`,
+        );
       }
     } catch (err: any) {
       console.log('Error saving lead source:', err);
@@ -312,23 +374,23 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
     try {
       setIsDeleting(true);
       await leadSourceApi.delete(deleteTarget.id);
-      setSources((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      setSources(prev => prev.filter(s => s.id !== deleteTarget.id));
       triggerHaptic('notificationSuccess');
       setDeleteModalVisible(false);
       setDeleteTarget(null);
       showSuccessToast(
         'Channel Deleted',
-        `Lead source "${deleteTarget.title}" removed from catalog.`
+        `Lead source "${deleteTarget.title}" removed from catalog.`,
       );
     } catch (err: any) {
       console.log('Error deleting lead source:', err);
       // Demo optimistic delete
-      setSources((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      setSources(prev => prev.filter(s => s.id !== deleteTarget.id));
       setDeleteModalVisible(false);
       setDeleteTarget(null);
       showSuccessToast(
         'Channel Deleted',
-        `Lead source "${deleteTarget.title}" removed from catalog.`
+        `Lead source "${deleteTarget.title}" removed from catalog.`,
       );
     } finally {
       setIsDeleting(false);
@@ -338,7 +400,7 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
   // Export CSV Action
   const handleExportCSV = async () => {
     triggerHaptic('selection');
-    const rows = filteredSources.map((s) => [
+    const rows = filteredSources.map(s => [
       String(s.id),
       s.title || s.name || '',
       s.status || 'Active',
@@ -361,7 +423,7 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
       <FlatList
         ref={flatListRef}
         data={filteredSources}
-        keyExtractor={(item) => `lead-src-${item.id}`}
+        keyExtractor={item => `lead-src-${item.id}`}
         renderItem={({ item, index }) => (
           <LeadSourceCard
             item={item}
@@ -403,7 +465,11 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
                   },
                 ]}
               >
-                <Search size={14} color={colors.textSecondary} strokeWidth={2} />
+                <Search
+                  size={14}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
                 <TextInput
                   style={[
                     styles.searchInput,
@@ -412,7 +478,10 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
                   value={search}
                   onChangeText={setSearch}
                   onSubmitEditing={() => {
-                    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    flatListRef.current?.scrollToOffset({
+                      offset: 0,
+                      animated: true,
+                    });
                     fetchSources(1, false, perPage, search);
                   }}
                   returnKeyType="search"
@@ -423,7 +492,10 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
                   <TouchableOpacity
                     onPress={() => {
                       setSearch('');
-                      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                      flatListRef.current?.scrollToOffset({
+                        offset: 0,
+                        animated: true,
+                      });
                       fetchSources(1, false, perPage, '');
                     }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -434,7 +506,6 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
               </View>
 
               {/* Total Count Badge */}
-
             </View>
           </>
         }
@@ -442,7 +513,7 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
           isLoading ? (
             <View style={styles.emptyContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text 
+              <Text
                 style={[
                   styles.emptyText,
                   { color: isDark ? '#94A3B8' : '#64748B' },
@@ -477,7 +548,13 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
         }
         ListFooterComponent={
           isLoadingMore ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                paddingVertical: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : !hasMore && sources.length > 5 ? (
@@ -521,10 +598,6 @@ export const LeadSourceScreen: React.FC<LeadSourceScreenProps> = () => {
         primaryAction={{
           label: 'Add Source',
           onPress: handleOpenAdd,
-        }}
-        secondaryAction={{
-          label: 'Download CSV',
-          onPress: handleExportCSV,
         }}
       />
     </View>

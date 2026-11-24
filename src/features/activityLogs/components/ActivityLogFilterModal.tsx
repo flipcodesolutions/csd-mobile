@@ -209,14 +209,14 @@ export const ActivityLogFilterModal: React.FC<ActivityLogFilterModalProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.chip,
-                    draftUser === 'all' && [
-                      styles.chipActive,
-                      { backgroundColor: colors.primary, borderColor: colors.primary },
-                    ],
                     {
                       backgroundColor: isDark ? '#162032' : '#F8FAFC',
                       borderColor: isDark ? '#1E293B' : '#E2E8F0',
                     },
+                    draftUser === 'all' && [
+                      styles.chipActive,
+                      { backgroundColor: colors.primary, borderColor: colors.primary },
+                    ],
                   ]}
                   onPress={() => setDraftUser('all')}
                 >
@@ -238,14 +238,14 @@ export const ActivityLogFilterModal: React.FC<ActivityLogFilterModalProps> = ({
                       key={`user-chip-${u.id}`}
                       style={[
                         styles.chip,
-                        isSel && [
-                          styles.chipActive,
-                          { backgroundColor: colors.primary, borderColor: colors.primary },
-                        ],
                         {
                           backgroundColor: isDark ? '#162032' : '#F8FAFC',
                           borderColor: isDark ? '#1E293B' : '#E2E8F0',
                         },
+                        isSel && [
+                          styles.chipActive,
+                          { backgroundColor: colors.primary, borderColor: colors.primary },
+                        ],
                       ]}
                       onPress={() => setDraftUser(u.id)}
                     >
@@ -285,14 +285,14 @@ export const ActivityLogFilterModal: React.FC<ActivityLogFilterModalProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.chip,
-                    draftModule === 'all' && [
-                      styles.chipActive,
-                      { backgroundColor: '#0284C7', borderColor: '#0284C7' },
-                    ],
                     {
                       backgroundColor: isDark ? '#162032' : '#F8FAFC',
                       borderColor: isDark ? '#1E293B' : '#E2E8F0',
                     },
+                    draftModule === 'all' && [
+                      styles.chipActive,
+                      { backgroundColor: '#0284C7', borderColor: '#0284C7' },
+                    ],
                   ]}
                   onPress={() => setDraftModule('all')}
                 >
@@ -314,14 +314,14 @@ export const ActivityLogFilterModal: React.FC<ActivityLogFilterModalProps> = ({
                       key={`module-chip-${m}`}
                       style={[
                         styles.chip,
-                        isSel && [
-                          styles.chipActive,
-                          { backgroundColor: '#0284C7', borderColor: '#0284C7' },
-                        ],
                         {
                           backgroundColor: isDark ? '#162032' : '#F8FAFC',
                           borderColor: isDark ? '#1E293B' : '#E2E8F0',
                         },
+                        isSel && [
+                          styles.chipActive,
+                          { backgroundColor: '#0284C7', borderColor: '#0284C7' },
+                        ],
                       ]}
                       onPress={() => setDraftModule(m)}
                     >
@@ -361,14 +361,14 @@ export const ActivityLogFilterModal: React.FC<ActivityLogFilterModalProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.chip,
-                    draftAction === 'all' && [
-                      styles.chipActive,
-                      { backgroundColor: '#D97706', borderColor: '#D97706' },
-                    ],
                     {
                       backgroundColor: isDark ? '#162032' : '#F8FAFC',
                       borderColor: isDark ? '#1E293B' : '#E2E8F0',
                     },
+                    draftAction === 'all' && [
+                      styles.chipActive,
+                      { backgroundColor: '#D97706', borderColor: '#D97706' },
+                    ],
                   ]}
                   onPress={() => setDraftAction('all')}
                 >
@@ -390,14 +390,14 @@ export const ActivityLogFilterModal: React.FC<ActivityLogFilterModalProps> = ({
                       key={`action-chip-${act}`}
                       style={[
                         styles.chip,
-                        isSel && [
-                          styles.chipActive,
-                          { backgroundColor: '#D97706', borderColor: '#D97706' },
-                        ],
                         {
                           backgroundColor: isDark ? '#162032' : '#F8FAFC',
                           borderColor: isDark ? '#1E293B' : '#E2E8F0',
                         },
+                        isSel && [
+                          styles.chipActive,
+                          { backgroundColor: '#D97706', borderColor: '#D97706' },
+                        ],
                       ]}
                       onPress={() => setDraftAction(act)}
                     >

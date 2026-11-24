@@ -474,7 +474,7 @@ export const InsuranceRemindersScreen: React.FC = () => {
                   styles.searchInput,
                   { color: isDark ? '#F1F5F9' : '#0F172A' },
                 ]}
-                placeholder="Search by customer, phone, vehicle, policy #..."
+                placeholder="Search by customer, phone .."
                 placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                 value={searchTerm}
                 onChangeText={setSearchTerm}

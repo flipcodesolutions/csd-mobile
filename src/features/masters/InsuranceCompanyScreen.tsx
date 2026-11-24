@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -46,7 +52,9 @@ interface InsuranceCompanyScreenProps {
   onOpenDrawer?: () => void;
 }
 
-export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () => {
+export const InsuranceCompanyScreen: React.FC<
+  InsuranceCompanyScreenProps
+> = () => {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
@@ -69,7 +77,9 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
 
   // Search & Filter states
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'active' | 'inactive'
+  >('all');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -80,7 +90,9 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
 
   // Delete modal states
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<InsuranceCompany | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InsuranceCompany | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   // 1. Fetch Stats API
@@ -100,7 +112,7 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
     pageNumber: number = 1,
     isPull: boolean = false,
     overrideSearch?: string,
-    overrideStatus?: 'all' | 'active' | 'inactive'
+    overrideStatus?: 'all' | 'active' | 'inactive',
   ) => {
     if (isPull) {
       setIsRefreshing(true);
@@ -108,8 +120,10 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       setIsLoading(true);
     }
 
-    const currentSearch = overrideSearch !== undefined ? overrideSearch : search;
-    const currentStatus = overrideStatus !== undefined ? overrideStatus : statusFilter;
+    const currentSearch =
+      overrideSearch !== undefined ? overrideSearch : search;
+    const currentStatus =
+      overrideStatus !== undefined ? overrideStatus : statusFilter;
 
     try {
       const res = await insuranceCompanyApi.getAll({
@@ -124,12 +138,12 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
         raw && raw.status && Array.isArray(raw.data)
           ? raw.data
           : Array.isArray(raw?.data)
-            ? raw.data
-            : Array.isArray(raw?.data?.data)
-              ? raw.data.data
-              : Array.isArray(raw)
-                ? raw
-                : [];
+          ? raw.data
+          : Array.isArray(raw?.data?.data)
+          ? raw.data.data
+          : Array.isArray(raw)
+          ? raw
+          : [];
 
       const pagination =
         raw?.pagination ||
@@ -146,9 +160,9 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
         email: c.email || undefined,
         status:
           c.status === 'Active' ||
-            c.status === 'active' ||
-            c.status === 1 ||
-            c.status === '1'
+          c.status === 'active' ||
+          c.status === 1 ||
+          c.status === '1'
             ? 'Active'
             : 'Inactive',
         notes: c.notes || undefined,
@@ -159,14 +173,16 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       if (pageNumber === 1) {
         setCompanies(parsed);
         if (parsed.length === 0) {
-          AsyncStorage.removeItem(CACHE_KEY).catch(() => { });
+          AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
         } else {
-          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(parsed)).catch(() => { });
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(parsed)).catch(
+            () => {},
+          );
         }
       } else {
-        setCompanies((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const newItems = parsed.filter((p) => !existingIds.has(p.id));
+        setCompanies(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newItems = parsed.filter(p => !existingIds.has(p.id));
           return [...prev, ...newItems];
         });
       }
@@ -176,14 +192,17 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       if (pagination) {
         const tot = Number(pagination.total) ?? parsed.length;
         const curP = Number(pagination.current_page) || pageNumber;
-        const lastP = Number(pagination.last_page) || Math.max(1, Math.ceil(tot / perPage));
+        const lastP =
+          Number(pagination.last_page) || Math.max(1, Math.ceil(tot / perPage));
         setTotalCount(tot);
         setTotalPages(lastP);
         setHasMore(curP < lastP);
       } else {
         setHasMore(parsed.length >= perPage);
         const computedTotal =
-          pageNumber === 1 ? parsed.length : Math.max(parsed.length, totalCount);
+          pageNumber === 1
+            ? parsed.length
+            : Math.max(parsed.length, totalCount);
         setTotalCount(computedTotal);
         setTotalPages(Math.max(1, Math.ceil(computedTotal / perPage)));
       }
@@ -234,14 +253,25 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
   // Create or Update Submission
   const handleSubmitCompany = async (
     payload: CreateInsuranceCompanyPayload | UpdateInsuranceCompanyPayload,
-    isEdit: boolean
+    isEdit: boolean,
   ) => {
     if (isEdit && editingItem) {
-      await insuranceCompanyApi.update(editingItem.id, payload as UpdateInsuranceCompanyPayload);
-      showSuccessToast('Updated', `Insurance company "${payload.name}" updated successfully.`);
+      await insuranceCompanyApi.update(
+        editingItem.id,
+        payload as UpdateInsuranceCompanyPayload,
+      );
+      showSuccessToast(
+        'Updated',
+        `Insurance company "${payload.name}" updated successfully.`,
+      );
     } else {
-      await insuranceCompanyApi.create(payload as CreateInsuranceCompanyPayload);
-      showSuccessToast('Created', `Insurance company "${payload.name}" added successfully.`);
+      await insuranceCompanyApi.create(
+        payload as CreateInsuranceCompanyPayload,
+      );
+      showSuccessToast(
+        'Created',
+        `Insurance company "${payload.name}" added successfully.`,
+      );
     }
     fetchStats();
     fetchCompanies(1, false);
@@ -256,13 +286,18 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       await insuranceCompanyApi.delete(targetItem.id);
 
       // Remove from local state immediately
-      setCompanies((prev) => {
-        const updated = prev.filter((c) => c.id !== targetItem.id);
-        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(() => { });
+      setCompanies(prev => {
+        const updated = prev.filter(c => c.id !== targetItem.id);
+        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(
+          () => {},
+        );
         return updated;
       });
 
-      showSuccessToast('Deleted', `Insurance company "${targetItem.name}" deleted.`);
+      showSuccessToast(
+        'Deleted',
+        `Insurance company "${targetItem.name}" deleted.`,
+      );
       setDeleteModalVisible(false);
       setDeleteTarget(null);
       fetchStats();
@@ -281,12 +316,17 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
 
       // 1. If 404: Not found on server (already deleted or local mock), remove from UI
       if (status === 404) {
-        setCompanies((prev) => {
-          const updated = prev.filter((c) => c.id !== targetItem.id);
-          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(() => { });
+        setCompanies(prev => {
+          const updated = prev.filter(c => c.id !== targetItem.id);
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(
+            () => {},
+          );
           return updated;
         });
-        showSuccessToast('Removed', `Record "${targetItem.name}" removed from list.`);
+        showSuccessToast(
+          'Removed',
+          `Record "${targetItem.name}" removed from list.`,
+        );
         fetchStats();
         return;
       }
@@ -305,11 +345,13 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       if (isConstraintError) {
         showErrorToast(
           'Cannot Delete',
-          `"${targetItem.name}" kisi Insurance Policy ya Deal se linked hai, isliye delete nahi ho sakta. Status "Inactive" set karein.`
+          `"${targetItem.name}" kisi Insurance Policy ya Deal se linked hai, isliye delete nahi ho sakta. Status "Inactive" set karein.`,
         );
       } else {
         const displayMsg =
-          typeof serverMsg === 'string' && serverMsg && !serverMsg.includes('Axios')
+          typeof serverMsg === 'string' &&
+          serverMsg &&
+          !serverMsg.includes('Axios')
             ? serverMsg
             : 'Unable to delete insurance company.';
         showErrorToast('Delete Failed', displayMsg);
@@ -322,7 +364,7 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
   // Export CSV
   const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    const rows = companies.map((c) => [
+    const rows = companies.map(c => [
       c.id,
       c.name,
       c.code || 'N/A',
@@ -332,7 +374,14 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
     ]);
     await exportCsvToFile({
       filename: 'insurance_companies',
-      headers: ['ID', 'Company Name', 'Code', 'Contact Person', 'Phone', 'Status'],
+      headers: [
+        'ID',
+        'Company Name',
+        'Code',
+        'Contact Person',
+        'Phone',
+        'Status',
+      ],
       rows,
     });
   };
@@ -341,7 +390,7 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
   const computedStats: InsuranceCompanyStats = useMemo(() => {
     if (stats.total > 0) return stats;
     const total = totalCount > 0 ? totalCount : companies.length;
-    const active = companies.filter((c) => c.status === 'Active').length;
+    const active = companies.filter(c => c.status === 'Active').length;
     const inactive = total - active;
     return { total, active, inactive: Math.max(0, inactive) };
   }, [stats, companies, totalCount]);
@@ -350,8 +399,8 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
     statusFilter === 'all'
       ? 'All Statuses'
       : statusFilter === 'active'
-        ? 'Active'
-        : 'Inactive';
+      ? 'Active'
+      : 'Inactive';
 
   return (
     <View
@@ -364,16 +413,16 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
       <FlatList
         ref={flatListRef}
         data={companies}
-        keyExtractor={(item) => `ins-company-${item.id}`}
+        keyExtractor={item => `ins-company-${item.id}`}
         renderItem={({ item, index }) => (
           <InsuranceCompanyCard
             item={item}
             index={index}
-            onEdit={(target) => {
+            onEdit={target => {
               setEditingItem(target);
               setAddEditModalVisible(true);
             }}
-            onDelete={(target) => {
+            onDelete={target => {
               setDeleteTarget(target);
               setDeleteModalVisible(true);
             }}
@@ -399,7 +448,7 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
               stats={computedStats}
               totalFallback={companies.length}
               activeFilter={statusFilter}
-              onSelectFilter={(f) => setStatusFilter(f)}
+              onSelectFilter={f => setStatusFilter(f)}
             />
 
             {/* Filter Section Matching Screenshot 1 */}
@@ -414,7 +463,11 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
                   },
                 ]}
               >
-                <Search size={14} color={isDark ? '#94A3B8' : '#64748B'} strokeWidth={2} />
+                <Search
+                  size={14}
+                  color={isDark ? '#94A3B8' : '#64748B'}
+                  strokeWidth={2}
+                />
                 <TextInput
                   style={[
                     styles.searchInput,
@@ -453,7 +506,10 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
                   >
                     {statusLabel}
                   </Text>
-                  <ChevronDown size={14} color={isDark ? '#94A3B8' : '#64748B'} />
+                  <ChevronDown
+                    size={14}
+                    color={isDark ? '#94A3B8' : '#64748B'}
+                  />
                 </TouchableOpacity>
 
                 {/* Reset Button Matching Screenshot 1 */}
@@ -513,7 +569,10 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
                   : 'Start by adding your first insurance partner company.'}
               </Text>
               <TouchableOpacity
-                style={[styles.emptyAddBtn, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.emptyAddBtn,
+                  { backgroundColor: colors.primary },
+                ]}
                 onPress={() => {
                   triggerHaptic('impactLight');
                   setEditingItem(null);
@@ -623,7 +682,7 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
               { id: 'all', label: 'All Statuses' },
               { id: 'active', label: 'Active' },
               { id: 'inactive', label: 'Inactive' },
-            ].map((opt) => {
+            ].map(opt => {
               const isSelected = statusFilter === opt.id;
               return (
                 <TouchableOpacity
@@ -669,10 +728,6 @@ export const InsuranceCompanyScreen: React.FC<InsuranceCompanyScreenProps> = () 
             setEditingItem(null);
             setAddEditModalVisible(true);
           },
-        }}
-        secondaryAction={{
-          label: 'Download CSV',
-          onPress: handleExportCSV,
         }}
       />
     </View>

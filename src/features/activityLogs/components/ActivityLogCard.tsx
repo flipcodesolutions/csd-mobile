@@ -153,24 +153,6 @@ export const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
               >
                 {userName}
               </Text>
-              <View
-                style={[
-                  styles.userIdTag,
-                  {
-                    backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-                    borderColor: isDark ? '#334155' : '#E2E8F0',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.userIdText,
-                    { color: isDark ? '#94A3B8' : '#64748B' },
-                  ]}
-                >
-                  #{userId}
-                </Text>
-              </View>
             </View>
 
             {userPhone ? (
@@ -256,10 +238,7 @@ export const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
         >
           <Globe size={11} color={isDark ? '#94A3B8' : '#64748B'} />
           <Text
-            style={[
-              styles.ipText,
-              { color: isDark ? '#94A3B8' : '#64748B' },
-            ]}
+            style={[styles.ipText, { color: isDark ? '#94A3B8' : '#64748B' }]}
           >
             {item.ip_address || '127.0.0.1'}
           </Text>
@@ -269,10 +248,7 @@ export const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
         <View style={styles.timeRow}>
           <Clock size={11} color={isDark ? '#64748B' : '#94A3B8'} />
           <Text
-            style={[
-              styles.timeText,
-              { color: isDark ? '#64748B' : '#94A3B8' },
-            ]}
+            style={[styles.timeText, { color: isDark ? '#64748B' : '#94A3B8' }]}
           >
             {item.created_at || 'Just now'}
           </Text>
@@ -428,4 +404,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

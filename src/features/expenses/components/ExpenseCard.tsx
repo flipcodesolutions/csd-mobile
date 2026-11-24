@@ -59,25 +59,9 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
         },
       ]}
     >
-      {/* Top Header: Index, Invoice & Date, Action Button */}
+      {/* Top Header: Invoice & Date, Action Button */}
       <View style={styles.topRow}>
         <View style={styles.topLeft}>
-          <View
-            style={[
-              styles.indexBadge,
-              { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-            ]}
-          >
-            <Text
-              style={[
-                styles.indexText,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              #{index + 1}
-            </Text>
-          </View>
-
           <View style={styles.invoiceDateCol}>
             <Text
               style={[
@@ -300,15 +284,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
-  },
-  indexBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  indexText: {
-    fontSize: 11,
-    fontWeight: '700',
   },
   invoiceDateCol: {
     flex: 1,

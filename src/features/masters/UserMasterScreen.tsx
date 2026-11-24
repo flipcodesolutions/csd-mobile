@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Edit2, Trash2 } from 'lucide-react-native';
+import { Edit2, Search, Trash2, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../core/theme/colors';
 import { triggerHaptic } from '../../core/utils/haptics';
@@ -64,11 +64,11 @@ export const UserMasterScreen: React.FC = () => {
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      () => setKeyboardVisible(true),
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
+      () => setKeyboardVisible(false),
     );
     return () => {
       showSub.remove();
@@ -97,7 +97,11 @@ export const UserMasterScreen: React.FC = () => {
       setUsers(rawList);
     } catch (error: any) {
       console.log('Error fetching users from API:', error);
-      Alert.alert('API Error', error?.response?.data?.message || 'Unable to fetch user master from server.');
+      Alert.alert(
+        'API Error',
+        error?.response?.data?.message ||
+          'Unable to fetch user master from server.',
+      );
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -157,7 +161,10 @@ export const UserMasterScreen: React.FC = () => {
         // PUT /api/users/:id
         const res = await userApi.update(editingItem.id, payload);
         if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Staff user "${formName.trim()}" updated.`);
+          Alert.alert(
+            'Success',
+            res?.message || `Staff user "${formName.trim()}" updated.`,
+          );
           fetchUsers();
           setModalVisible(false);
         } else {
@@ -167,7 +174,11 @@ export const UserMasterScreen: React.FC = () => {
         // POST /api/users
         const res = await userApi.create(payload);
         if (res && res.status !== false) {
-          Alert.alert('Success', res?.message || `Staff user "${formName.trim()}" created successfully.`);
+          Alert.alert(
+            'Success',
+            res?.message ||
+              `Staff user "${formName.trim()}" created successfully.`,
+          );
           fetchUsers();
           setModalVisible(false);
         } else {
@@ -176,7 +187,10 @@ export const UserMasterScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.log('Save User API error:', error);
-      Alert.alert('Request Failed', error?.response?.data?.message || 'Failed to save staff user.');
+      Alert.alert(
+        'Request Failed',
+        error?.response?.data?.message || 'Failed to save staff user.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -196,27 +210,36 @@ export const UserMasterScreen: React.FC = () => {
             try {
               const res = await userApi.delete(item.id);
               if (res && res.status !== false) {
-                Alert.alert('Deleted', res?.message || `User "${item.name}" has been removed.`);
+                Alert.alert(
+                  'Deleted',
+                  res?.message || `User "${item.name}" has been removed.`,
+                );
                 fetchUsers();
               } else {
                 Alert.alert('Error', res?.message || 'Failed to delete user.');
               }
             } catch (error: any) {
               console.log('Delete User API error:', error);
-              Alert.alert('Error', error?.response?.data?.message || 'Failed to delete user.');
+              Alert.alert(
+                'Error',
+                error?.response?.data?.message || 'Failed to delete user.',
+              );
             }
           },
         },
-      ]
+      ],
     );
   };
 
   // Filtered List
-  const filteredList = users.filter((item) => {
+  const filteredList = users.filter(item => {
+    const q = search.trim().toLowerCase();
     const matchSearch =
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.email.toLowerCase().includes(search.toLowerCase()) ||
-      item.role.toLowerCase().includes(search.toLowerCase());
+      !q ||
+      (item.name || '').toLowerCase().includes(q) ||
+      (item.email || '').toLowerCase().includes(q) ||
+      (item.phone || '').toLowerCase().includes(q) ||
+      (item.role || '').toLowerCase().includes(q);
     const matchRole = roleFilter === 'All' || item.role === roleFilter;
     return matchSearch && matchRole;
   });
@@ -224,7 +247,7 @@ export const UserMasterScreen: React.FC = () => {
   // Export CSV Action
   const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    const rows = filteredList.map((u) => [
+    const rows = filteredList.map(u => [
       u.id,
       u.name,
       u.email,
@@ -243,23 +266,48 @@ export const UserMasterScreen: React.FC = () => {
     <View style={styles.container}>
       {/* 1. Search Bar & Role Filter Scroll */}
       <View style={styles.topBar}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search staff name, email, or role..."
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
+        <View style={styles.searchContainer}>
+          <Search size={16} color={colors.textMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search staff name, email, or role..."
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search ? (
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic('impactLight');
+                setSearch('');
+              }}
+              style={styles.clearSearchBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
         >
-          {['All', 'Super Admin', 'Sales Manager', 'Sales Executive', 'Receptionist', 'Accountant'].map((r) => (
+          {[
+            'All',
+            'Super Admin',
+            'Sales Manager',
+            'Sales Executive',
+            'Receptionist',
+            'Accountant',
+          ].map(r => (
             <TouchableOpacity
               key={r}
-              style={[styles.filterBtn, roleFilter === r && styles.filterBtnActive]}
+              style={[
+                styles.filterBtn,
+                roleFilter === r && styles.filterBtnActive,
+              ]}
               onPress={() => setRoleFilter(r)}
             >
               <Text
@@ -279,13 +327,15 @@ export const UserMasterScreen: React.FC = () => {
       {isLoading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={colors.orange} />
-          <Text style={styles.loadingText}>Fetching staff users from API...</Text>
+          <Text style={styles.loadingText}>
+            Fetching staff users from API...
+          </Text>
         </View>
       ) : (
         /* 3. Staff User Cards List with Pull-to-Refresh */
         <FlatList
           data={filteredList}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={item => item.id.toString()}
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: Math.max(insets.bottom + 90, 110) },
@@ -308,13 +358,20 @@ export const UserMasterScreen: React.FC = () => {
 
                 <View style={styles.userInfo}>
                   <View style={styles.nameBadgeRow}>
-                    <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+                    <Text
+                      style={styles.userName}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {item.name}
                     </Text>
                     <View
                       style={[
                         styles.statusDot,
-                        { backgroundColor: item.status === 'Active' ? '#10B981' : '#94A3B8' },
+                        {
+                          backgroundColor:
+                            item.status === 'Active' ? '#10B981' : '#94A3B8',
+                        },
                       ]}
                     />
                   </View>
@@ -329,7 +386,11 @@ export const UserMasterScreen: React.FC = () => {
                     >
                       <Text style={styles.roleText}>{item.role}</Text>
                     </View>
-                    <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">
+                    <Text
+                      style={styles.userEmail}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {item.email}
                     </Text>
                   </View>
@@ -342,7 +403,11 @@ export const UserMasterScreen: React.FC = () => {
                     onPress={() => handleOpenEdit(item)}
                     hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                   >
-                    <Edit2 size={13} color={colors.textPrimary} strokeWidth={2.2} />
+                    <Edit2
+                      size={13}
+                      color={colors.textPrimary}
+                      strokeWidth={2.2}
+                    />
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -361,7 +426,8 @@ export const UserMasterScreen: React.FC = () => {
               <Text style={styles.emptyIcon}>👥</Text>
               <Text style={styles.emptyTitle}>No Staff Members Found</Text>
               <Text style={styles.emptyText}>
-                No users returned by the server. Tap "+ Add Staff User" below to register one.
+                No users returned by the server. Tap "+ Add Staff User" below to
+                register one.
               </Text>
             </View>
           }
@@ -373,10 +439,6 @@ export const UserMasterScreen: React.FC = () => {
         primaryAction={{
           label: 'Add User',
           onPress: handleOpenAdd,
-        }}
-        secondaryAction={{
-          label: 'Download CSV',
-          onPress: handleExportCSV,
         }}
       />
 
@@ -400,7 +462,9 @@ export const UserMasterScreen: React.FC = () => {
 
             <ScrollView
               style={{ flexShrink: 1 }}
-              contentContainerStyle={{ paddingBottom: keyboardVisible ? 20 : 0 }}
+              contentContainerStyle={{
+                paddingBottom: keyboardVisible ? 20 : 0,
+              }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
@@ -462,7 +526,7 @@ export const UserMasterScreen: React.FC = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Assign Role</Text>
                 <View style={styles.rolesWrap}>
-                  {ROLES.map((r) => (
+                  {ROLES.map(r => (
                     <TouchableOpacity
                       key={r}
                       style={[
@@ -537,15 +601,31 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: 10,
   },
-  searchInput: {
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.inputBg,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     height: 40,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
     color: colors.textPrimary,
     fontSize: 13,
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    padding: 4,
+    marginLeft: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   filterScroll: {
     gap: 6,

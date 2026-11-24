@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -97,7 +103,7 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
     isPullRefresh = false,
     newPerPage = perPage,
     overrideSearch?: string,
-    overrideType?: BrandVehicleTypeFilter
+    overrideType?: BrandVehicleTypeFilter,
   ) => {
     if (isPullRefresh) {
       setIsRefreshing(true);
@@ -105,7 +111,8 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
       setIsLoading(true);
     }
 
-    const currentSearch = overrideSearch !== undefined ? overrideSearch : search;
+    const currentSearch =
+      overrideSearch !== undefined ? overrideSearch : search;
     const currentType = overrideType !== undefined ? overrideType : typeFilter;
 
     try {
@@ -165,13 +172,18 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
       if (pagination) {
         const tot = Number(pagination.total) || rawList.length;
         const curP = Number(pagination.current_page) || pageNumber;
-        const lastP = Number(pagination.last_page) || Math.max(1, Math.ceil(tot / newPerPage));
+        const lastP =
+          Number(pagination.last_page) ||
+          Math.max(1, Math.ceil(tot / newPerPage));
         setTotalCount(tot);
         setTotalPages(lastP);
         setHasMore(curP < lastP);
       } else {
         setHasMore(rawList.length >= newPerPage);
-        const computedTotal = pageNumber === 1 ? rawList.length : Math.max(rawList.length, totalCount);
+        const computedTotal =
+          pageNumber === 1
+            ? rawList.length
+            : Math.max(rawList.length, totalCount);
         setTotalCount(computedTotal);
         setTotalPages(Math.max(1, Math.ceil(computedTotal / newPerPage)));
       }
@@ -197,68 +209,75 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
     fetchBrands(1, true, perPage);
   }, [search, typeFilter, perPage]);
 
-
-
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore && !isLoading && !isRefreshing) {
       setIsLoadingMore(true);
-      brandApi.getAll({
-        page: page + 1,
-        per_page: perPage,
-        search: search.trim() || undefined,
-        vehicle_type: typeFilter !== 'All' ? typeFilter : undefined,
-      }).then((res) => {
-        const raw = res;
-        const rawList =
-          raw && raw.status && Array.isArray(raw.data)
-            ? raw.data
-            : Array.isArray(raw?.data)
-            ? raw.data
-            : Array.isArray(raw?.data?.data)
-            ? raw.data.data
-            : Array.isArray(raw)
-            ? raw
-            : [];
-        const parsedBrands: Brand[] = rawList.map((b: any) => {
-          let vt = b.vehicle_type;
-          if (typeof vt === 'string') {
-            try {
-              vt = JSON.parse(vt);
-            } catch {
-              vt = [vt];
+      brandApi
+        .getAll({
+          page: page + 1,
+          per_page: perPage,
+          search: search.trim() || undefined,
+          vehicle_type: typeFilter !== 'All' ? typeFilter : undefined,
+        })
+        .then(res => {
+          const raw = res;
+          const rawList =
+            raw && raw.status && Array.isArray(raw.data)
+              ? raw.data
+              : Array.isArray(raw?.data)
+              ? raw.data
+              : Array.isArray(raw?.data?.data)
+              ? raw.data.data
+              : Array.isArray(raw)
+              ? raw
+              : [];
+          const parsedBrands: Brand[] = rawList.map((b: any) => {
+            let vt = b.vehicle_type;
+            if (typeof vt === 'string') {
+              try {
+                vt = JSON.parse(vt);
+              } catch {
+                vt = [vt];
+              }
             }
+            if (!Array.isArray(vt)) {
+              vt = ['4 Wheeler'];
+            }
+            return {
+              id: Number(b.id),
+              name: b.name || 'Unknown Brand',
+              vehicle_type: vt,
+              status: b.status || 'Active',
+              logo: b.logo || null,
+            };
+          });
+          setBrands(prev => {
+            const existingIds = new Set(prev.map(item => item.id));
+            const newItems = parsedBrands.filter(
+              item => !existingIds.has(item.id),
+            );
+            return [...prev, ...newItems];
+          });
+          setPage(prev => prev + 1);
+          const pagination =
+            raw?.pagination ||
+            raw?.data?.pagination ||
+            (typeof raw?.current_page === 'number' ? raw : null);
+          if (pagination) {
+            setHasMore(
+              (Number(pagination.current_page) || page + 1) <
+                (Number(pagination.last_page) || 1),
+            );
+          } else {
+            setHasMore(parsedBrands.length >= perPage);
           }
-          if (!Array.isArray(vt)) {
-            vt = ['4 Wheeler'];
-          }
-          return {
-            id: Number(b.id),
-            name: b.name || 'Unknown Brand',
-            vehicle_type: vt,
-            status: b.status || 'Active',
-            logo: b.logo || null,
-          };
+        })
+        .catch(err => {
+          console.log('Error loading more brands:', err);
+        })
+        .finally(() => {
+          setIsLoadingMore(false);
         });
-        setBrands((prev) => {
-          const existingIds = new Set(prev.map((item) => item.id));
-          const newItems = parsedBrands.filter((item) => !existingIds.has(item.id));
-          return [...prev, ...newItems];
-        });
-        setPage((prev) => prev + 1);
-        const pagination =
-          raw?.pagination ||
-          raw?.data?.pagination ||
-          (typeof raw?.current_page === 'number' ? raw : null);
-        if (pagination) {
-          setHasMore((Number(pagination.current_page) || page + 1) < (Number(pagination.last_page) || 1));
-        } else {
-          setHasMore(parsedBrands.length >= perPage);
-        }
-      }).catch((err) => {
-        console.log('Error loading more brands:', err);
-      }).finally(() => {
-        setIsLoadingMore(false);
-      });
     }
   };
 
@@ -266,17 +285,17 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
   const computedStats: BrandStats = useMemo(() => {
     const total = brands.length;
     const fourW = brands.filter(
-      (b) =>
+      b =>
         b.vehicle_type?.includes('4 Wheeler') ||
-        b.vehicle_type?.some((t) => t.includes('4')) ||
-        !b.vehicle_type?.includes('2 Wheeler')
+        b.vehicle_type?.some(t => t.includes('4')) ||
+        !b.vehicle_type?.includes('2 Wheeler'),
     ).length;
     const twoW = brands.filter(
-      (b) =>
+      b =>
         b.vehicle_type?.includes('2 Wheeler') ||
-        b.vehicle_type?.some((t) => t.includes('2'))
+        b.vehicle_type?.some(t => t.includes('2')),
     ).length;
-    const active = brands.filter((b) => b.status === 'Active').length;
+    const active = brands.filter(b => b.status === 'Active').length;
 
     return {
       total_brands: stats.total_brands > 0 ? stats.total_brands : total,
@@ -290,7 +309,7 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
 
   // Client-side filtering when searching or switching pills
   const filteredBrands = useMemo(() => {
-    return brands.filter((item) => {
+    return brands.filter(item => {
       const matchSearch =
         !search.trim() ||
         item.name.toLowerCase().includes(search.toLowerCase().trim());
@@ -326,9 +345,13 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
         const res = await brandApi.update(editingBrand.id, data);
         const resolvedLogo =
           res?.data?.logo ||
-          (data.logoFile ? data.logoFile.uri : data.logo !== undefined ? data.logo : editingBrand.logo);
-        setBrands((prev) =>
-          prev.map((b) =>
+          (data.logoFile
+            ? data.logoFile.uri
+            : data.logo !== undefined
+            ? data.logo
+            : editingBrand.logo);
+        setBrands(prev =>
+          prev.map(b =>
             b.id === editingBrand.id
               ? {
                   ...b,
@@ -337,20 +360,22 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
                   status: data.status,
                   logo: resolvedLogo,
                 }
-              : b
-          )
+              : b,
+          ),
         );
         triggerHaptic('notificationSuccess');
         showSuccessToast(
           'Brand Updated',
-          `Manufacturer "${data.name}" updated successfully.`
+          `Manufacturer "${data.name}" updated successfully.`,
         );
       } else {
         // Add flow
         const res = await brandApi.create(data);
         const newId =
-          res?.data?.id || (brands.length > 0 ? Math.max(...brands.map((b) => b.id)) + 1 : 1);
-        const resolvedLogo = res?.data?.logo || data.logoFile?.uri || data.logo || null;
+          res?.data?.id ||
+          (brands.length > 0 ? Math.max(...brands.map(b => b.id)) + 1 : 1);
+        const resolvedLogo =
+          res?.data?.logo || data.logoFile?.uri || data.logo || null;
         const createdBrand: Brand = {
           id: newId,
           name: data.name,
@@ -358,11 +383,11 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
           status: data.status,
           logo: resolvedLogo,
         };
-        setBrands((prev) => [createdBrand, ...prev]);
+        setBrands(prev => [createdBrand, ...prev]);
         triggerHaptic('notificationSuccess');
         showSuccessToast(
           'Brand Registered',
-          `New manufacturer "${data.name}" added to CSD master directory.`
+          `New manufacturer "${data.name}" added to CSD master directory.`,
         );
       }
       fetchStats();
@@ -396,11 +421,11 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
     setIsDeleting(true);
     try {
       await brandApi.delete(deleteTarget.id);
-      setBrands((prev) => prev.filter((b) => b.id !== deleteTarget.id));
+      setBrands(prev => prev.filter(b => b.id !== deleteTarget.id));
       triggerHaptic('notificationSuccess');
       showSuccessToast(
         'Brand Deleted',
-        `Brand "${deleteTarget.name}" has been removed from catalog.`
+        `Brand "${deleteTarget.name}" has been removed from catalog.`,
       );
       setDeleteModalVisible(false);
       setDeleteTarget(null);
@@ -408,12 +433,12 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
     } catch (err: any) {
       console.log('Error deleting brand:', err);
       // Optimistic delete on mobile
-      setBrands((prev) => prev.filter((b) => b.id !== deleteTarget.id));
+      setBrands(prev => prev.filter(b => b.id !== deleteTarget.id));
       setDeleteModalVisible(false);
       setDeleteTarget(null);
       showSuccessToast(
         'Brand Deleted',
-        `Brand "${deleteTarget.name}" removed from local list.`
+        `Brand "${deleteTarget.name}" removed from local list.`,
       );
     } finally {
       setIsDeleting(false);
@@ -423,10 +448,12 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
   // Handler for Export CSV
   const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    const rows = filteredBrands.map((b) => [
+    const rows = filteredBrands.map(b => [
       b.id,
       b.name,
-      Array.isArray(b.vehicle_type) ? b.vehicle_type.join('; ') : b.vehicle_type,
+      Array.isArray(b.vehicle_type)
+        ? b.vehicle_type.join('; ')
+        : b.vehicle_type,
       b.status,
     ]);
     await exportCsvToFile({
@@ -436,7 +463,11 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
     });
   };
 
-  const filterTabs: { id: BrandVehicleTypeFilter; label: string; count: number }[] = [
+  const filterTabs: {
+    id: BrandVehicleTypeFilter;
+    label: string;
+    count: number;
+  }[] = [
     { id: 'All', label: 'All Brands', count: computedStats.total_brands },
     {
       id: '4 Wheeler',
@@ -461,7 +492,7 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
       <FlatList
         ref={flatListRef}
         data={filteredBrands}
-        keyExtractor={(item) => `brand-${item.id}`}
+        keyExtractor={item => `brand-${item.id}`}
         renderItem={({ item, index }) => (
           <BrandCard
             item={item}
@@ -490,9 +521,12 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
               stats={computedStats}
               totalFallback={brands.length}
               activeFilter={typeFilter}
-              onSelectFilter={(filter) => {
+              onSelectFilter={filter => {
                 setTypeFilter(filter);
-                flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                flatListRef.current?.scrollToOffset({
+                  offset: 0,
+                  animated: true,
+                });
                 fetchBrands(1, false, perPage, undefined, filter);
               }}
             />
@@ -509,7 +543,11 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
                   },
                 ]}
               >
-                <Search size={14} color={colors.textSecondary} strokeWidth={2} />
+                <Search
+                  size={14}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
                 <TextInput
                   style={[
                     styles.searchInput,
@@ -518,7 +556,10 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
                   value={search}
                   onChangeText={setSearch}
                   onSubmitEditing={() => {
-                    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    flatListRef.current?.scrollToOffset({
+                      offset: 0,
+                      animated: true,
+                    });
                     fetchBrands(1, false, perPage, search);
                   }}
                   returnKeyType="search"
@@ -529,7 +570,10 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
                   <TouchableOpacity
                     onPress={() => {
                       setSearch('');
-                      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                      flatListRef.current?.scrollToOffset({
+                        offset: 0,
+                        animated: true,
+                      });
                       fetchBrands(1, false, perPage, '');
                     }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -545,7 +589,7 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.filterScroll}
               >
-                {filterTabs.map((tab) => {
+                {filterTabs.map(tab => {
                   const isActive = typeFilter === tab.id;
                   return (
                     <TouchableOpacity
@@ -568,7 +612,10 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
                       onPress={() => {
                         triggerHaptic('selection');
                         setTypeFilter(tab.id);
-                        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                        flatListRef.current?.scrollToOffset({
+                          offset: 0,
+                          animated: true,
+                        });
                         fetchBrands(1, false, perPage, undefined, tab.id);
                       }}
                       activeOpacity={0.7}
@@ -661,7 +708,13 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
         }
         ListFooterComponent={
           isLoadingMore ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                paddingVertical: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : !hasMore && brands.length > 5 ? (
@@ -705,10 +758,6 @@ export const BrandScreen: React.FC<BrandScreenProps> = () => {
         primaryAction={{
           label: 'Add Brand',
           onPress: handleOpenAdd,
-        }}
-        secondaryAction={{
-          label: 'Download CSV',
-          onPress: handleExportCSV,
         }}
       />
     </View>

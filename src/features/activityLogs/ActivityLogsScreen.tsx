@@ -24,10 +24,7 @@ import { useTheme } from '../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../core/utils/haptics';
 import { showErrorToast, showSuccessToast } from '../../core/utils/toast';
 import { activityLogService } from './activityLogService';
-import {
-  ActivityLog,
-  ActivityLogFilterOptions,
-} from './types';
+import { ActivityLog, ActivityLogFilterOptions } from './types';
 import { ActivityLogCard } from './components/ActivityLogCard';
 import { ActivityLogFilterModal } from './components/ActivityLogFilterModal';
 import { PurgeLogsModal } from './components/PurgeLogsModal';
@@ -83,7 +80,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
 
   // Fetch filter options on mount
   useEffect(() => {
-    activityLogService.getFilterOptions().then((res) => {
+    activityLogService.getFilterOptions().then(res => {
       if (res && res.status && res.data) {
         setFilterOptions(res.data);
       }
@@ -95,7 +92,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
     async (
       pageNum: number = 1,
       isPull: boolean = false,
-      customSearch?: string
+      customSearch?: string,
     ) => {
       if (isPull) {
         setIsRefreshing(true);
@@ -122,9 +119,9 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
           if (pageNum === 1) {
             setLogs(list);
           } else {
-            setLogs((prev) => {
-              const existingIds = new Set(prev.map((item) => item.id));
-              const newItems = list.filter((item) => !existingIds.has(item.id));
+            setLogs(prev => {
+              const existingIds = new Set(prev.map(item => item.id));
+              const newItems = list.filter(item => !existingIds.has(item.id));
               return [...prev, ...newItems];
             });
           }
@@ -133,7 +130,10 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
           if (res.pagination) {
             setTotalRecords(Number(res.pagination.total) || list.length);
             setTotalPages(Number(res.pagination.last_page) || 1);
-            setHasMore((Number(res.pagination.current_page) || pageNum) < (Number(res.pagination.last_page) || 1));
+            setHasMore(
+              (Number(res.pagination.current_page) || pageNum) <
+                (Number(res.pagination.last_page) || 1),
+            );
           } else {
             setTotalRecords(list.length);
             setHasMore(list.length >= 15);
@@ -147,7 +147,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
         setIsLoadingMore(false);
       }
     },
-    [search, selectedUser, selectedModule, selectedAction, startDate, endDate]
+    [search, selectedUser, selectedModule, selectedAction, startDate, endDate],
   );
 
   // Initial load & when filters change
@@ -184,7 +184,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
       const res = await activityLogService.cleanOldLogs(2);
       showSuccessToast(
         'Logs Cleaned',
-        res.message || 'Successfully purged activity logs older than 2 months.'
+        res.message || 'Successfully purged activity logs older than 2 months.',
       );
       setPurgeModalVisible(false);
       fetchLogs(1, false);
@@ -192,7 +192,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
       console.warn('Purge logs error:', err);
       showErrorToast(
         'Purge Failed',
-        err?.response?.data?.message || 'Unable to clean old activity logs.'
+        err?.response?.data?.message || 'Unable to clean old activity logs.',
       );
     } finally {
       setIsPurging(false);
@@ -209,7 +209,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
       <FlatList
         ref={flatListRef}
         data={logs}
-        keyExtractor={(item) => `log-${item.id}`}
+        keyExtractor={item => `log-${item.id}`}
         renderItem={({ item, index }) => (
           <ActivityLogCard item={item} index={index} />
         )}
@@ -230,63 +230,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
           <View style={styles.headerContainer}>
             {/* 1. Header Bar: Title + Subtitle + Action Buttons (Delete 2 Month Old, Refresh) */}
             <View style={styles.topControlRow}>
-              <View style={styles.titleCol}>
-                <Text
-                  style={[
-                    styles.screenTitle,
-                    { color: isDark ? '#F8FAFC' : '#0F172A' },
-                  ]}
-                >
-                  Activity & Audit Logs
-                </Text>
-                <Text
-                  style={[
-                    styles.screenSubtitle,
-                    { color: isDark ? '#94A3B8' : '#64748B' },
-                  ]}
-                >
-                  System audit trail of team activities & logins.
-                </Text>
-              </View>
-
-              {/* Action Buttons: Delete 2 Month Old + Refresh */}
-              <View style={styles.actionCluster}>
-                <TouchableOpacity
-                  style={[
-                    styles.purgeBtn,
-                    {
-                      backgroundColor: isDark
-                        ? 'rgba(220, 38, 38, 0.12)'
-                        : '#FEF2F2',
-                      borderColor: isDark
-                        ? 'rgba(220, 38, 38, 0.35)'
-                        : '#FECACA',
-                    },
-                  ]}
-                  onPress={() => {
-                    triggerHaptic('notificationWarning');
-                    setPurgeModalVisible(true);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Trash2 size={13} color="#DC2626" />
-                  <Text style={styles.purgeBtnText}>Delete 2 Month Old</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.refreshBtn,
-                    {
-                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
-                    },
-                  ]}
-                  onPress={handleRefresh}
-                  activeOpacity={0.7}
-                >
-                  <RotateCcw size={13} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
+              <View style={styles.titleCol}></View>
             </View>
 
             {/* 2. Search & Unified Filter Row */}
@@ -301,7 +245,11 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
                   },
                 ]}
               >
-                <Search size={14} color={isDark ? '#94A3B8' : '#64748B'} strokeWidth={2} />
+                <Search
+                  size={14}
+                  color={isDark ? '#94A3B8' : '#64748B'}
+                  strokeWidth={2}
+                />
                 <TextInput
                   style={[
                     styles.searchInput,
@@ -340,7 +288,13 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
               >
                 <Filter
                   size={14}
-                  color={activeFiltersCount > 0 ? '#FFFFFF' : isDark ? '#94A3B8' : '#475569'}
+                  color={
+                    activeFiltersCount > 0
+                      ? '#FFFFFF'
+                      : isDark
+                      ? '#94A3B8'
+                      : '#475569'
+                  }
                   strokeWidth={2.2}
                 />
                 <Text
@@ -356,7 +310,8 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
                     },
                   ]}
                 >
-                  Filters{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}
+                  Filters
+                  {activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -370,15 +325,52 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
                     backgroundColor: isDark
                       ? 'rgba(88, 99, 42, 0.18)'
                       : '#EFF3DF',
-                    borderColor: isDark
-                      ? 'rgba(88, 99, 42, 0.35)'
-                      : '#DCE9A2',
+                    borderColor: isDark ? 'rgba(88, 99, 42, 0.35)' : '#DCE9A2',
                   },
                 ]}
               >
                 <Text style={styles.countPillText}>
                   Activity Records: {totalRecords} Records
                 </Text>
+              </View>
+
+              {/* Action Buttons: Delete 2 Month Old + Refresh */}
+              <View style={styles.actionCluster}>
+                <TouchableOpacity
+                  style={[
+                    styles.purgeBtn,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(220, 38, 38, 0.12)'
+                        : '#FEF2F2',
+                      borderColor: isDark
+                        ? 'rgba(220, 38, 38, 0.35)'
+                        : '#FECACA',
+                    },
+                  ]}
+                  onPress={() => {
+                    triggerHaptic('notificationWarning');
+                    setPurgeModalVisible(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Trash2 size={13} color="#DC2626" />
+                  <Text style={styles.purgeBtnText}>Delete 2 Month Old</Text>
+                </TouchableOpacity>
+
+                {/* <TouchableOpacity
+                  style={[
+                    styles.refreshBtn,
+                    {
+                      backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                    },
+                  ]}
+                  onPress={handleRefresh}
+                  activeOpacity={0.7}
+                >
+                  <RotateCcw size={13} color={colors.primary} />
+                </TouchableOpacity> */}
               </View>
 
               {activeFiltersCount > 0 && (
@@ -477,7 +469,7 @@ export const ActivityLogsScreen: React.FC<ActivityLogsScreenProps> = () => {
         startDate={startDate}
         endDate={endDate}
         onClose={() => setFilterModalVisible(false)}
-        onApply={(f) => {
+        onApply={f => {
           setSelectedUser(f.user_id);
           setSelectedModule(f.module);
           setSelectedAction(f.action);
@@ -656,4 +648,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

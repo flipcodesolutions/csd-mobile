@@ -1,5 +1,8 @@
 import React from 'react';
-import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
+import {
+  createDrawerNavigator,
+  DrawerContentComponentProps,
+} from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 
@@ -132,8 +135,8 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
   const initialRoute: keyof DrawerParamList = isSuperAdminOrAdmin
     ? 'dashboard'
     : userRole === 'Sales Executive'
-      ? 'my-leads'
-      : 'dashboard';
+    ? 'my-leads'
+    : 'dashboard';
 
   const getDashboardTitle = () => {
     switch (userRole) {
@@ -189,7 +192,7 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
         {({ navigation }) => (
           <DashboardScreen
             userRole={userRole || 'Super Admin'}
-            onNavigate={(screen) => (navigation as any).navigate(screen)}
+            onNavigate={screen => (navigation as any).navigate(screen)}
           />
         )}
       </Drawer.Screen>
@@ -197,8 +200,10 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       <Drawer.Screen name="my-leads">
         {({ navigation }) => (
           <SalesExecutiveLeadsScreen
-            onSelectLead={(leadId) => {
-              (navigation.getParent() as any)?.navigate('LeadDetail', { leadId });
+            onSelectLead={leadId => {
+              (navigation.getParent() as any)?.navigate('LeadDetail', {
+                leadId,
+              });
             }}
           />
         )}
@@ -206,7 +211,10 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="leads">
         {({ navigation }) => (
-          <LeadsScreen navigation={navigation} onOpenDrawer={() => (navigation as any).openDrawer()} />
+          <LeadsScreen
+            navigation={navigation}
+            onOpenDrawer={() => (navigation as any).openDrawer()}
+          />
         )}
       </Drawer.Screen>
 
@@ -233,7 +241,7 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
           <FollowUpScreen
             navigation={navigation}
             onOpenDrawer={() => (navigation as any).openDrawer()}
-            onNavigateToQuotation={(leadId) => {
+            onNavigateToQuotation={leadId => {
               (navigation as any).navigate('send-quotation', { leadId });
             }}
           />
@@ -252,22 +260,27 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
 
       <Drawer.Screen name="deals" component={DealsScreen} />
       <Drawer.Screen name="generate-invoice" component={InvoiceScreen} />
-      <Drawer.Screen name="pending-insurance" component={PendingInsuranceScreen} />
-      <Drawer.Screen name="insurance-reminders" component={InsuranceRemindersScreen} />
-      <Drawer.Screen name="insurance-records" component={InsuranceRecordsScreen} />
+      <Drawer.Screen
+        name="pending-insurance"
+        component={PendingInsuranceScreen}
+      />
+      <Drawer.Screen
+        name="insurance-reminders"
+        component={InsuranceRemindersScreen}
+      />
+      <Drawer.Screen
+        name="insurance-records"
+        component={InsuranceRecordsScreen}
+      />
 
       <Drawer.Screen name="brand">
         {({ navigation }) => (
-          <BrandScreen
-            onOpenDrawer={() => (navigation as any).openDrawer()}
-          />
+          <BrandScreen onOpenDrawer={() => (navigation as any).openDrawer()} />
         )}
       </Drawer.Screen>
       <Drawer.Screen name="model">
         {({ navigation }) => (
-          <ModelScreen
-            onOpenDrawer={() => (navigation as any).openDrawer()}
-          />
+          <ModelScreen onOpenDrawer={() => (navigation as any).openDrawer()} />
         )}
       </Drawer.Screen>
       <Drawer.Screen name="variant">
@@ -322,7 +335,9 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
             navigation={navigation}
             onOpenDrawer={() => (navigation as any).openDrawer()}
             userRole={userRole}
-            loggedInUserName={userEmail ? userEmail.split('@')[0] : 'Admin User'}
+            loggedInUserName={
+              userEmail ? userEmail.split('@')[0] : 'Admin User'
+            }
           />
         )}
       </Drawer.Screen>
@@ -381,7 +396,11 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
   );
 }
 
-export function AppNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
+export function AppNavigator({
+  userRole,
+  userEmail,
+  onLogout,
+}: AppNavigatorProps) {
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -422,10 +441,7 @@ export function AppNavigator({ userRole, userEmail, onLogout }: AppNavigatorProp
             />
           )}
         </Stack.Screen>
-        <Stack.Screen
-          name="CreateLead"
-          options={{ headerShown: false }}
-        >
+        <Stack.Screen name="CreateLead" options={{ headerShown: false }}>
           {({ route, navigation }) => (
             <CreateLeadScreen
               route={route}

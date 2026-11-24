@@ -70,17 +70,17 @@ interface LeadsScreenProps {
   navigation?: any;
 }
 
-const getCleanLeadStatus = (item: CustomerLead, statusesList?: StatusItem[]): string => {
+const getCleanLeadStatus = (
+  item: CustomerLead,
+  statusesList?: StatusItem[],
+): string => {
   const statusProp = (item as any).status;
-  const statusFromString = typeof statusProp === 'string' ? statusProp : statusProp?.name;
-  let raw =
-    item.status_name ||
-    item.lead_status ||
-    statusFromString ||
-    '';
+  const statusFromString =
+    typeof statusProp === 'string' ? statusProp : statusProp?.name;
+  let raw = item.status_name || item.lead_status || statusFromString || '';
 
   if (!raw && item.status_id && statusesList && statusesList.length > 0) {
-    const found = statusesList.find((s) => s.id === item.status_id);
+    const found = statusesList.find(s => s.id === item.status_id);
     if (found?.name) raw = found.name;
   }
 
@@ -128,8 +128,13 @@ const getCleanLeadStatus = (item: CustomerLead, statusesList?: StatusItem[]): st
   return raw;
 };
 
-
-type StatusTabKey = 'All' | 'New' | 'Follow-up' | 'Quotation Sent' | 'Deal & Booking' | 'Lost';
+type StatusTabKey =
+  | 'All'
+  | 'New'
+  | 'Follow-up'
+  | 'Quotation Sent'
+  | 'Deal & Booking'
+  | 'Lost';
 
 interface StatusTabDef {
   key: StatusTabKey;
@@ -146,7 +151,10 @@ const STATUS_TABS: StatusTabDef[] = [
   { key: 'Lost', label: 'Lost', icon: '❌' },
 ];
 
-export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigation }) => {
+export const LeadsScreen: React.FC<LeadsScreenProps> = ({
+  onOpenDrawer,
+  navigation,
+}) => {
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -163,10 +171,15 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
 
   // 2. Search & Filter States
   const [search, setSearch] = useState('');
-  const [selectedStatusTab, setSelectedStatusTab] = useState<StatusTabKey>('All');
+  const [selectedStatusTab, setSelectedStatusTab] =
+    useState<StatusTabKey>('All');
   const [createLeadModalVisible, setCreateLeadModalVisible] = useState(false);
-  const [segmentFilter, setSegmentFilter] = useState<'All' | '4 Wheeler' | '2 Wheeler'>('All');
-  const [priorityFilter, setPriorityFilter] = useState<'All' | 'Hot' | 'Warm' | 'Cold'>('All');
+  const [segmentFilter, setSegmentFilter] = useState<
+    'All' | '4 Wheeler' | '2 Wheeler'
+  >('All');
+  const [priorityFilter, setPriorityFilter] = useState<
+    'All' | 'Hot' | 'Warm' | 'Cold'
+  >('All');
   const [stageFilter, setStageFilter] = useState<string>('All');
   const [brandFilter, setBrandFilter] = useState<string>('All');
   const [userFilter, setUserFilter] = useState<number | null>(null);
@@ -181,9 +194,14 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
   const [bulkStatusModal, setBulkStatusModal] = useState(false);
   const [bulkPriorityModal, setBulkPriorityModal] = useState(false);
   const [bulkSelectedUser, setBulkSelectedUser] = useState<number | null>(null);
-  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<number | null>(null);
-  const [bulkSelectedStatusName, setBulkSelectedStatusName] = useState<string>('Follow-up');
-  const [bulkSelectedPriority, setBulkSelectedPriority] = useState<'Hot' | 'Warm' | 'Cold'>('Hot');
+  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<number | null>(
+    null,
+  );
+  const [bulkSelectedStatusName, setBulkSelectedStatusName] =
+    useState<string>('Follow-up');
+  const [bulkSelectedPriority, setBulkSelectedPriority] = useState<
+    'Hot' | 'Warm' | 'Cold'
+  >('Hot');
   const [isBulkExecuting, setIsBulkExecuting] = useState(false);
 
   // 4. Loading, Refreshing & Pagination
@@ -194,34 +212,42 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalLeadsCount, setTotalLeadsCount] = useState(0);
 
-
   const handleOpenCreateLead = () => {
     triggerHaptic('impactLight');
     setEditingLead(null);
     setLeadModalVisible(true);
   };
-  
+
   // 5. Action Modal States
   const [leadModalVisible, setLeadModalVisible] = useState(false);
   const [editingLead, setEditingLead] = useState<CustomerLead | null>(null);
 
   const [followUpModalVisible, setFollowUpModalVisible] = useState(false);
-  const [activeFollowUpLead, setActiveFollowUpLead] = useState<CustomerLead | null>(null);
+  const [activeFollowUpLead, setActiveFollowUpLead] =
+    useState<CustomerLead | null>(null);
 
   const [dealModalVisible, setDealModalVisible] = useState(false);
-  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(null);
+  const [activeDealLead, setActiveDealLead] = useState<CustomerLead | null>(
+    null,
+  );
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [activeDetailLead, setActiveDetailLead] = useState<CustomerLead | null>(null);
+  const [activeDetailLead, setActiveDetailLead] = useState<CustomerLead | null>(
+    null,
+  );
 
   const [actionsModalVisible, setActionsModalVisible] = useState(false);
-  const [activeActionLead, setActiveActionLead] = useState<CustomerLead | null>(null);
+  const [activeActionLead, setActiveActionLead] = useState<CustomerLead | null>(
+    null,
+  );
 
   const [quotationModalVisible, setQuotationModalVisible] = useState(false);
-  const [activeQuotationLead, setActiveQuotationLead] = useState<CustomerLead | null>(null);
+  const [activeQuotationLead, setActiveQuotationLead] =
+    useState<CustomerLead | null>(null);
 
   const [quickViewModalVisible, setQuickViewModalVisible] = useState(false);
-  const [activeQuickViewLead, setActiveQuickViewLead] = useState<CustomerLead | null>(null);
+  const [activeQuickViewLead, setActiveQuickViewLead] =
+    useState<CustomerLead | null>(null);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -239,7 +265,10 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     }
   };
 
-  const fetchLeads = async (pageNumber: number = 1, isLoadMore: boolean = false) => {
+  const fetchLeads = async (
+    pageNumber: number = 1,
+    isLoadMore: boolean = false,
+  ) => {
     try {
       if (isLoadMore) {
         setIsLoadingMore(true);
@@ -255,7 +284,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         vehicle_segment: segmentFilter !== 'All' ? segmentFilter : undefined,
         status: isTrashView ? 'deleted' : undefined,
       });
-      console.log("this leads", res)
+      console.log('this leads', res);
 
       const list = Array.isArray(res) ? res : res?.data || [];
       const pagination = res?.pagination;
@@ -263,9 +292,11 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       if (pageNumber === 1) {
         setLeads(list);
       } else {
-        setLeads((prev) => {
-          const existingIds = new Set(prev.map((l) => l.id));
-          const newItems = list.filter((l: CustomerLead) => !existingIds.has(l.id));
+        setLeads(prev => {
+          const existingIds = new Set(prev.map(l => l.id));
+          const newItems = list.filter(
+            (l: CustomerLead) => !existingIds.has(l.id),
+          );
           return [...prev, ...newItems];
         });
       }
@@ -277,7 +308,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         setHasMore(pagination.current_page < pagination.last_page);
       } else {
         setHasMore(list.length >= 15);
-        setTotalLeadsCount((prev) => (pageNumber === 1 ? list.length : prev));
+        setTotalLeadsCount(prev => (pageNumber === 1 ? list.length : prev));
       }
     } catch (err) {
       console.log('Failed to fetch leads:', err);
@@ -302,12 +333,18 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         userApi.getAll(),
       ]);
 
-      if (bRes.status === 'fulfilled') setBrands(bRes.value?.data || bRes.value || []);
-      if (mRes.status === 'fulfilled') setModels(mRes.value?.data || mRes.value || []);
-      if (vRes.status === 'fulfilled') setVariants(vRes.value?.data || vRes.value || []);
-      if (sRes.status === 'fulfilled') setSources(sRes.value?.data || sRes.value || []);
-      if (stRes.status === 'fulfilled') setStatuses(stRes.value?.data || stRes.value || []);
-      if (uRes.status === 'fulfilled') setUsersList(uRes.value?.data || uRes.value || []);
+      if (bRes.status === 'fulfilled')
+        setBrands(bRes.value?.data || bRes.value || []);
+      if (mRes.status === 'fulfilled')
+        setModels(mRes.value?.data || mRes.value || []);
+      if (vRes.status === 'fulfilled')
+        setVariants(vRes.value?.data || vRes.value || []);
+      if (sRes.status === 'fulfilled')
+        setSources(sRes.value?.data || sRes.value || []);
+      if (stRes.status === 'fulfilled')
+        setStatuses(stRes.value?.data || stRes.value || []);
+      if (uRes.status === 'fulfilled')
+        setUsersList(uRes.value?.data || uRes.value || []);
     } catch (err) {
       console.log('Error fetching masters:', err);
     }
@@ -325,7 +362,6 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     }
   };
 
-
   // Status tab counts for horizontal filter pills
   const statusTabCounts = useMemo(() => {
     const counts: Record<StatusTabKey, number> = {
@@ -337,7 +373,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       Lost: 0,
     };
 
-    leads.forEach((l) => {
+    leads.forEach(l => {
       const clean = getCleanLeadStatus(l, statuses);
       if (clean === 'Deal & Booking') {
         counts['Deal & Booking']++;
@@ -376,13 +412,15 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
 
   // Filtered Leads
   const filteredLeads = useMemo(() => {
-    return leads.filter((item) => {
+    return leads.filter(item => {
       // 1. Search term
       const term = search.toLowerCase().trim();
       if (term) {
         const matchesName = item.name?.toLowerCase().includes(term);
         const matchesPhone = item.phone?.toLowerCase().includes(term);
-        const matchesCity = (item.home_town || item.city)?.toLowerCase().includes(term);
+        const matchesCity = (item.home_town || item.city)
+          ?.toLowerCase()
+          .includes(term);
         const matchesPosting = item.posting?.toLowerCase().includes(term);
         const matchesModel = item.model_variant?.toLowerCase().includes(term);
         const matchesBrand = item.brand_name?.toLowerCase().includes(term);
@@ -419,7 +457,10 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       }
 
       // 5. Brand filter
-      if (brandFilter !== 'All' && item.brand_name?.toLowerCase() !== brandFilter.toLowerCase()) {
+      if (
+        brandFilter !== 'All' &&
+        item.brand_name?.toLowerCase() !== brandFilter.toLowerCase()
+      ) {
         return false;
       }
 
@@ -430,7 +471,16 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
 
       return true;
     });
-  }, [leads, search, segmentFilter, priorityFilter, stageFilter, brandFilter, userFilter, statuses]);
+  }, [
+    leads,
+    search,
+    segmentFilter,
+    priorityFilter,
+    stageFilter,
+    brandFilter,
+    userFilter,
+    statuses,
+  ]);
 
   // Stage counts (Static Status Options)
   const stageCounts = useMemo(() => {
@@ -441,7 +491,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       'Deal & Booking': 0,
       Lost: 0,
     };
-    leads.forEach((l) => {
+    leads.forEach(l => {
       const st = getCleanLeadStatus(l, statuses);
       if (st === 'New') {
         counts['New']++;
@@ -461,38 +511,47 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
   // KPIs - Accurate counts reflecting dataset
   const isFiltered = activeFiltersCount > 0 || search.trim().length > 0;
   const currentDataset = isFiltered ? filteredLeads : leads;
-  const totalCount = isFiltered ? filteredLeads.length : (totalLeadsCount || leads.length);
+  const totalCount = isFiltered
+    ? filteredLeads.length
+    : totalLeadsCount || leads.length;
   const hotCount = useMemo(
-    () => currentDataset.filter((l) => l.priority === 'Hot').length,
-    [currentDataset]
+    () => currentDataset.filter(l => l.priority === 'Hot').length,
+    [currentDataset],
   );
   const fourWheelerCount = useMemo(
     () =>
       currentDataset.filter(
-        (l) => l.vehicle_segment === '4 Wheeler' || (l as any).vehicle_segment_display === '4W'
+        l =>
+          l.vehicle_segment === '4 Wheeler' ||
+          (l as any).vehicle_segment_display === '4W',
       ).length,
-    [currentDataset]
+    [currentDataset],
   );
   const twoWheelerCount = useMemo(
     () =>
       currentDataset.filter(
-        (l) => l.vehicle_segment === '2 Wheeler' || (l as any).vehicle_segment_display === '2W'
+        l =>
+          l.vehicle_segment === '2 Wheeler' ||
+          (l as any).vehicle_segment_display === '2W',
       ).length,
-    [currentDataset]
+    [currentDataset],
   );
 
   // Selection toggle
   const toggleSelect = useCallback((id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id],
     );
   }, []);
 
   const toggleSelectAll = useCallback(() => {
-    if (selectedIds.length === filteredLeads.length && filteredLeads.length > 0) {
+    if (
+      selectedIds.length === filteredLeads.length &&
+      filteredLeads.length > 0
+    ) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredLeads.map((l) => l.id));
+      setSelectedIds(filteredLeads.map(l => l.id));
     }
   }, [selectedIds.length, filteredLeads]);
 
@@ -526,7 +585,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         setQuotationModalVisible(true);
       }
     },
-    [navigation]
+    [navigation],
   );
 
   const handleOpenQuickView = useCallback((ld: CustomerLead) => {
@@ -561,15 +620,15 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
           onPress: async () => {
             try {
               await leadApi.delete(id);
-              setLeads((prev) => prev.filter((l) => l.id !== id));
-              setSelectedIds((prev) => prev.filter((item) => item !== id));
+              setLeads(prev => prev.filter(l => l.id !== id));
+              setSelectedIds(prev => prev.filter(item => item !== id));
               Alert.alert('Success', 'Lead deleted successfully.');
             } catch (err: any) {
               Alert.alert('Error', err?.message || 'Failed to delete lead.');
             }
           },
         },
-      ]
+      ],
     );
   }, []);
 
@@ -586,15 +645,18 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
           onPress: async () => {
             try {
               await leadApi.restore(lead.id);
-              setLeads((prev) => prev.filter((l) => l.id !== lead.id));
-              setSelectedIds((prev) => prev.filter((item) => item !== lead.id));
-              Alert.alert('Restored', `Lead #${lead.id} restored successfully.`);
+              setLeads(prev => prev.filter(l => l.id !== lead.id));
+              setSelectedIds(prev => prev.filter(item => item !== lead.id));
+              Alert.alert(
+                'Restored',
+                `Lead #${lead.id} restored successfully.`,
+              );
             } catch (err: any) {
               Alert.alert('Error', err?.message || 'Failed to restore lead.');
             }
           },
         },
-      ]
+      ],
     );
   }, []);
 
@@ -602,14 +664,14 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
   const handleSaveLead = async (formData: any) => {
     if (editingLead) {
       await leadApi.update(editingLead.id, formData);
-      setLeads((prev) =>
-        prev.map((l) => (l.id === editingLead.id ? { ...l, ...formData } : l))
+      setLeads(prev =>
+        prev.map(l => (l.id === editingLead.id ? { ...l, ...formData } : l)),
       );
       Alert.alert('Success', 'Lead updated successfully.');
     } else {
       const res = await leadApi.create(formData);
       const newLead = res?.data || res || { id: Date.now(), ...formData };
-      setLeads((prev) => [newLead, ...prev]);
+      setLeads(prev => [newLead, ...prev]);
       Alert.alert('Success', 'New lead registered successfully.');
     }
   };
@@ -617,12 +679,17 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
   // Convert to Deal
   const handleConvertToDeal = async (dealData: any) => {
     await dealApi.create(dealData);
-    setLeads((prev) =>
-      prev.map((l) =>
+    setLeads(prev =>
+      prev.map(l =>
         l.id === dealData.lead_id
-          ? { ...l, is_converted: true, status_name: 'Deal & Booking', lead_status: 'Deal & Booking' }
-          : l
-      )
+          ? {
+              ...l,
+              is_converted: true,
+              status_name: 'Deal & Booking',
+              lead_status: 'Deal & Booking',
+            }
+          : l,
+      ),
     );
     Alert.alert('Deal Created!', 'Lead converted to deal successfully.');
   };
@@ -630,8 +697,8 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
   // Follow-Up Submission
   const handleSaveFollowUp = async (leadId: number, followUpData: any) => {
     await leadApi.addFollowUp(leadId, followUpData);
-    setLeads((prev) =>
-      prev.map((l) => {
+    setLeads(prev =>
+      prev.map(l => {
         if (l.id === leadId) {
           const prevFus = l.follow_ups || [];
           return {
@@ -640,7 +707,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
           };
         }
         return l;
-      })
+      }),
     );
     Alert.alert('Logged', 'Follow-up discussion logged successfully.');
   };
@@ -651,17 +718,17 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     try {
       setIsBulkExecuting(true);
       await leadApi.bulkAssign(selectedIds, bulkSelectedUser);
-      const assignedUserObj = usersList.find((u) => u.id === bulkSelectedUser);
-      setLeads((prev) =>
-        prev.map((l) =>
+      const assignedUserObj = usersList.find(u => u.id === bulkSelectedUser);
+      setLeads(prev =>
+        prev.map(l =>
           selectedIds.includes(l.id)
             ? {
-              ...l,
-              assigned_to: bulkSelectedUser,
-              assigned_user_name: assignedUserObj?.name,
-            }
-            : l
-        )
+                ...l,
+                assigned_to: bulkSelectedUser,
+                assigned_user_name: assignedUserObj?.name,
+              }
+            : l,
+        ),
       );
       setSelectedIds([]);
       setBulkAssignModal(false);
@@ -678,11 +745,15 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     try {
       setIsBulkExecuting(true);
       const matchedStatus = statuses.find(
-        (s) => s.name?.toLowerCase() === bulkSelectedStatusName.toLowerCase()
+        s => s.name?.toLowerCase() === bulkSelectedStatusName.toLowerCase(),
       );
-      await leadApi.bulkStatus(selectedIds, matchedStatus?.id || null, bulkSelectedStatusName);
-      setLeads((prev) =>
-        prev.map((l) =>
+      await leadApi.bulkStatus(
+        selectedIds,
+        matchedStatus?.id || null,
+        bulkSelectedStatusName,
+      );
+      setLeads(prev =>
+        prev.map(l =>
           selectedIds.includes(l.id)
             ? {
                 ...l,
@@ -690,14 +761,17 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                 status_name: bulkSelectedStatusName,
                 lead_status: bulkSelectedStatusName,
               }
-            : l
-        )
+            : l,
+        ),
       );
       setSelectedIds([]);
       setBulkStatusModal(false);
       Alert.alert('Success', 'Lead statuses updated successfully.');
     } catch (err: any) {
-      Alert.alert('Bulk Error', err?.message || 'Failed to update lead status.');
+      Alert.alert(
+        'Bulk Error',
+        err?.message || 'Failed to update lead status.',
+      );
     } finally {
       setIsBulkExecuting(false);
     }
@@ -708,19 +782,22 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
     try {
       setIsBulkExecuting(true);
       await leadApi.bulkPriority(selectedIds, bulkSelectedPriority);
-      setLeads((prev) =>
-        prev.map((l) =>
+      setLeads(prev =>
+        prev.map(l =>
           selectedIds.includes(l.id)
             ? {
                 ...l,
                 priority: bulkSelectedPriority,
               }
-            : l
-        )
+            : l,
+        ),
       );
       setSelectedIds([]);
       setBulkPriorityModal(false);
-      Alert.alert('Success', `Priority updated to ${bulkSelectedPriority} for selected leads.`);
+      Alert.alert(
+        'Success',
+        `Priority updated to ${bulkSelectedPriority} for selected leads.`,
+      );
     } catch (err: any) {
       Alert.alert('Bulk Error', err?.message || 'Failed to update priority.');
     } finally {
@@ -742,17 +819,20 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             try {
               setIsBulkExecuting(true);
               await leadApi.bulkDelete(selectedIds);
-              setLeads((prev) => prev.filter((l) => !selectedIds.includes(l.id)));
+              setLeads(prev => prev.filter(l => !selectedIds.includes(l.id)));
               setSelectedIds([]);
               Alert.alert('Deleted', 'Selected leads deleted successfully.');
             } catch (err: any) {
-              Alert.alert('Bulk Delete Error', err?.message || 'Failed to delete leads.');
+              Alert.alert(
+                'Bulk Delete Error',
+                err?.message || 'Failed to delete leads.',
+              );
             } finally {
               setIsBulkExecuting(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -789,12 +869,12 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       handleOpen360,
       handleOpenActionsMenu,
       handleDeleteLead,
-    ]
+    ],
   );
 
   const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    const rows = filteredLeads.map((l) => [
+    const rows = filteredLeads.map(l => [
       l.id,
       l.name || 'N/A',
       l.phone || 'N/A',
@@ -832,7 +912,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
       {/* 2. Scrollable Leads Content Body */}
       <FlatList
         data={filteredLeads}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={[
           styles.listContent,
@@ -883,10 +963,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
               >
                 <Search size={14} color={colors.textMuted} strokeWidth={2} />
                 <TextInput
-                  style={[
-                    styles.searchInput,
-                    { color: colors.textPrimary },
-                  ]}
+                  style={[styles.searchInput, { color: colors.textPrimary }]}
                   placeholder="Search lead, model, phone..."
                   placeholderTextColor={colors.textMuted}
                   value={search}
@@ -914,14 +991,14 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                       activeFiltersCount > 0
                         ? colors.primary
                         : isDark
-                          ? '#131B2E'
-                          : '#FFFFFF',
+                        ? '#131B2E'
+                        : '#FFFFFF',
                     borderColor:
                       activeFiltersCount > 0
                         ? colors.primaryDark
                         : isDark
-                          ? '#1E293B'
-                          : '#CBD5E1',
+                        ? '#1E293B'
+                        : '#CBD5E1',
                   },
                 ]}
                 onPress={() => {
@@ -932,7 +1009,9 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
               >
                 <SlidersHorizontal
                   size={14}
-                  color={activeFiltersCount > 0 ? '#FFFFFF' : colors.textPrimary}
+                  color={
+                    activeFiltersCount > 0 ? '#FFFFFF' : colors.textPrimary
+                  }
                   strokeWidth={2.2}
                 />
                 <Text
@@ -940,9 +1019,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                     styles.filterTriggerText,
                     {
                       color:
-                        activeFiltersCount > 0
-                          ? '#FFFFFF'
-                          : colors.textPrimary,
+                        activeFiltersCount > 0 ? '#FFFFFF' : colors.textPrimary,
                       marginLeft: 5,
                     },
                   ]}
@@ -985,10 +1062,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
 
               {/* + New Lead Button */}
               <TouchableOpacity
-                style={[
-                  styles.newLeadBtn,
-                  { backgroundColor: colors.primary },
-                ]}
+                style={[styles.newLeadBtn, { backgroundColor: colors.primary }]}
                 onPress={handleOpenCreateLead}
                 activeOpacity={0.8}
               >
@@ -1003,12 +1077,21 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                 style={[
                   styles.trashBanner,
                   {
-                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                    backgroundColor: isDark
+                      ? 'rgba(239, 68, 68, 0.15)'
+                      : '#FEE2E2',
                     borderColor: '#EF4444',
                   },
                 ]}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    flex: 1,
+                  }}
+                >
                   <Trash2 size={14} color="#DC2626" strokeWidth={2.4} />
                   <Text style={styles.trashBannerText}>
                     Trash Folder — Viewing Deleted Leads
@@ -1026,7 +1109,6 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
               </View>
             )}
 
-            
             {/* Active Filters Pill Strip (Only shown when filters are applied) */}
             {activeFiltersCount > 0 && (
               <View style={styles.activeFiltersRow}>
@@ -1050,9 +1132,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         style={[
                           styles.activeFilterChipText,
                           {
-                            color: isDark
-                              ? colors.primary
-                              : colors.primaryDark,
+                            color: isDark ? colors.primary : colors.primaryDark,
                           },
                         ]}
                       >
@@ -1077,9 +1157,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         style={[
                           styles.activeFilterChipText,
                           {
-                            color: isDark
-                              ? colors.primary
-                              : colors.primaryDark,
+                            color: isDark ? colors.primary : colors.primaryDark,
                           },
                         ]}
                       >
@@ -1103,9 +1181,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         style={[
                           styles.activeFilterChipText,
                           {
-                            color: isDark
-                              ? colors.primary
-                              : colors.primaryDark,
+                            color: isDark ? colors.primary : colors.primaryDark,
                           },
                         ]}
                       >
@@ -1129,9 +1205,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         style={[
                           styles.activeFilterChipText,
                           {
-                            color: isDark
-                              ? colors.primary
-                              : colors.primaryDark,
+                            color: isDark ? colors.primary : colors.primaryDark,
                           },
                         ]}
                       >
@@ -1155,9 +1229,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         style={[
                           styles.activeFilterChipText,
                           {
-                            color: isDark
-                              ? colors.primary
-                              : colors.primaryDark,
+                            color: isDark ? colors.primary : colors.primaryDark,
                           },
                         ]}
                       >
@@ -1207,14 +1279,14 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                           selectedIds.length > 0
                             ? colors.primary
                             : isDark
-                              ? '#334155'
-                              : '#CBD5E1',
+                            ? '#334155'
+                            : '#CBD5E1',
                         backgroundColor:
                           selectedIds.length > 0
                             ? colors.primary
                             : isDark
-                              ? '#101726'
-                              : '#FFFFFF',
+                            ? '#101726'
+                            : '#FFFFFF',
                       },
                     ]}
                   >
@@ -1268,9 +1340,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                       ]}
                       onPress={() => setBulkStatusModal(true)}
                     >
-                      <Text
-                        style={[styles.batchBtnText, { color: '#FFFFFF' }]}
-                      >
+                      <Text style={[styles.batchBtnText, { color: '#FFFFFF' }]}>
                         Status
                       </Text>
                     </TouchableOpacity>
@@ -1309,9 +1379,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                       ]}
                       onPress={handleExecuteBulkDelete}
                     >
-                      <Text
-                        style={[styles.batchBtnText, { color: '#DC2626' }]}
-                      >
+                      <Text style={[styles.batchBtnText, { color: '#DC2626' }]}>
                         Delete
                       </Text>
                     </TouchableOpacity>
@@ -1325,16 +1393,11 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
           !isLoading ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📁</Text>
-              <Text
-                style={[styles.emptyTitle, { color: colors.textPrimary }]}
-              >
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
                 No Prospects Found
               </Text>
               <Text
-                style={[
-                  styles.emptySubtitle,
-                  { color: colors.textSecondary },
-                ]}
+                style={[styles.emptySubtitle, { color: colors.textSecondary }]}
               >
                 {search || activeFiltersCount > 0
                   ? 'Try clearing your search query or reset filters.'
@@ -1415,17 +1478,17 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         lead={activeDetailLead}
         onClose={() => setDetailModalVisible(false)}
         onCall={handleCall}
-        onConvertToDeal={(ld) => {
+        onConvertToDeal={ld => {
           setDetailModalVisible(false);
           setActiveDealLead(ld);
           setDealModalVisible(true);
         }}
-        onLogFollowUp={(ld) => {
+        onLogFollowUp={ld => {
           setDetailModalVisible(false);
           setActiveFollowUpLead(ld);
           setFollowUpModalVisible(true);
         }}
-        onSendQuotation={(ld) => {
+        onSendQuotation={ld => {
           setDetailModalVisible(false);
           if (navigation) {
             (navigation as any).navigate('send-quotation', { leadId: ld.id });
@@ -1434,7 +1497,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             setQuotationModalVisible(true);
           }
         }}
-        onEditLead={(ld) => {
+        onEditLead={ld => {
           setDetailModalVisible(false);
           handleOpenEdit(ld);
         }}
@@ -1453,19 +1516,19 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
         visible={actionsModalVisible}
         lead={activeActionLead}
         onClose={() => setActionsModalVisible(false)}
-        onView360={(ld) => {
+        onView360={ld => {
           setActiveDetailLead(ld);
           setDetailModalVisible(true);
         }}
-        onConvertDeal={(ld) => {
+        onConvertDeal={ld => {
           setActiveDealLead(ld);
           setDealModalVisible(true);
         }}
-        onLogFollowUp={(ld) => {
+        onLogFollowUp={ld => {
           setActiveFollowUpLead(ld);
           setFollowUpModalVisible(true);
         }}
-        onSendQuotation={(ld) => {
+        onSendQuotation={ld => {
           setActionsModalVisible(false);
           if (navigation) {
             (navigation as any).navigate('send-quotation', { leadId: ld.id });
@@ -1474,11 +1537,11 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             setQuotationModalVisible(true);
           }
         }}
-        onEditLead={(ld) => {
+        onEditLead={ld => {
           setEditingLead(ld);
           setLeadModalVisible(true);
         }}
-        onDeleteLead={(ld) => {
+        onDeleteLead={ld => {
           handleDeleteLead(ld.id, ld.name);
         }}
       />
@@ -1514,24 +1577,18 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             ]}
           >
             <Text
-              style={[
-                styles.bulkModalTitle,
-                { color: colors.textPrimary },
-              ]}
+              style={[styles.bulkModalTitle, { color: colors.textPrimary }]}
             >
               Assign {selectedIds.length} Leads
             </Text>
             <Text
-              style={[
-                styles.bulkModalSub,
-                { color: colors.textSecondary },
-              ]}
+              style={[styles.bulkModalSub, { color: colors.textSecondary }]}
             >
               Select executive to assign chosen prospects:
             </Text>
 
             <ScrollView style={styles.bulkUserList}>
-              {usersList.map((u) => {
+              {usersList.map(u => {
                 const isSelected = bulkSelectedUser === u.id;
                 return (
                   <TouchableOpacity
@@ -1542,13 +1599,13 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         backgroundColor: isSelected
                           ? colors.primary
                           : isDark
-                            ? '#101726'
-                            : '#F8FAFC',
+                          ? '#101726'
+                          : '#F8FAFC',
                         borderColor: isSelected
                           ? colors.primaryDark
                           : isDark
-                            ? '#1E293B'
-                            : '#E2E8F0',
+                          ? '#1E293B'
+                          : '#E2E8F0',
                       },
                     ]}
                     onPress={() => setBulkSelectedUser(u.id)}
@@ -1557,9 +1614,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                       style={[
                         styles.bulkUserName,
                         {
-                          color: isSelected
-                            ? '#FFFFFF'
-                            : colors.textPrimary,
+                          color: isSelected ? '#FFFFFF' : colors.textPrimary,
                           fontWeight: isSelected ? '700' : '500',
                         },
                       ]}
@@ -1570,9 +1625,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                       style={[
                         styles.bulkUserRole,
                         {
-                          color: isSelected
-                            ? '#FFFFFF'
-                            : colors.textSecondary,
+                          color: isSelected ? '#FFFFFF' : colors.textSecondary,
                         },
                       ]}
                     >
@@ -1640,24 +1693,18 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             ]}
           >
             <Text
-              style={[
-                styles.bulkModalTitle,
-                { color: colors.textPrimary },
-              ]}
+              style={[styles.bulkModalTitle, { color: colors.textPrimary }]}
             >
               Update Status ({selectedIds.length} Leads)
             </Text>
             <Text
-              style={[
-                styles.bulkModalSub,
-                { color: colors.textSecondary },
-              ]}
+              style={[styles.bulkModalSub, { color: colors.textSecondary }]}
             >
               Select new pipeline stage:
             </Text>
 
             <ScrollView style={styles.bulkUserList}>
-              {LEAD_STATUS_OPTIONS.map((st) => {
+              {LEAD_STATUS_OPTIONS.map(st => {
                 const isSelected = bulkSelectedStatusName === st;
                 return (
                   <TouchableOpacity
@@ -1668,13 +1715,13 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         backgroundColor: isSelected
                           ? colors.primary
                           : isDark
-                            ? '#101726'
-                            : '#F8FAFC',
+                          ? '#101726'
+                          : '#F8FAFC',
                         borderColor: isSelected
                           ? colors.primaryDark
                           : isDark
-                            ? '#1E293B'
-                            : '#E2E8F0',
+                          ? '#1E293B'
+                          : '#E2E8F0',
                       },
                     ]}
                     onPress={() => setBulkSelectedStatusName(st)}
@@ -1683,9 +1730,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                       style={[
                         styles.bulkUserName,
                         {
-                          color: isSelected
-                            ? '#FFFFFF'
-                            : colors.textPrimary,
+                          color: isSelected ? '#FFFFFF' : colors.textPrimary,
                           fontWeight: isSelected ? '700' : '500',
                         },
                       ]}
@@ -1754,26 +1799,25 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
             ]}
           >
             <Text
-              style={[
-                styles.bulkModalTitle,
-                { color: colors.textPrimary },
-              ]}
+              style={[styles.bulkModalTitle, { color: colors.textPrimary }]}
             >
               Set Priority ({selectedIds.length} Leads)
             </Text>
             <Text
-              style={[
-                styles.bulkModalSub,
-                { color: colors.textSecondary },
-              ]}
+              style={[styles.bulkModalSub, { color: colors.textSecondary }]}
             >
               Select lead priority / temperature:
             </Text>
 
             <View style={{ marginVertical: 12 }}>
-              {(['Hot', 'Warm', 'Cold'] as const).map((p) => {
+              {(['Hot', 'Warm', 'Cold'] as const).map(p => {
                 const isSelected = bulkSelectedPriority === p;
-                const pColor = p === 'Hot' ? '#EF4444' : p === 'Warm' ? '#F59E0B' : '#3B82F6';
+                const pColor =
+                  p === 'Hot'
+                    ? '#EF4444'
+                    : p === 'Warm'
+                    ? '#F59E0B'
+                    : '#3B82F6';
                 return (
                   <TouchableOpacity
                     key={p}
@@ -1783,13 +1827,13 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                         backgroundColor: isSelected
                           ? pColor
                           : isDark
-                            ? '#101726'
-                            : '#F8FAFC',
+                          ? '#101726'
+                          : '#F8FAFC',
                         borderColor: isSelected
                           ? pColor
                           : isDark
-                            ? '#1E293B'
-                            : '#E2E8F0',
+                          ? '#1E293B'
+                          : '#E2E8F0',
                         marginBottom: 8,
                       },
                     ]}
@@ -1799,14 +1843,16 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
                       style={[
                         styles.bulkUserName,
                         {
-                          color: isSelected
-                            ? '#FFFFFF'
-                            : colors.textPrimary,
+                          color: isSelected ? '#FFFFFF' : colors.textPrimary,
                           fontWeight: isSelected ? '700' : '500',
                         },
                       ]}
                     >
-                      {p === 'Hot' ? '🔥 Hot' : p === 'Warm' ? '⚡ Warm' : '❄️ Cold'}
+                      {p === 'Hot'
+                        ? '🔥 Hot'
+                        : p === 'Warm'
+                        ? '⚡ Warm'
+                        : '❄️ Cold'}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -1871,7 +1917,6 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({ onOpenDrawer, navigati
 };
 
 const styles = StyleSheet.create({
-
   // Horizontal Status Tabs Styles
   statusTabsContainer: {
     marginTop: 10,

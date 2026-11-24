@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -117,7 +123,9 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
   const flatListRef = useRef<FlatList>(null);
 
   // Data states
-  const [variants, setVariants] = useState<VehicleVariant[]>(DEFAULT_SEED_VARIANTS);
+  const [variants, setVariants] = useState<VehicleVariant[]>(
+    DEFAULT_SEED_VARIANTS,
+  );
   const [brands, setBrands] = useState<Brand[]>([]);
   const [models, setModels] = useState<CarModel[]>([]);
   const [stats, setStats] = useState<VariantStats>({
@@ -169,7 +177,7 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
     newPerPage: number = perPage,
     overrideSearch?: string,
     overrideBrandId?: number | 'All',
-    overrideModelId?: number | 'All'
+    overrideModelId?: number | 'All',
   ) => {
     if (isPullRefresh) {
       setIsRefreshing(true);
@@ -177,9 +185,12 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
       setIsLoading(true);
     }
 
-    const currentSearch = overrideSearch !== undefined ? overrideSearch : search;
-    const currentBrand = overrideBrandId !== undefined ? overrideBrandId : selectedBrandId;
-    const currentModel = overrideModelId !== undefined ? overrideModelId : selectedModelId;
+    const currentSearch =
+      overrideSearch !== undefined ? overrideSearch : search;
+    const currentBrand =
+      overrideBrandId !== undefined ? overrideBrandId : selectedBrandId;
+    const currentModel =
+      overrideModelId !== undefined ? overrideModelId : selectedModelId;
 
     try {
       const [variantsRes, brandsRes, modelsRes] = await Promise.allSettled([
@@ -190,8 +201,12 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
           brand_id: currentBrand !== 'All' ? currentBrand : undefined,
           model_id: currentModel !== 'All' ? currentModel : undefined,
         }),
-        brands.length === 0 ? brandApi.getAll({ per_page: 100 }) : Promise.resolve(null),
-        models.length === 0 ? modelApi.getAll({ per_page: 100 }) : Promise.resolve(null),
+        brands.length === 0
+          ? brandApi.getAll({ per_page: 100 })
+          : Promise.resolve(null),
+        models.length === 0
+          ? modelApi.getAll({ per_page: 100 })
+          : Promise.resolve(null),
       ]);
 
       if (variantsRes.status === 'fulfilled') {
@@ -228,7 +243,12 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
           created_at: v.created_at,
         }));
 
-        if (parsed.length > 0 || currentSearch || currentBrand !== 'All' || currentModel !== 'All') {
+        if (
+          parsed.length > 0 ||
+          currentSearch ||
+          currentBrand !== 'All' ||
+          currentModel !== 'All'
+        ) {
           setVariants(parsed);
         } else if (variants.length === 0) {
           setVariants(DEFAULT_SEED_VARIANTS);
@@ -239,13 +259,18 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
         if (pagination) {
           const tot = Number(pagination.total) || parsed.length;
           const curP = Number(pagination.current_page) || pageNumber;
-          const lastP = Number(pagination.last_page) || Math.max(1, Math.ceil(tot / newPerPage));
+          const lastP =
+            Number(pagination.last_page) ||
+            Math.max(1, Math.ceil(tot / newPerPage));
           setTotalCount(tot);
           setTotalPages(lastP);
           setHasMore(curP < lastP);
         } else {
           setHasMore(parsed.length >= newPerPage);
-          const computedTotal = pageNumber === 1 ? parsed.length : Math.max(parsed.length, totalCount);
+          const computedTotal =
+            pageNumber === 1
+              ? parsed.length
+              : Math.max(parsed.length, totalCount);
           setTotalCount(computedTotal);
           setTotalPages(Math.max(1, Math.ceil(computedTotal / newPerPage)));
         }
@@ -253,22 +278,32 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
 
       if (brandsRes.status === 'fulfilled' && brandsRes.value) {
         const rawB = brandsRes.value;
-        const bList = Array.isArray(rawB?.data) ? rawB.data : Array.isArray(rawB) ? rawB : [];
+        const bList = Array.isArray(rawB?.data)
+          ? rawB.data
+          : Array.isArray(rawB)
+          ? rawB
+          : [];
         if (bList.length > 0) {
           setBrands(
             bList.map((b: any) => ({
               id: Number(b.id),
               name: b.name,
-              vehicle_type: Array.isArray(b.vehicle_type) ? b.vehicle_type : ['4 Wheeler'],
+              vehicle_type: Array.isArray(b.vehicle_type)
+                ? b.vehicle_type
+                : ['4 Wheeler'],
               status: b.status || 'Active',
-            }))
+            })),
           );
         }
       }
 
       if (modelsRes.status === 'fulfilled' && modelsRes.value) {
         const rawM = modelsRes.value;
-        const mList = Array.isArray(rawM?.data) ? rawM.data : Array.isArray(rawM) ? rawM : [];
+        const mList = Array.isArray(rawM?.data)
+          ? rawM.data
+          : Array.isArray(rawM)
+          ? rawM
+          : [];
         if (mList.length > 0) {
           setModels(
             mList.map((m: any) => ({
@@ -277,7 +312,7 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
               brand_id: Number(m.brand_id || 1),
               vehicle_segment: m.vehicle_segment || '4 Wheeler',
               status: m.status || 'Active',
-            }))
+            })),
           );
         }
       }
@@ -303,90 +338,97 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
     fetchData(1, true, perPage);
   }, [search, selectedBrandId, selectedModelId, perPage]);
 
-
-
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore && !isLoading && !isRefreshing) {
       setIsLoadingMore(true);
-      variantApi.getAll({
-        page: page + 1,
-        per_page: perPage,
-        search: search.trim() || undefined,
-        brand_id: selectedBrandId !== 'All' ? selectedBrandId : undefined,
-        model_id: selectedModelId !== 'All' ? selectedModelId : undefined,
-      }).then((res) => {
-        const raw = res;
-        const list =
-          raw && raw.status && Array.isArray(raw.data)
-            ? raw.data
-            : Array.isArray(raw?.data)
-            ? raw.data
-            : Array.isArray(raw?.data?.data)
-            ? raw.data.data
-            : Array.isArray(raw)
-            ? raw
-            : [];
-        const parsed: VehicleVariant[] = list.map((v: any) => ({
-          id: Number(v.id),
-          name: v.name || 'Unnamed Trim',
-          brand_id: Number(v.brand_id || v.brand?.id || 1),
-          model_id: Number(v.model_id || v.model?.id || 1),
-          brand: v.brand ? { id: v.brand.id, name: v.brand.name } : undefined,
-          model: v.model ? { id: v.model.id, name: v.model.name } : undefined,
-          price: Number(v.price || v.ex_showroom_price || 0),
-          ex_showroom_price: Number(v.ex_showroom_price || v.price || 0),
-          previous_price: v.previous_price ? Number(v.previous_price) : null,
-          fuel_type: v.fuel_type || 'Petrol',
-          status: v.status || 'Active',
-          created_at: v.created_at,
-        }));
-        setVariants((prev) => {
-          const ids = new Set(prev.map((item) => item.id));
-          const newOnes = parsed.filter((item) => !ids.has(item.id));
-          return [...prev, ...newOnes];
+      variantApi
+        .getAll({
+          page: page + 1,
+          per_page: perPage,
+          search: search.trim() || undefined,
+          brand_id: selectedBrandId !== 'All' ? selectedBrandId : undefined,
+          model_id: selectedModelId !== 'All' ? selectedModelId : undefined,
+        })
+        .then(res => {
+          const raw = res;
+          const list =
+            raw && raw.status && Array.isArray(raw.data)
+              ? raw.data
+              : Array.isArray(raw?.data)
+              ? raw.data
+              : Array.isArray(raw?.data?.data)
+              ? raw.data.data
+              : Array.isArray(raw)
+              ? raw
+              : [];
+          const parsed: VehicleVariant[] = list.map((v: any) => ({
+            id: Number(v.id),
+            name: v.name || 'Unnamed Trim',
+            brand_id: Number(v.brand_id || v.brand?.id || 1),
+            model_id: Number(v.model_id || v.model?.id || 1),
+            brand: v.brand ? { id: v.brand.id, name: v.brand.name } : undefined,
+            model: v.model ? { id: v.model.id, name: v.model.name } : undefined,
+            price: Number(v.price || v.ex_showroom_price || 0),
+            ex_showroom_price: Number(v.ex_showroom_price || v.price || 0),
+            previous_price: v.previous_price ? Number(v.previous_price) : null,
+            fuel_type: v.fuel_type || 'Petrol',
+            status: v.status || 'Active',
+            created_at: v.created_at,
+          }));
+          setVariants(prev => {
+            const ids = new Set(prev.map(item => item.id));
+            const newOnes = parsed.filter(item => !ids.has(item.id));
+            return [...prev, ...newOnes];
+          });
+          const pagination = raw?.pagination || raw?.data?.pagination;
+          if (pagination) {
+            setHasMore(
+              Number(pagination.current_page) < Number(pagination.last_page),
+            );
+          } else {
+            setHasMore(parsed.length >= perPage);
+          }
+          setPage(p => p + 1);
+        })
+        .catch(e => {
+          console.log('Error loading more variants:', e);
+        })
+        .finally(() => {
+          setIsLoadingMore(false);
         });
-        const pagination = raw?.pagination || raw?.data?.pagination;
-        if (pagination) {
-          setHasMore(Number(pagination.current_page) < Number(pagination.last_page));
-        } else {
-          setHasMore(parsed.length >= perPage);
-        }
-        setPage((p) => p + 1);
-      }).catch((e) => {
-        console.log('Error loading more variants:', e);
-      }).finally(() => {
-        setIsLoadingMore(false);
-      });
     }
   };
 
   // Aggregated Stats Fallback
   const computedStats: VariantStats = useMemo(() => {
     const total = totalCount > 0 ? totalCount : variants.length;
-    const active = variants.filter((v) => v.status === 'Active').length;
-    const uniqueModels = new Set(variants.map((v) => v.model_id)).size;
+    const active = variants.filter(v => v.status === 'Active').length;
+    const uniqueModels = new Set(variants.map(v => v.model_id)).size;
 
     return {
       total_variants: stats.total_variants > 0 ? stats.total_variants : total,
       active_trims: stats.active_trims > 0 ? stats.active_trims : active,
-      mapped_models: stats.mapped_models > 0 ? stats.mapped_models : uniqueModels,
+      mapped_models:
+        stats.mapped_models > 0 ? stats.mapped_models : uniqueModels,
     };
   }, [variants, stats, totalCount]);
 
   // Models filtered for the model filter chips based on selected brand
   const filteredModelsForChips = useMemo(() => {
     if (selectedBrandId === 'All') return models;
-    return models.filter((m) => m.brand_id === selectedBrandId);
+    return models.filter(m => m.brand_id === selectedBrandId);
   }, [models, selectedBrandId]);
 
   // Filtered variants
   const filteredVariants = useMemo(() => {
-    return variants.filter((item) => {
+    return variants.filter(item => {
       const matchSearch =
         !search.trim() ||
         item.name.toLowerCase().includes(search.toLowerCase().trim()) ||
         (item.brand?.name &&
-          item.brand.name.toLowerCase().includes(search.toLowerCase().trim())) ||
+          item.brand.name
+            .toLowerCase()
+            .includes(search.toLowerCase().trim())) ||
         (item.model?.name &&
           item.model.name.toLowerCase().includes(search.toLowerCase().trim()));
       const matchBrand =
@@ -412,16 +454,16 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
   };
 
   const handleSaveVariant = async (
-    payload: CreateVariantPayload | UpdateVariantPayload
+    payload: CreateVariantPayload | UpdateVariantPayload,
   ) => {
     try {
-      const bObj = brands.find((b) => b.id === payload.brand_id);
-      const mObj = models.find((m) => m.id === payload.model_id);
+      const bObj = brands.find(b => b.id === payload.brand_id);
+      const mObj = models.find(m => m.id === payload.model_id);
 
       if (editingItem) {
         await variantApi.update(editingItem.id, payload);
-        setVariants((prev) =>
-          prev.map((v) =>
+        setVariants(prev =>
+          prev.map(v =>
             v.id === editingItem.id
               ? {
                   ...v,
@@ -435,16 +477,20 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
                   fuel_type: (payload.fuel_type as any) || v.fuel_type,
                   status: payload.status,
                 }
-              : v
-          )
+              : v,
+          ),
         );
         triggerHaptic('notificationSuccess');
-        showSuccessToast('Trim Updated', `Variant "${payload.name}" updated successfully.`);
+        showSuccessToast(
+          'Trim Updated',
+          `Variant "${payload.name}" updated successfully.`,
+        );
       } else {
         const createData = payload as CreateVariantPayload;
         const res = await variantApi.create(createData);
         const newId =
-          res?.data?.id || (variants.length > 0 ? Math.max(...variants.map((v) => v.id)) + 1 : 1);
+          res?.data?.id ||
+          (variants.length > 0 ? Math.max(...variants.map(v => v.id)) + 1 : 1);
         const newVariant: VehicleVariant = {
           id: newId,
           name: createData.name,
@@ -457,9 +503,12 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
           fuel_type: (createData.fuel_type as any) || 'Petrol',
           status: createData.status,
         };
-        setVariants((prev) => [newVariant, ...prev]);
+        setVariants(prev => [newVariant, ...prev]);
         triggerHaptic('notificationSuccess');
-        showSuccessToast('Trim Saved', `Variant "${payload.name}" added to catalog.`);
+        showSuccessToast(
+          'Trim Saved',
+          `Variant "${payload.name}" added to catalog.`,
+        );
       }
     } catch (err: any) {
       console.log('Error saving variant payload:', err);
@@ -478,18 +527,24 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
     try {
       setIsDeleting(true);
       await variantApi.delete(deleteTarget.id);
-      setVariants((prev) => prev.filter((v) => v.id !== deleteTarget.id));
+      setVariants(prev => prev.filter(v => v.id !== deleteTarget.id));
       triggerHaptic('notificationSuccess');
       setDeleteModalVisible(false);
       setDeleteTarget(null);
-      showSuccessToast('Variant Deleted', `Trim "${deleteTarget.name}" removed from local list.`);
+      showSuccessToast(
+        'Variant Deleted',
+        `Trim "${deleteTarget.name}" removed from local list.`,
+      );
     } catch (err: any) {
       console.log('Error deleting variant:', err);
       // Demo optimistic delete
-      setVariants((prev) => prev.filter((v) => v.id !== deleteTarget.id));
+      setVariants(prev => prev.filter(v => v.id !== deleteTarget.id));
       setDeleteModalVisible(false);
       setDeleteTarget(null);
-      showSuccessToast('Variant Deleted', `Trim "${deleteTarget.name}" removed from local list.`);
+      showSuccessToast(
+        'Variant Deleted',
+        `Trim "${deleteTarget.name}" removed from local list.`,
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -498,18 +553,26 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
   // Export CSV
   const handleExportCSV = async () => {
     triggerHaptic('impactLight');
-    const rows = filteredVariants.map((v) => [
+    const rows = filteredVariants.map(v => [
       v.id,
       v.name,
-      v.brand?.name || brands.find((b) => b.id === v.brand_id)?.name || 'Unknown',
-      v.model?.name || models.find((m) => m.id === v.model_id)?.name || 'Unknown',
+      v.brand?.name || brands.find(b => b.id === v.brand_id)?.name || 'Unknown',
+      v.model?.name || models.find(m => m.id === v.model_id)?.name || 'Unknown',
       v.fuel_type || 'N/A',
       v.price ?? (v as any).base_price ?? 0,
       v.status || 'Active',
     ]);
     await exportCsvToFile({
       filename: 'variants',
-      headers: ['Variant ID', 'Trim Name', 'Brand', 'Model', 'Fuel Type', 'CSD Base Price', 'Status'],
+      headers: [
+        'Variant ID',
+        'Trim Name',
+        'Brand',
+        'Model',
+        'Fuel Type',
+        'CSD Base Price',
+        'Status',
+      ],
       rows,
     });
   };
@@ -525,7 +588,7 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
       <FlatList
         ref={flatListRef}
         data={filteredVariants}
-        keyExtractor={(item) => `variant-${item.id}`}
+        keyExtractor={item => `variant-${item.id}`}
         renderItem={({ item, index }) => (
           <VariantCard
             item={item}
@@ -567,7 +630,11 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
                   },
                 ]}
               >
-                <Search size={14} color={colors.textSecondary} strokeWidth={2} />
+                <Search
+                  size={14}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
                 <TextInput
                   style={[
                     styles.searchInput,
@@ -576,18 +643,24 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
                   value={search}
                   onChangeText={setSearch}
                   onSubmitEditing={() => {
-                    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    flatListRef.current?.scrollToOffset({
+                      offset: 0,
+                      animated: true,
+                    });
                     fetchData(1, false, perPage, search);
                   }}
                   returnKeyType="search"
-                  placeholder="Search trim name, fuel, or model (e.g. ZXI, Diesel)..."
+                  placeholder="Search  name, model .. "
                   placeholderTextColor={colors.textMuted}
                 />
                 {search ? (
                   <TouchableOpacity
                     onPress={() => {
                       setSearch('');
-                      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                      flatListRef.current?.scrollToOffset({
+                        offset: 0,
+                        animated: true,
+                      });
                       fetchData(1, false, perPage, '');
                     }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -605,7 +678,7 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.filterScroll}
                   >
-                    {[{ id: 'All', name: 'All Brands' }, ...brands].map((b) => {
+                    {[{ id: 'All', name: 'All Brands' }, ...brands].map(b => {
                       const isSel = selectedBrandId === b.id;
                       return (
                         <TouchableOpacity
@@ -629,8 +702,18 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
                             triggerHaptic('selection');
                             setSelectedBrandId(b.id as any);
                             setSelectedModelId('All');
-                            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-                            fetchData(1, false, perPage, undefined, b.id as any, 'All');
+                            flatListRef.current?.scrollToOffset({
+                              offset: 0,
+                              animated: true,
+                            });
+                            fetchData(
+                              1,
+                              false,
+                              perPage,
+                              undefined,
+                              b.id as any,
+                              'All',
+                            );
                           }}
                         >
                           <Text
@@ -663,7 +746,10 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.filterScroll}
                   >
-                    {[{ id: 'All', name: 'All Models' }, ...filteredModelsForChips].map((m) => {
+                    {[
+                      { id: 'All', name: 'All Models' },
+                      ...filteredModelsForChips,
+                    ].map(m => {
                       const isSel = selectedModelId === m.id;
                       return (
                         <TouchableOpacity
@@ -686,8 +772,18 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
                           onPress={() => {
                             triggerHaptic('selection');
                             setSelectedModelId(m.id as any);
-                            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-                            fetchData(1, false, perPage, undefined, undefined, m.id as any);
+                            flatListRef.current?.scrollToOffset({
+                              offset: 0,
+                              animated: true,
+                            });
+                            fetchData(
+                              1,
+                              false,
+                              perPage,
+                              undefined,
+                              undefined,
+                              m.id as any,
+                            );
                           }}
                         >
                           <Text
@@ -753,7 +849,13 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
         }
         ListFooterComponent={
           isLoadingMore ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                paddingVertical: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : !hasMore && variants.length > 5 ? (
@@ -799,10 +901,6 @@ export const VariantScreen: React.FC<VariantScreenProps> = () => {
         primaryAction={{
           label: 'Add Trim',
           onPress: handleOpenAdd,
-        }}
-        secondaryAction={{
-          label: 'Download CSV',
-          onPress: handleExportCSV,
         }}
       />
     </View>
