@@ -201,6 +201,7 @@ export const InsuranceRecordsScreen: React.FC = () => {
         style={[
           styles.card,
           {
+            marginBottom: 12,
             backgroundColor: isDark ? '#131C27' : '#FFFFFF',
             borderColor: isDark ? 'rgba(217, 221, 204, 0.18)' : colors.border,
           },
