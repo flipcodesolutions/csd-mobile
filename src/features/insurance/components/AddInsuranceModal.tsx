@@ -29,7 +29,6 @@ import { triggerHaptic } from '../../../core/utils/haptics';
 import { showSuccessToast, showErrorToast } from '../../../core/utils/toast';
 import { DatePickerModal } from '../../leads/components/DatePickerModal';
 import {
-  INSURANCE_COMPANIES,
   INSURANCE_TYPES,
   REMINDER_DAYS_OPTIONS,
   insuranceService,

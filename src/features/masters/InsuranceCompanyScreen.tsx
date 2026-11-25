@@ -138,12 +138,12 @@ export const InsuranceCompanyScreen: React.FC<
         raw && raw.status && Array.isArray(raw.data)
           ? raw.data
           : Array.isArray(raw?.data)
-          ? raw.data
-          : Array.isArray(raw?.data?.data)
-          ? raw.data.data
-          : Array.isArray(raw)
-          ? raw
-          : [];
+            ? raw.data
+            : Array.isArray(raw?.data?.data)
+              ? raw.data.data
+              : Array.isArray(raw)
+                ? raw
+                : [];
 
       const pagination =
         raw?.pagination ||
@@ -160,9 +160,9 @@ export const InsuranceCompanyScreen: React.FC<
         email: c.email || undefined,
         status:
           c.status === 'Active' ||
-          c.status === 'active' ||
-          c.status === 1 ||
-          c.status === '1'
+            c.status === 'active' ||
+            c.status === 1 ||
+            c.status === '1'
             ? 'Active'
             : 'Inactive',
         notes: c.notes || undefined,
@@ -173,10 +173,10 @@ export const InsuranceCompanyScreen: React.FC<
       if (pageNumber === 1) {
         setCompanies(parsed);
         if (parsed.length === 0) {
-          AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
+          AsyncStorage.removeItem(CACHE_KEY).catch(() => { });
         } else {
           AsyncStorage.setItem(CACHE_KEY, JSON.stringify(parsed)).catch(
-            () => {},
+            () => { },
           );
         }
       } else {
@@ -289,7 +289,7 @@ export const InsuranceCompanyScreen: React.FC<
       setCompanies(prev => {
         const updated = prev.filter(c => c.id !== targetItem.id);
         AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(
-          () => {},
+          () => { },
         );
         return updated;
       });
@@ -319,7 +319,7 @@ export const InsuranceCompanyScreen: React.FC<
         setCompanies(prev => {
           const updated = prev.filter(c => c.id !== targetItem.id);
           AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updated)).catch(
-            () => {},
+            () => { },
           );
           return updated;
         });
@@ -345,13 +345,13 @@ export const InsuranceCompanyScreen: React.FC<
       if (isConstraintError) {
         showErrorToast(
           'Cannot Delete',
-          `"${targetItem.name}" kisi Insurance Policy ya Deal se linked hai, isliye delete nahi ho sakta. Status "Inactive" set karein.`,
+          `"${targetItem.name}" is linked to an Insurance Policy or Deal, so it cannot be deleted. Please set its status to "Inactive"`,
         );
       } else {
         const displayMsg =
           typeof serverMsg === 'string' &&
-          serverMsg &&
-          !serverMsg.includes('Axios')
+            serverMsg &&
+            !serverMsg.includes('Axios')
             ? serverMsg
             : 'Unable to delete insurance company.';
         showErrorToast('Delete Failed', displayMsg);
@@ -399,8 +399,8 @@ export const InsuranceCompanyScreen: React.FC<
     statusFilter === 'all'
       ? 'All Statuses'
       : statusFilter === 'active'
-      ? 'Active'
-      : 'Inactive';
+        ? 'Active'
+        : 'Inactive';
 
   return (
     <View

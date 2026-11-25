@@ -61,14 +61,6 @@ interface Props {
 
 const FOLLOW_UP_TYPES = ['Call', 'Meeting', 'WhatsApp', 'Email', 'Visit', 'Other'];
 const STATUS_OPTIONS = ['Completed', 'Pending', 'Cancelled'];
-const LEAD_STATUS_OPTIONS = [
-  'In Follow-Up',
-  'Test Drive Scheduled',
-  'Quotation Sent',
-  'Negotiation',
-  'Deal Won',
-  'Deal Lost',
-];
 
 export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack }) => {
   const navigation = useNavigation<any>();
@@ -1342,25 +1334,28 @@ export const SalesExecutiveLeadDetailScreen: React.FC<Props> = ({ leadId, onBack
               {/* Update Lead Pipeline Status */}
               <Text style={styles.inputLabel}>Update Lead Pipeline Status</Text>
               <View style={styles.typeSelectorRow}>
-                {LEAD_STATUS_OPTIONS.map((ls) => (
-                  <TouchableOpacity
-                    key={ls}
-                    style={[
-                      styles.typeSelectChip,
-                      formLeadStatus === ls && styles.typeSelectChipActive,
-                    ]}
-                    onPress={() => setFormLeadStatus(ls)}
-                  >
-                    <Text
+                {statusesList.map((st) => {
+                  const sName = st.name;
+                  return (
+                    <TouchableOpacity
+                      key={st.id || sName}
                       style={[
-                        styles.typeSelectText,
-                        formLeadStatus === ls && styles.typeSelectTextActive,
+                        styles.typeSelectChip,
+                        formLeadStatus === sName && styles.typeSelectChipActive,
                       ]}
+                      onPress={() => setFormLeadStatus(sName)}
                     >
-                      {ls}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.typeSelectText,
+                          formLeadStatus === sName && styles.typeSelectTextActive,
+                        ]}
+                      >
+                        {sName}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </ScrollView>
 

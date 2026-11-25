@@ -51,7 +51,6 @@ import {
   StatusItem,
   UserItem,
   VariantItem,
-  LEAD_STATUS_OPTIONS,
 } from './types';
 
 import { KpiMetricsDeck } from './components/KpiMetricsDeck';
@@ -1725,11 +1724,12 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({
             </Text>
 
             <ScrollView style={styles.bulkUserList}>
-              {LEAD_STATUS_OPTIONS.map(st => {
-                const isSelected = bulkSelectedStatusName === st;
+              {statuses.map(st => {
+                const sName = st.name;
+                const isSelected = bulkSelectedStatusName === sName;
                 return (
                   <TouchableOpacity
-                    key={st}
+                    key={st.id || sName}
                     style={[
                       styles.bulkUserRow,
                       {
@@ -1745,7 +1745,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({
                           : '#E2E8F0',
                       },
                     ]}
-                    onPress={() => setBulkSelectedStatusName(st)}
+                    onPress={() => setBulkSelectedStatusName(sName)}
                   >
                     <Text
                       style={[
@@ -1756,7 +1756,7 @@ export const LeadsScreen: React.FC<LeadsScreenProps> = ({
                         },
                       ]}
                     >
-                      {st}
+                      {sName}
                     </Text>
                   </TouchableOpacity>
                 );

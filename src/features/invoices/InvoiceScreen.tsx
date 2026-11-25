@@ -144,7 +144,7 @@ export const InvoiceScreen: React.FC = () => {
         const invNo =
           p.invoice_no ||
           p.invoice_number ||
-          `DAL-/${new Date(invDate).getFullYear()}/${String(new Date(invDate).getMonth() + 1).padStart(2, '0')}/${String(1000 + (p.id || idx + 1))}`;
+          (p.id ? `INV-#${p.id}` : '');
 
         let installmentTitle = 'Installment Payment';
         if (p.payment_type) {
@@ -159,7 +159,7 @@ export const InvoiceScreen: React.FC = () => {
           id: p.id || `INV-${d.id}-${idx + 1}`,
           payment_id: p.id,
           deal_id: d.id,
-          deal_number: d.deal_number || `DEAL-${d.id}`,
+          deal_number: d.deal_number || '',
           invoice_no: invNo,
           payment_date: invDate,
           time: p.created_at
@@ -167,13 +167,13 @@ export const InvoiceScreen: React.FC = () => {
                 hour: '2-digit',
                 minute: '2-digit',
               })
-            : '12:00 PM',
+            : '',
           created_at: p.created_at,
           payment_type: installmentTitle,
-          payment_mode: (p.payment_mode || 'UPI').toUpperCase(),
-          transaction_reference: p.transaction_reference || (p as any).reference_no || 'VERIFIED-REF',
-          bank_name: p.bank_name || 'HDFC Bank',
-          received_by: p.received_by || 'Admin User',
+          payment_mode: (p.payment_mode || '').toUpperCase(),
+          transaction_reference: p.transaction_reference || (p as any).reference_no || '',
+          bank_name: p.bank_name || '',
+          received_by: p.received_by || '',
           amount: amt,
           status: p.status === 'cleared' ? 'Paid' : p.status || 'Paid',
           notes: p.notes,
@@ -181,7 +181,7 @@ export const InvoiceScreen: React.FC = () => {
           customer_phone: d.customer_phone,
           customer_email: d.customer_email,
           customer_city: d.customer_city || d.city,
-          vehicle_model: d.model_variant || d.model_name || 'Vehicle',
+          vehicle_model: d.model_variant || d.model_name || '',
           color: d.color,
           vin: d.vin_chassis_number || d.vin,
           registration_number: d.registration_number,
@@ -196,7 +196,7 @@ export const InvoiceScreen: React.FC = () => {
           ),
           items: [
             {
-              description: `${installmentTitle} for ${d.model_variant || 'Vehicle'}`,
+              description: d.model_variant ? `${installmentTitle} for ${d.model_variant}` : installmentTitle,
               hsn: '998313',
               quantity: 1,
               rate: amt,

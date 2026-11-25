@@ -23,27 +23,6 @@ export const isDealInsured = (dealId: number): boolean => {
   return locallyInsuredDealIds.has(Number(dealId));
 };
 
-/**
- * Common Indian Insurance Providers for Dropdown
- */
-export const INSURANCE_COMPANIES = [
-  'HDFC ERGO General Insurance',
-  'ICICI Lombard General Insurance',
-  'Tata AIG General Insurance',
-  'Bajaj Allianz General Insurance',
-  'Go Digit General Insurance',
-  'Reliance General Insurance',
-  'SBI General Insurance',
-  'New India Assurance',
-  'United India Insurance',
-  'Oriental Insurance',
-  'National Insurance Company',
-  'Royal Sundaram General Insurance',
-  'Cholamandalam MS General Insurance',
-  'Universal Sompo General Insurance',
-  'Iffco Tokio General Insurance',
-];
-
 export const INSURANCE_TYPES = [
   'Comprehensive',
   'Zero Depreciation (B2B)',

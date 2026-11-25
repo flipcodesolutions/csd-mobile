@@ -21,7 +21,10 @@ interface Props {
   onLoginSuccess?: (email: string, user?: any) => void;
 }
 
-export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess }) => {
+export const LoginScreen: React.FC<Props> = ({
+  onBackToSplash,
+  onLoginSuccess,
+}) => {
   // Form State
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('password');
@@ -121,19 +124,34 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
 
           {/* Quick Demo Preset Pills */}
           <View style={{ marginBottom: 12 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 6, fontWeight: '600' }}>
+            <Text
+              style={{
+                color: colors.textMuted,
+                fontSize: 11,
+                marginBottom: 6,
+                fontWeight: '600',
+              }}
+            >
               QUICK DEMO FILL (5 ROLES):
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 6 }}
+            >
               <TouchableOpacity
                 style={{
-                  backgroundColor: email === 'admin@example.com' ? colors.primary : '#EAECE4',
+                  backgroundColor:
+                    email === 'admin@example.com' ? colors.primary : '#EAECE4',
                   paddingVertical: 6,
                   paddingHorizontal: 10,
                   borderRadius: 6,
                   alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: email === 'admin@example.com' ? colors.primaryHover : colors.border,
+                  borderColor:
+                    email === 'admin@example.com'
+                      ? colors.primaryHover
+                      : colors.border,
                 }}
                 onPress={() => {
                   setEmail('admin@example.com');
@@ -141,18 +159,35 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
                   setErrorMessage('');
                 }}
               >
-                <Text style={{ color: email === 'admin@example.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>👑 Super Admin</Text>
+                <Text
+                  style={{
+                    color:
+                      email === 'admin@example.com'
+                        ? '#fff'
+                        : colors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: '700',
+                  }}
+                >
+                  👑 Super Admin
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={{
-                  backgroundColor: email === 'neha.sharma@carcrm.com' ? colors.primary : '#EAECE4',
+                  backgroundColor:
+                    email === 'neha.sharma@carcrm.com'
+                      ? colors.primary
+                      : '#EAECE4',
                   paddingVertical: 6,
                   paddingHorizontal: 10,
                   borderRadius: 6,
                   alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: email === 'neha.sharma@carcrm.com' ? colors.primaryHover : colors.border,
+                  borderColor:
+                    email === 'neha.sharma@carcrm.com'
+                      ? colors.primaryHover
+                      : colors.border,
                 }}
                 onPress={() => {
                   setEmail('neha.sharma@carcrm.com');
@@ -160,37 +195,71 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
                   setErrorMessage('');
                 }}
               >
-                <Text style={{ color: email === 'neha.sharma@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>👔 Manager</Text>
+                <Text
+                  style={{
+                    color:
+                      email === 'neha.sharma@carcrm.com'
+                        ? '#fff'
+                        : colors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: '700',
+                  }}
+                >
+                  👔 Manager
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={{
-                  backgroundColor: email === 'david.miller@carcrm.com' ? colors.primary : '#EAECE4',
+                  backgroundColor:
+                    email === 'rahul.verma@carcrm.com'
+                      ? colors.primary
+                      : '#EAECE4',
                   paddingVertical: 6,
                   paddingHorizontal: 10,
                   borderRadius: 6,
                   alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: email === 'david.miller@carcrm.com' ? colors.primaryHover : colors.border,
+                  borderColor:
+                    email === 'rahul.verma@carcrm.com'
+                      ? colors.primaryHover
+                      : colors.border,
                 }}
                 onPress={() => {
-                  setEmail('david.miller@carcrm.com');
+                  setEmail('rahul.verma@carcrm.com');
                   setPassword('password');
                   setErrorMessage('');
                 }}
               >
-                <Text style={{ color: email === 'david.miller@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>💼 Sales Exec</Text>
+                <Text
+                  style={{
+                    color:
+                      email === 'rahul.verma@carcrm.com'
+                        ? '#fff'
+                        : colors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: '700',
+                  }}
+                >
+                  💼 Sales Exec
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={{
-                  backgroundColor: email === 'pooja.iyer@carcrm.com' ? colors.primary : '#EAECE4',
+                  backgroundColor:
+                    email === 'pooja.iyer@carcrm.com'
+                      ? colors.primary
+                      : '#EAECE4',
                   paddingVertical: 6,
                   paddingHorizontal: 10,
                   borderRadius: 6,
                   alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: email === 'pooja.iyer@carcrm.com' ? colors.primaryHover : colors.border,
+                  borderColor:
+                    email === 'pooja.iyer@carcrm.com'
+                      ? colors.primaryHover
+                      : colors.border,
                 }}
                 onPress={() => {
                   setEmail('pooja.iyer@carcrm.com');
@@ -198,18 +267,35 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
                   setErrorMessage('');
                 }}
               >
-                <Text style={{ color: email === 'pooja.iyer@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>🛎️ Reception</Text>
+                <Text
+                  style={{
+                    color:
+                      email === 'pooja.iyer@carcrm.com'
+                        ? '#fff'
+                        : colors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: '700',
+                  }}
+                >
+                  🛎️ Reception
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={{
-                  backgroundColor: email === 'amit.patel@carcrm.com' ? colors.primary : '#EAECE4',
+                  backgroundColor:
+                    email === 'amit.patel@carcrm.com'
+                      ? colors.primary
+                      : '#EAECE4',
                   paddingVertical: 6,
                   paddingHorizontal: 10,
                   borderRadius: 6,
                   alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: email === 'amit.patel@carcrm.com' ? colors.primaryHover : colors.border,
+                  borderColor:
+                    email === 'amit.patel@carcrm.com'
+                      ? colors.primaryHover
+                      : colors.border,
                 }}
                 onPress={() => {
                   setEmail('amit.patel@carcrm.com');
@@ -217,7 +303,18 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
                   setErrorMessage('');
                 }}
               >
-                <Text style={{ color: email === 'amit.patel@carcrm.com' ? '#fff' : colors.textPrimary, fontSize: 11, fontWeight: '700' }}>📊 Accountant</Text>
+                <Text
+                  style={{
+                    color:
+                      email === 'amit.patel@carcrm.com'
+                        ? '#fff'
+                        : colors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: '700',
+                  }}
+                >
+                  📊 Accountant
+                </Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -230,7 +327,7 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
               placeholder="name@dealership.com"
               placeholderTextColor={colors.textMuted}
               value={email}
-              onChangeText={(text) => {
+              onChangeText={text => {
                 setEmail(text);
                 setErrorMessage('');
               }}
@@ -244,9 +341,7 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
           <View style={styles.inputGroup}>
             <View style={styles.passwordHeader}>
               <Text style={styles.label}>Password</Text>
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-              >
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Text style={styles.showHideText}>
                   {showPassword ? 'Hide' : 'Show'}
                 </Text>
@@ -257,7 +352,7 @@ export const LoginScreen: React.FC<Props> = ({ onBackToSplash, onLoginSuccess })
               placeholder="••••••••••••"
               placeholderTextColor={colors.textMuted}
               value={password}
-              onChangeText={(text) => {
+              onChangeText={text => {
                 setPassword(text);
                 setErrorMessage('');
               }}

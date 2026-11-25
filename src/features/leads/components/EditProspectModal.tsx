@@ -28,7 +28,6 @@ import {
   StatusItem,
   UserItem,
   VariantItem,
-  LEAD_STATUS_OPTIONS,
   PURCHASE_TIMELINE_OPTIONS,
 } from '../types';
 
@@ -1038,17 +1037,18 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                 </ScrollView>
               </View>
 
-              {/* Lead Status (Static from SS 1) */}
+              {/* Lead Status (Dynamic from Master API) */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                   LEAD STATUS
                 </Text>
                 <View style={styles.statusChipsGrid}>
-                  {LEAD_STATUS_OPTIONS.map((st) => {
-                    const isSel = statusName.toLowerCase() === st.toLowerCase();
+                  {statuses.map((st) => {
+                    const sName = st.name;
+                    const isSel = statusName.toLowerCase() === sName.toLowerCase();
                     return (
                       <TouchableOpacity
-                        key={st}
+                        key={st.id || sName}
                         style={[
                           styles.statusChipBtn,
                           {
@@ -1064,7 +1064,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                               : '#CBD5E1',
                           },
                         ]}
-                        onPress={() => setStatusName(st)}
+                        onPress={() => setStatusName(sName)}
                       >
                         <Text
                           style={[
@@ -1078,7 +1078,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                             },
                           ]}
                         >
-                          {st}
+                          {sName}
                         </Text>
                       </TouchableOpacity>
                     );

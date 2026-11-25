@@ -63,14 +63,6 @@ const TIMELINE_OPTIONS = [
   'Exploring / Later',
 ];
 
-const STATIC_STATUSES = [
-  'New',
-  'Follow-up',
-  'Quotation Sent',
-  'Deal & Booking',
-  'Lost',
-];
-
 interface CreateLeadScreenProps {
   onBack?: () => void;
   onSuccess?: () => void;
@@ -207,32 +199,20 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
       if (rawSources.length > 0) {
         setSources(rawSources.map((s: any) => ({
           id: s.id,
-          name: s.title || s.name || 'Direct',
-          title: s.title || s.name || 'Direct',
+          name: s.title || s.name || '',
+          title: s.title || s.name || '',
         })));
       } else {
-        setSources([
-          { id: 1, name: 'Showroom Walk-in', title: 'Showroom Walk-in' },
-          { id: 2, name: 'Website', title: 'Website' },
-          { id: 3, name: 'Reference', title: 'Reference' },
-          { id: 4, name: 'Phone Inquiry', title: 'Phone Inquiry' },
-          { id: 5, name: 'Social Media', title: 'Social Media' },
-        ]);
+        setSources([]);
       }
 
       if (rawStatuses.length > 0) {
         setStatuses(rawStatuses.map((st: any) => ({
           id: st.id,
-          name: st.name || st.title || 'New',
+          name: st.name || st.title || '',
         })));
       } else {
-        setStatuses([
-          { id: 1, name: 'New' },
-          { id: 2, name: 'Follow-up' },
-          { id: 3, name: 'Quotation Sent' },
-          { id: 4, name: 'Deal & Booking' },
-          { id: 5, name: 'Lost' },
-        ]);
+        setStatuses([]);
       }
 
       if (rawUsers.length > 0) {
@@ -952,7 +932,7 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Lead Status Dropdown (Static from SS 1) */}
+          {/* Lead Status Dropdown (Dynamic from Master API) */}
           <View style={styles.formGroup}>
             <Text style={styles.inputLabel}>Lead Status</Text>
             <TouchableOpacity
@@ -960,13 +940,15 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
               onPress={() => {
                 openPicker(
                   'Select Lead Status',
-                  STATIC_STATUSES.map((st) => ({ id: st, label: st })),
+                  statuses.map((st) => ({ id: st.id, label: st.name })),
                   (item) => setStatusName(item.label)
                 );
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.dropdownSelectedText}>{statusName}</Text>
+              <Text style={statusName ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
+                {statusName || 'Select Status...'}
+              </Text>
               <ChevronDown size={18} color={THEME.textSecondary} />
             </TouchableOpacity>
           </View>

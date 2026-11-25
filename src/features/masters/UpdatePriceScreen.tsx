@@ -28,74 +28,6 @@ import { exportCsvToFile } from '../../core/utils/csvExporter';
 import { showErrorToast, showNotification, showSuccessToast } from '../../core/utils/toast';
 import { Brand, CarModel, VehicleVariant } from './types';
 
-const DEFAULT_SEED_PRICE_VARIANTS: VehicleVariant[] = [
-  {
-    id: 101,
-    name: 'ZXI Plus AT',
-    brand_id: 1,
-    model_id: 1,
-    brand: { id: 1, name: 'Maruti Suzuki' },
-    model: { id: 1, name: 'Brezza' },
-    price: 1398000,
-    ex_showroom_price: 1398000,
-    previous_price: 1365000,
-    fuel_type: 'Petrol',
-    status: 'Active',
-  },
-  {
-    id: 102,
-    name: 'VXI Petrol MT',
-    brand_id: 1,
-    model_id: 1,
-    brand: { id: 1, name: 'Maruti Suzuki' },
-    model: { id: 1, name: 'Brezza' },
-    price: 969000,
-    ex_showroom_price: 969000,
-    previous_price: null,
-    fuel_type: 'Petrol',
-    status: 'Active',
-  },
-  {
-    id: 103,
-    name: 'Fearless Plus S Dark Edition',
-    brand_id: 2,
-    model_id: 4,
-    brand: { id: 2, name: 'Tata Motors' },
-    model: { id: 4, name: 'Nexon' },
-    price: 1499000,
-    ex_showroom_price: 1499000,
-    previous_price: 1475000,
-    fuel_type: 'Diesel',
-    status: 'Active',
-  },
-  {
-    id: 104,
-    name: 'LX Hard Top Diesel 4x4',
-    brand_id: 3,
-    model_id: 7,
-    brand: { id: 3, name: 'Mahindra & Mahindra' },
-    model: { id: 7, name: 'Thar' },
-    price: 1699000,
-    ex_showroom_price: 1699000,
-    previous_price: 1650000,
-    fuel_type: 'Diesel',
-    status: 'Active',
-  },
-  {
-    id: 105,
-    name: 'Dual Channel ABS Chrome Red',
-    brand_id: 8,
-    model_id: 10,
-    brand: { id: 8, name: 'Royal Enfield' },
-    model: { id: 10, name: 'Classic 350' },
-    price: 224000,
-    ex_showroom_price: 224000,
-    previous_price: 219000,
-    fuel_type: 'Petrol',
-    status: 'Active',
-  },
-];
-
 interface UpdatePriceScreenProps {
   onOpenDrawer?: () => void;
   onNavigateQuotation?: () => void;
@@ -108,8 +40,8 @@ export const UpdatePriceScreen: React.FC<UpdatePriceScreenProps> = ({
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
 
-  // Data states
-  const [variants, setVariants] = useState<VehicleVariant[]>(DEFAULT_SEED_PRICE_VARIANTS);
+  // Data states - Pure dynamic data from API
+  const [variants, setVariants] = useState<VehicleVariant[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [models, setModels] = useState<CarModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -200,11 +132,7 @@ export const UpdatePriceScreen: React.FC<UpdatePriceScreenProps> = ({
           status: item.status || 'Active',
         }));
 
-        if (parsed.length > 0 || currentSearch || currentBrand !== 'All' || currentModel !== 'All') {
-          setVariants(parsed);
-        } else if (variants.length === 0) {
-          setVariants(DEFAULT_SEED_PRICE_VARIANTS);
-        }
+        setVariants(parsed);
 
         setPage(pageNumber);
 
@@ -240,7 +168,7 @@ export const UpdatePriceScreen: React.FC<UpdatePriceScreenProps> = ({
       }
     } catch (err: any) {
       console.log('Error loading price master data:', err);
-      if (variants.length === 0) setVariants(DEFAULT_SEED_PRICE_VARIANTS);
+      setVariants([]);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
