@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Flame,
   Layers,
+  Lock,
   Search,
   Snowflake,
   Sun,
@@ -98,6 +99,7 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
   const [selectedBrand, setSelectedBrand] = useState<BrandItem | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelItem | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<VariantItem | null>(null);
+  const [variantPrice, setVariantPrice] = useState('');
   const [budget, setBudget] = useState('');
   const [timeline, setTimeline] = useState('Immediate (< 7 Days)');
 
@@ -262,6 +264,7 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
     setSelectedBrand(brand);
     setSelectedModel(null);
     setSelectedVariant(null);
+    setVariantPrice('');
     setVariants([]);
 
     // 1. Immediately filter from preloaded allModels
@@ -296,6 +299,7 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
   const handleSelectModel = async (model: ModelItem) => {
     setSelectedModel(model);
     setSelectedVariant(null);
+    setVariantPrice('');
 
     // 1. Immediately filter from preloaded allVariants
     const localMatches = allVariants.filter((v) => v.model_id === model.id);
@@ -762,12 +766,17 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
                     label: v.name,
                     sublabel: v.price ? `₹${Number(v.price).toLocaleString('en-IN')}` : undefined,
                   })),
-                  (item) =>
+                  (item) => {
+                    const matched = availableVariants.find((v) => v.id === item.id);
+                    const vPrice = matched?.price || (matched as any)?.on_road_price || '';
                     setSelectedVariant({
                       id: item.id,
                       model_id: selectedModel ? selectedModel.id : 0,
                       name: item.label,
-                    })
+                      price: matched?.price,
+                    });
+                    setVariantPrice(vPrice ? String(vPrice) : '');
+                  }
                 );
               }}
               activeOpacity={0.7}
@@ -786,14 +795,36 @@ export const CreateLeadScreen: React.FC<CreateLeadScreenProps> = ({
             </TouchableOpacity>
           </View>
 
+          {/* Variant Price (Auto-filled & Locked) */}
+          <View style={styles.formGroup}>
+            <Text style={styles.inputLabel}>
+              Variant Price (₹){' '}
+              <Text style={styles.inputHint}>(Auto from Variant)</Text>
+            </Text>
+            <View style={[styles.currencyInputRow, styles.currencyInputLocked]}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <TextInput
+                style={[styles.currencyTextInput, { color: THEME.textSecondary }]}
+                placeholder="Select Variant to auto-fill"
+                placeholderTextColor={THEME.textMuted}
+                value={variantPrice}
+                editable={false}
+              />
+              <Lock size={15} color={THEME.textMuted} style={{ marginRight: 12 }} />
+            </View>
+          </View>
+
           {/* Budget Field */}
           <View style={styles.formGroup}>
-            <Text style={styles.inputLabel}>Expected Budget (₹)</Text>
+            <Text style={styles.inputLabel}>
+              Budget (₹){' '}
+              <Text style={styles.inputHint}>(For Quotation Range)</Text>
+            </Text>
             <View style={styles.currencyInputRow}>
               <Text style={styles.currencySymbol}>₹</Text>
               <TextInput
                 style={styles.currencyTextInput}
-                placeholder="e.g. 1500000"
+                placeholder="e.g. 1200000"
                 placeholderTextColor={THEME.textMuted}
                 keyboardType="numeric"
                 value={budget}
@@ -1378,6 +1409,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingLeft: 12,
     height: 44,
+  },
+  currencyInputLocked: {
+    backgroundColor: '#F1F5F9',
+  },
+  inputHint: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: THEME.textMuted,
   },
   currencySymbol: {
     fontSize: 16,

@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Calendar } from 'lucide-react-native';
+import { Calendar, Lock } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { triggerHaptic } from '../../../core/utils/haptics';
@@ -97,6 +97,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
   const [variantId, setVariantId] = useState<number | null>(null);
   const [priority, setPriority] = useState<'Hot' | 'Warm' | 'Cold'>('Hot');
   const [timeline, setTimeline] = useState<string>('Immediate (< 7 Days)');
+  const [variantPrice, setVariantPrice] = useState('');
   const [budget, setBudget] = useState('');
 
   // 3. Lead Tracking & Assignment
@@ -129,6 +130,11 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
       setVariantId(lead.variant_id || null);
       setPriority(lead.priority || 'Hot');
       setTimeline(lead.purchase_timeline || 'Immediate (< 7 Days)');
+      const initialVPrice =
+        (lead as any).variant?.price ||
+        (lead as any).variant?.on_road_price ||
+        '';
+      setVariantPrice(initialVPrice ? String(initialVPrice) : '');
       setBudget(lead.budget !== undefined && lead.budget !== null ? lead.budget.toString() : '');
       setSourceId(lead.source_id || (sources[0]?.id ?? null));
       setStatusName(lead.status_name || lead.lead_status || 'New');
@@ -149,6 +155,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
       setVariantId(null);
       setPriority('Hot');
       setTimeline('Immediate (< 7 Days)');
+      setVariantPrice('');
       setBudget(''); // Default Blank
       setSourceId(sources[0]?.id || null);
       setStatusName('New');
@@ -200,7 +207,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
           (selectedBrand ? `${selectedBrand.name} Vehicle` : 'CSD Vehicle'),
         priority,
         purchase_timeline: timeline,
-        budget: budget.trim(),
+        budget: budget.trim() ? parseFloat(budget.trim()) : null,
         source_id: sourceId,
         source_name:
           sources.find((s) => s.id === sourceId)?.title ||
@@ -709,6 +716,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                           setBrandId(b.id);
                           setModelId(null);
                           setVariantId(null);
+                          setVariantPrice('');
                         }}
                       >
                         <Text
@@ -765,6 +773,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                           onPress={() => {
                             setModelId(m.id);
                             setVariantId(null);
+                            setVariantPrice('');
                           }}
                         >
                           <Text
@@ -819,7 +828,11 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                                 : '#CBD5E1',
                             },
                           ]}
-                          onPress={() => setVariantId(v.id)}
+                          onPress={() => {
+                            setVariantId(v.id);
+                            const vPrice = v.price || (v as any).on_road_price || '';
+                            setVariantPrice(vPrice ? String(vPrice) : '');
+                          }}
                         >
                           <Text
                             style={[
@@ -942,10 +955,51 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                 </View>
               </View>
 
-              {/* Budget (Blank by default) */}
+              {/* Variant Price (Auto-filled & Locked) */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  BUDGET (₹)
+                  VARIANT PRICE (₹) — AUTO FROM VARIANT
+                </Text>
+                <View
+                  style={[
+                    styles.input,
+                    styles.lockedInputRow,
+                    {
+                      backgroundColor: isDark ? '#0D131F' : '#F1F5F9',
+                      borderColor: isDark ? '#1E293B' : '#CBD5E1',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.lockedInputText,
+                      {
+                        color: variantPrice
+                          ? colors.textPrimary
+                          : colors.textMuted,
+                      },
+                    ]}
+                  >
+                    {(() => {
+                      const matchedV = variants.find((v) => v.id === variantId);
+                      const resolvedPrice =
+                        variantPrice ||
+                        matchedV?.price ||
+                        (matchedV as any)?.on_road_price ||
+                        '';
+                      return resolvedPrice
+                        ? `₹ ${Number(resolvedPrice).toLocaleString('en-IN')}`
+                        : 'Select Variant to auto-fill';
+                    })()}
+                  </Text>
+                  <Lock size={14} color={colors.textMuted} />
+                </View>
+              </View>
+
+              {/* Budget (For Quotation Range) */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  BUDGET (₹) — FOR QUOTATION RANGE
                 </Text>
                 <StartAlignedInput
                   style={[
@@ -958,7 +1012,7 @@ export const EditProspectModal: React.FC<EditProspectModalProps> = ({
                   ]}
                   value={budget}
                   onChangeText={setBudget}
-                  placeholder="Enter expected budget or leave blank"
+                  placeholder="e.g. 1200000"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                 />
@@ -1373,6 +1427,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 13,
     fontWeight: '600',
+  },
+  lockedInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lockedInputText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   twoColRow: {
     flexDirection: 'row',

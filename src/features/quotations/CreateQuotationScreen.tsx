@@ -110,6 +110,7 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
   // Task 2: Comparable & Alternative Models Catalog
   const [allVariantsCatalog, setAllVariantsCatalog] = useState<any[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [leadBudget, setLeadBudget] = useState('');
 
   // Picker Modal State (matching CreateLeadScreen pattern)
   const [pickerType, setPickerType] = useState<'lead' | 'brand' | 'model' | 'variant' | null>(null);
@@ -279,6 +280,9 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     setClientMobile(rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone);
     setClientEmail(lead.email || '');
     setCityJurisdiction(lead.city || lead.home_town || lead.posting || lead.state || '');
+    setLeadBudget(
+      lead.budget && Number(lead.budget) > 0 ? String(lead.budget) : ''
+    );
 
     // 1. Ensure brands are loaded
     let availableBrands = brandsList;
@@ -508,23 +512,33 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     return 0;
   }, [breakdown.csdPrice, selectedVariant]);
 
+  const isUsingLeadBudget = useMemo(
+    () => Boolean(leadBudget && Number(leadBudget) > 0),
+    [leadBudget]
+  );
+
+  const comparableTargetPrice = useMemo(() => {
+    if (isUsingLeadBudget) return Number(leadBudget);
+    return currentVariantPrice;
+  }, [isUsingLeadBudget, leadBudget, currentVariantPrice]);
+
   const minPrice = useMemo(
-    () => Math.max(0, currentVariantPrice - 100000),
-    [currentVariantPrice]
+    () => Math.max(0, comparableTargetPrice - 100000),
+    [comparableTargetPrice]
   );
   const maxPrice = useMemo(
-    () => currentVariantPrice + 100000,
-    [currentVariantPrice]
+    () => comparableTargetPrice + 100000,
+    [comparableTargetPrice]
   );
 
   const comparableVariants = useMemo(() => {
-    if (currentVariantPrice <= 0) return [];
+    if (comparableTargetPrice <= 0) return [];
 
     const matches: any[] = [];
     const seenIds = new Set<number>();
 
-    // 1. Current Match First
-    if (selectedVariant) {
+    // 1. Current Match First (when within range or when not using a different lead budget)
+    if (selectedVariant && currentVariantPrice >= minPrice && currentVariantPrice <= maxPrice) {
       matches.push({
         id: selectedVariant.id,
         name: selectedVariant.name,
@@ -563,6 +577,7 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
 
     return matches;
   }, [
+    comparableTargetPrice,
     currentVariantPrice,
     minPrice,
     maxPrice,
@@ -623,6 +638,7 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
     setSheetCarTitle('');
     setSheetModelTitle('');
     setBreakdown(DEFAULT_BREAKDOWN);
+    setLeadBudget('');
     setSavedQuotationId(undefined);
     setSavedQuotationNo(undefined);
     showSuccessToast('Sheet Reset', 'Quotation sheet parameters cleared.');
@@ -1696,13 +1712,27 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
             )}
           </View>
 
-          {/* Subtitle with Selected Price and Range */}
-          {currentVariantPrice > 0 ? (
+          {/* Subtitle with Selected Price / Lead Budget and Range */}
+          {comparableTargetPrice > 0 ? (
             <Text style={[styles.compSubTitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-              Selected Variant Price:{' '}
-              <Text style={{ fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' }}>
-                {formatInr(currentVariantPrice)}
-              </Text>{' '}
+              {isUsingLeadBudget ? (
+                <>
+                  Lead Budget:{' '}
+                  <Text style={{ fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' }}>
+                    {formatInr(comparableTargetPrice)}
+                  </Text>{' '}
+                  <Text style={{ fontWeight: '700', color: '#059669' }}>
+                    (From Lead)
+                  </Text>{' '}
+                </>
+              ) : (
+                <>
+                  Selected Variant Price:{' '}
+                  <Text style={{ fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' }}>
+                    {formatInr(comparableTargetPrice)}
+                  </Text>{' '}
+                </>
+              )}
               • Matching Range:{' '}
               <Text style={{ fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' }}>
                 {formatInr(minPrice)} to {formatInr(maxPrice)}
@@ -1710,12 +1740,12 @@ export const CreateQuotationScreen: React.FC<CreateQuotationScreenProps> = ({
             </Text>
           ) : (
             <Text style={[styles.compSubTitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-              Select a vehicle variant or enter CSD Price to view alternative models within ± ₹1,00,000 range.
+              Select a lead with Customer Budget or any vehicle variant to view alternative models within ± ₹1,00,000 range.
             </Text>
           )}
 
           {/* Cards Carousel */}
-          {currentVariantPrice > 0 && (
+          {comparableTargetPrice > 0 && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}

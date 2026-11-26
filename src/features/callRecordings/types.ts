@@ -106,6 +106,10 @@ export interface SelectedAudioFile {
 }
 
 export interface BatchUploadProgress {
+  phase: 'uploading' | 'uploaded' | 'failed';
+  currentIndex: number;
+  currentFileName: string;
+  errorMessage?: string;
   completed: number;
   total: number;
   percent: number;
@@ -118,6 +122,22 @@ export interface BatchUploadResult {
   uploaded_count: number;
   data: CallRecordingItem[];
   errors: { files: string[]; message: string }[];
+}
+
+export type UploadQueueItemStatus =
+  | 'pending'
+  | 'uploading'
+  | 'uploaded'
+  | 'skipped_size'
+  | 'failed';
+
+export interface UploadQueueItem {
+  key: string;
+  name: string;
+  size: number;
+  eligibleIndex: number;
+  status: UploadQueueItemStatus;
+  message: string;
 }
 
 export const ALLOWED_AUDIO_EXTENSIONS = [
@@ -139,5 +159,6 @@ export const ALLOWED_AUDIO_EXTENSIONS = [
   'wma',
 ];
 
-export const MAX_AUDIO_FILE_SIZE = 50 * 1024 * 1024;
-
+export const MAX_FILE_SIZE_MB = 3;
+export const MAX_FILE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+export const MAX_AUDIO_FILE_SIZE = MAX_FILE_BYTES;

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,8 +16,6 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   CloudUpload,
   FileAudio,
   Headphones,
@@ -44,16 +43,20 @@ import {
 import {
   ALLOWED_AUDIO_EXTENSIONS,
   AuditFollowUpItem,
-  BatchUploadProgress,
   CallRecordingItem,
-  CallRecordingsPagination,
-  MAX_AUDIO_FILE_SIZE,
+  MAX_FILE_BYTES,
+  MAX_FILE_SIZE_MB,
   SelectedAudioFile,
   StaffDailyRow,
   StaffSummaryStats,
+  UploadQueueItem,
 } from './types';
 import { ComplianceBadge } from './components/CallRecordingBadges';
 import { CallRecordingDetailModal } from './components/CallRecordingDetailModal';
+import {
+  UploadModalState,
+  UploadProgressModal,
+} from './components/UploadProgressModal';
 
 interface StaffCallRecordingsViewProps {
   currentUser: { id?: number; name?: string; role?: string } | null;
@@ -79,24 +82,33 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
     missing_count: 0,
   });
   const [dailyRows, setDailyRows] = useState<StaffDailyRow[]>([]);
-  const [pagination, setPagination] = useState<CallRecordingsPagination>({
-    current_page: 1,
-    last_page: 1,
-    per_page: 10,
-    total: 0,
-  });
-  const [currentPage, setCurrentPage] = useState(1);
+  const [totalDays, setTotalDays] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Bulk upload state
   const [selectedFiles, setSelectedFiles] = useState<SelectedAudioFile[]>([]);
   const [batchNotes, setBatchNotes] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<BatchUploadProgress>({
+  const [uploadProgress, setUploadProgress] = useState({
     completed: 0,
     total: 0,
     percent: 0,
+  });
+  const [uploadModal, setUploadModal] = useState<UploadModalState>({
+    open: false,
+    isComplete: false,
+    totalEligible: 0,
+    completedEligible: 0,
+    uploadedCount: 0,
+    failedCount: 0,
+    currentFileName: '',
+    items: [],
+    oversizedFiles: [],
+    failedFiles: [],
   });
 
   // Day detail modal
@@ -112,15 +124,18 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
   });
 
   const loadData = useCallback(
-    async (page = currentPage, pullRefresh = false) => {
-      if (pullRefresh) {
+    async (pageNumber = 1, isLoadMore = false, pullRefresh = false) => {
+      if (isLoadMore) {
+        setIsLoadingMore(true);
+      } else if (pullRefresh) {
         setIsRefreshing(true);
-      } else {
+      } else if (pageNumber === 1) {
         setIsLoading(true);
       }
+
       try {
         const params: Record<string, any> = {
-          page,
+          page: pageNumber,
           per_page: 10,
         };
         if (fromDate) params.from_date = fromDate;
@@ -129,8 +144,26 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
         const res = await callRecordingService.getSummary(params);
         if (res?.status) {
           if (res.summary) setSummary(res.summary);
-          setDailyRows(Array.isArray(res.daily_rows) ? res.daily_rows : []);
-          if (res.pagination) setPagination(res.pagination);
+          const rows: StaffDailyRow[] = Array.isArray(res.daily_rows)
+            ? res.daily_rows
+            : [];
+
+          if (pageNumber === 1) {
+            setDailyRows(rows);
+          } else {
+            setDailyRows((prev) => {
+              const existingDates = new Set(prev.map((r) => r.date));
+              const nextRows = rows.filter((r) => !existingDates.has(r.date));
+              return [...prev, ...nextRows];
+            });
+          }
+
+          setPage(pageNumber);
+          const pag = res.pagination || {};
+          setTotalDays(pag.total ?? rows.length);
+          setHasMore(
+            (pag.current_page || pageNumber) < (pag.last_page || 1)
+          );
         }
       } catch (err: any) {
         showErrorToast(
@@ -139,15 +172,22 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
         );
       } finally {
         setIsLoading(false);
+        setIsLoadingMore(false);
         setIsRefreshing(false);
       }
     },
-    [fromDate, toDate, currentPage]
+    [fromDate, toDate]
   );
 
   useEffect(() => {
-    loadData(currentPage);
-  }, [loadData, currentPage]);
+    loadData(1, false, false);
+  }, [loadData]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore && !isLoading && !isRefreshing) {
+      loadData(page + 1, true, false);
+    }
+  };
 
   const handlePickFiles = async () => {
     if (isUploading) return;
@@ -165,16 +205,12 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
           rejected.push(`${file.name} (unsupported .${ext || 'file'})`);
           return;
         }
-        if (file.size > MAX_AUDIO_FILE_SIZE) {
-          rejected.push(`${file.name} (> 50MB)`);
-          return;
-        }
         valid.push(file);
       });
 
       if (rejected.length > 0) {
         showWarningToast(
-          `Skipped ${rejected.length} file(s)`,
+          `Skipped ${rejected.length} unsupported file(s)`,
           rejected.slice(0, 2).join(', ')
         );
       }
@@ -203,26 +239,144 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
       return;
     }
 
+    const eligibleFiles: SelectedAudioFile[] = [];
+    const oversizedFiles: { name: string; size: number }[] = [];
+    const initialItems: UploadQueueItem[] = [];
+
+    selectedFiles.forEach((file, idx) => {
+      const key = `${file.name}_${file.size}_${idx}`;
+      if (file.size > MAX_FILE_BYTES) {
+        oversizedFiles.push({ name: file.name, size: file.size });
+        initialItems.push({
+          key,
+          name: file.name,
+          size: file.size,
+          eligibleIndex: -1,
+          status: 'skipped_size',
+          message: `Exceeds ${MAX_FILE_SIZE_MB} MB limit`,
+        });
+      } else {
+        const eligibleIndex = eligibleFiles.length;
+        eligibleFiles.push(file);
+        initialItems.push({
+          key,
+          name: file.name,
+          size: file.size,
+          eligibleIndex,
+          status: 'pending',
+          message: '',
+        });
+      }
+    });
+
+    if (eligibleFiles.length === 0) {
+      setUploadProgress({ completed: 0, total: 0, percent: 100 });
+      setUploadModal({
+        open: true,
+        isComplete: true,
+        totalEligible: 0,
+        completedEligible: 0,
+        uploadedCount: 0,
+        failedCount: 0,
+        currentFileName: '',
+        items: initialItems,
+        oversizedFiles,
+        failedFiles: [],
+      });
+      setSelectedFiles([]);
+      return;
+    }
+
     triggerHaptic('impactMedium');
     setIsUploading(true);
-    setUploadProgress({ completed: 0, total: selectedFiles.length, percent: 0 });
+    setUploadProgress({ completed: 0, total: eligibleFiles.length, percent: 0 });
+    setUploadModal({
+      open: true,
+      isComplete: false,
+      totalEligible: eligibleFiles.length,
+      completedEligible: 0,
+      uploadedCount: 0,
+      failedCount: 0,
+      currentFileName: eligibleFiles[0]?.name || '',
+      items: initialItems,
+      oversizedFiles,
+      failedFiles: [],
+    });
 
     try {
       const todayDate = getTodayDate();
       const result = await callRecordingService.uploadBatch(
-        selectedFiles,
+        eligibleFiles,
         {
           recording_date: todayDate,
           notes: batchNotes.trim() || null,
         },
-        (progress) => setUploadProgress(progress)
+        (progress) => {
+          setUploadProgress({
+            completed: progress.completed,
+            total: progress.total,
+            percent: progress.percent,
+          });
+          setUploadModal((prev) => {
+            const nextItems: UploadQueueItem[] = prev.items.map((item) => {
+              if (item.eligibleIndex !== progress.currentIndex) return item;
+              if (progress.phase === 'uploading') {
+                return { ...item, status: 'uploading', message: 'Uploading...' };
+              }
+              if (progress.phase === 'uploaded') {
+                return { ...item, status: 'uploaded', message: 'Uploaded' };
+              }
+              if (progress.phase === 'failed') {
+                return {
+                  ...item,
+                  status: 'failed',
+                  message: progress.errorMessage || 'Upload failed',
+                };
+              }
+              return item;
+            });
+
+            return {
+              ...prev,
+              completedEligible: progress.completed,
+              uploadedCount:
+                progress.phase === 'uploaded'
+                  ? prev.uploadedCount + 1
+                  : prev.uploadedCount,
+              failedCount:
+                progress.phase === 'failed'
+                  ? prev.failedCount + 1
+                  : prev.failedCount,
+              currentFileName:
+                progress.phase === 'uploading'
+                  ? progress.currentFileName
+                  : prev.currentFileName,
+              items: nextItems,
+            };
+          });
+        }
       );
 
+      const failedNameSet = new Set(
+        (result.errors || []).flatMap((errItem) => errItem.files || [])
+      );
+      const failedList = (result.errors || []).map((errItem) => ({
+        name: (errItem.files || []).join(', '),
+        message: errItem.message,
+      }));
+
+      setUploadModal((prev) => ({
+        ...prev,
+        isComplete: true,
+        currentFileName: '',
+        failedFiles: failedList,
+      }));
+
       if (result.uploaded_count > 0) {
-        if (result.partial) {
+        if (result.partial || oversizedFiles.length > 0) {
           showWarningToast(
-            'Partial Upload',
-            `${result.uploaded_count} recording(s) uploaded for ${todayDate}.`
+            'Upload Summary',
+            `${result.uploaded_count} call recording(s) uploaded for ${todayDate}.`
           );
         } else {
           showSuccessToast(
@@ -232,53 +386,62 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
         }
       }
 
-      if (result.errors.length > 0) {
-        showErrorToast('Upload Error', result.errors[0].message);
-      }
-
-      if (!result.partial && result.errors.length === 0) {
+      if (failedList.length > 0) {
+        setSelectedFiles(eligibleFiles.filter((f) => failedNameSet.has(f.name)));
+      } else {
         setSelectedFiles([]);
         setBatchNotes('');
       }
 
-      setCurrentPage(1);
-      await loadData(1);
+      setPage(1);
+      await loadData(1, false, false);
     } catch (err: any) {
+      setUploadModal((prev) => ({
+        ...prev,
+        isComplete: true,
+        currentFileName: '',
+        failedFiles: [
+          { name: 'Batch', message: err?.message || 'Bulk upload failed.' },
+        ],
+      }));
       showErrorToast('Upload Failed', err?.message || 'Bulk upload failed.');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleOpenDayDetail = async (row: StaffDailyRow) => {
-    if (!currentUser?.id) {
-      showErrorToast('Profile Missing', 'Unable to identify current staff user.');
-      return;
-    }
-    triggerHaptic('selection');
-    setActiveDayDate(row.date);
-    setDetailModalOpen(true);
-    setDetailLoading(true);
-    setDayDetail({ follow_ups: [], recordings: [] });
-    try {
-      const res = await callRecordingService.getStaffDetail(currentUser.id, {
-        date: row.date,
-      });
-      if (res?.status) {
-        setDayDetail({
-          follow_ups: Array.isArray(res.follow_ups) ? res.follow_ups : [],
-          recordings: Array.isArray(res.recordings) ? res.recordings : [],
-        });
+  const handleOpenDayDetail = useCallback(
+    async (row: StaffDailyRow) => {
+      if (!currentUser?.id) {
+        showErrorToast('Profile Missing', 'Unable to identify current staff user.');
+        return;
       }
-    } catch (err: any) {
-      showErrorToast(
-        'Load Failed',
-        err?.response?.data?.message || 'Failed to load day details.'
-      );
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+      triggerHaptic('selection');
+      setActiveDayDate(row.date);
+      setDetailModalOpen(true);
+      setDetailLoading(true);
+      setDayDetail({ follow_ups: [], recordings: [] });
+      try {
+        const res = await callRecordingService.getStaffDetail(currentUser.id, {
+          date: row.date,
+        });
+        if (res?.status) {
+          setDayDetail({
+            follow_ups: Array.isArray(res.follow_ups) ? res.follow_ups : [],
+            recordings: Array.isArray(res.recordings) ? res.recordings : [],
+          });
+        }
+      } catch (err: any) {
+        showErrorToast(
+          'Load Failed',
+          err?.response?.data?.message || 'Failed to load day details.'
+        );
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [currentUser?.id]
+  );
 
   const handleDeleteRecording = (rec: CallRecordingItem) => {
     Alert.alert(
@@ -298,7 +461,7 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
                   ...prev,
                   recordings: prev.recordings.filter((r) => r.id !== rec.id),
                 }));
-                loadData(currentPage);
+                loadData(1, false, false);
               } else {
                 showErrorToast('Delete Failed', res?.message || 'Failed to delete recording.');
               }
@@ -335,97 +498,208 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
   const cardBorder = isDark ? '#1E293B' : '#E2E8F0';
   const missingAccent = summary.missing_count > 0 ? '#DC2626' : '#059669';
 
+  const renderDayItem = useCallback(
+    ({ item: row }: { item: StaffDailyRow }) => (
+      <View
+        style={[
+          styles.dayCard,
+          {
+            backgroundColor: isDark ? '#0D131F' : '#F8FAFC',
+            borderColor: cardBorder,
+          },
+        ]}
+      >
+        <View style={styles.dayCardTop}>
+          <View style={styles.dayDateRow}>
+            <Calendar size={15} color={colors.primary} />
+            <Text style={[styles.dayDateText, { color: colors.textPrimary }]}>
+              {row.date}
+            </Text>
+          </View>
+          <ComplianceBadge
+            compliance_status={row.compliance_status}
+            recordings_uploaded={row.recordings_uploaded}
+            call_follow_ups={row.call_follow_ups}
+            missing_count={row.missing_count}
+          />
+        </View>
+
+        <View style={styles.dayMetricsRow}>
+          <View
+            style={[
+              styles.metricBox,
+              { backgroundColor: cardSurface, borderColor: cardBorder },
+            ]}
+          >
+            <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
+              Call Follow-Ups
+            </Text>
+            <Text style={[styles.metricVal, { color: colors.textPrimary }]}>
+              {row.call_follow_ups}
+              {row.total_follow_ups !== row.call_follow_ups ? (
+                <Text style={[styles.metricSub, { color: colors.textMuted }]}>
+                  {' '}
+                  ({row.total_follow_ups} total)
+                </Text>
+              ) : null}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.metricBox,
+              { backgroundColor: cardSurface, borderColor: cardBorder },
+            ]}
+          >
+            <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
+              Uploaded
+            </Text>
+            <Text style={[styles.metricVal, { color: colors.primary }]}>
+              {row.recordings_uploaded}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.dayBottomRow}>
+          <View style={styles.verificationPills}>
+            {row.verified_count > 0 ? (
+              <Text style={[styles.verifPill, { color: colors.success }]}>
+                {row.verified_count} Verified
+              </Text>
+            ) : null}
+            {row.pending_count > 0 ? (
+              <Text style={[styles.verifPill, { color: colors.warning }]}>
+                {row.pending_count} Pending
+              </Text>
+            ) : null}
+            {row.flagged_count > 0 ? (
+              <Text style={[styles.verifPill, { color: colors.danger }]}>
+                {row.flagged_count} Flagged
+              </Text>
+            ) : null}
+          </View>
+
+          <TouchableOpacity
+            onPress={() => handleOpenDayDetail(row)}
+            activeOpacity={0.8}
+            style={[styles.viewListenBtn, { backgroundColor: colors.primary }]}
+          >
+            <Headphones size={14} color={isDark ? '#0B111A' : '#FFFFFF'} />
+            <Text
+              style={[
+                styles.viewListenText,
+                { color: isDark ? '#0B111A' : '#FFFFFF' },
+              ]}
+            >
+              View & Listen ({row.recordings_uploaded})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    ),
+    [cardBorder, cardSurface, colors, handleOpenDayDetail, isDark]
+  );
+
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[
-        styles.content,
-        { paddingBottom: Math.max(insets.bottom + 24, 32) },
-      ]}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => loadData(currentPage, true)}
-          tintColor={colors.primary}
-          colors={[colors.primary]}
-        />
-      }
-      showsVerticalScrollIndicator={false}
-    >
-          {/* Single-Line Horizontal KPI Deck (Matching LeadsScreen) */}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <FlatList
+        data={isLoading ? [] : dailyRows}
+        keyExtractor={(item) => item.date}
+        renderItem={renderDayItem}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom + 24, 32) },
+        ]}
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => loadData(1, false, true)}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.listHeaderStack}>
+      {/* Single-Line Horizontal KPI Deck (Matching LeadsScreen) */}
       <View style={styles.kpiDeckWrapper}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.kpiDeckScroll}
-          >
-        {/* Card 1: Call Follow-Ups */}
-        <View
-          style={[
-            styles.kpiCard,
-            {
-              backgroundColor: isDark ? '#101726' : '#FFFFFF',
-              borderColor: cardBorder,
-              borderTopColor: '#2563EB',
-            },
-          ]}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.kpiDeckScroll}
         >
-          <View style={styles.kpiTopRow}>
-            <View
-              style={[
-                styles.kpiIconBox,
-                { backgroundColor: isDark ? '#2563EB25' : '#2563EB15' },
-              ]}
-            >
-              <PhoneOutgoing size={14} color="#2563EB" strokeWidth={2.4} />
-            </View>
-            <Text style={styles.kpiCardLabel}>FOLLOW-UPS</Text>
-          </View>
-          <Text style={[styles.kpiCountText, { color: colors.textPrimary }]}>
-            {summary.call_follow_ups}
-          </Text>
-          <Text
-            style={[styles.kpiSubText, { color: colors.textSecondary }]}
-            numberOfLines={1}
+          {/* Card 1: Call Follow-Ups */}
+          <View
+            style={[
+              styles.kpiCard,
+              {
+                backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                borderColor: cardBorder,
+                borderTopColor: '#2563EB',
+              },
+            ]}
           >
-            Total Follow-ups: {summary.total_follow_ups}
-          </Text>
-        </View>
-
-        {/* Card 2: Recordings Uploaded */}
-        <View
-          style={[
-            styles.kpiCard,
-            {
-              backgroundColor: isDark ? '#101726' : '#FFFFFF',
-              borderColor: cardBorder,
-              borderTopColor: '#059669',
-            },
-          ]}
-        >
-          <View style={styles.kpiTopRow}>
-            <View
-              style={[
-                styles.kpiIconBox,
-                { backgroundColor: isDark ? '#05966925' : '#05966915' },
-              ]}
-            >
-              <Mic size={14} color="#059669" strokeWidth={2.4} />
+            <View style={styles.kpiTopRow}>
+              <View
+                style={[
+                  styles.kpiIconBox,
+                  { backgroundColor: isDark ? '#2563EB25' : '#2563EB15' },
+                ]}
+              >
+                <PhoneOutgoing size={14} color="#2563EB" strokeWidth={2.4} />
+              </View>
+              <Text style={styles.kpiCardLabel}>FOLLOW-UPS</Text>
             </View>
-            <Text style={styles.kpiCardLabel}>UPLOADED</Text>
+            <Text style={[styles.kpiCountText, { color: colors.textPrimary }]}>
+              {summary.call_follow_ups}
+            </Text>
+            <Text
+              style={[styles.kpiSubText, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              Total Follow-ups: {summary.total_follow_ups}
+            </Text>
           </View>
-          <Text style={[styles.kpiCountText, { color: colors.textPrimary }]}>
-            {summary.recordings_uploaded}
-          </Text>
-          <Text
-            style={[styles.kpiSubText, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {dateRangeLabel}
-          </Text>
-        </View>
 
-            {/* Card 3: Pending / Missing */}
+          {/* Card 2: Recordings Uploaded */}
+          <View
+            style={[
+              styles.kpiCard,
+              {
+                backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                borderColor: cardBorder,
+                borderTopColor: '#059669',
+              },
+            ]}
+          >
+            <View style={styles.kpiTopRow}>
+              <View
+                style={[
+                  styles.kpiIconBox,
+                  { backgroundColor: isDark ? '#05966925' : '#05966915' },
+                ]}
+              >
+                <Mic size={14} color="#059669" strokeWidth={2.4} />
+              </View>
+              <Text style={styles.kpiCardLabel}>UPLOADED</Text>
+            </View>
+            <Text style={[styles.kpiCountText, { color: colors.textPrimary }]}>
+              {summary.recordings_uploaded}
+            </Text>
+            <Text
+              style={[styles.kpiSubText, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {dateRangeLabel}
+            </Text>
+          </View>
+
+          {/* Card 3: Pending / Missing */}
           <View
             style={[
               styles.kpiCard,
@@ -441,86 +715,86 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
               },
             ]}
           >
-                <View style={styles.kpiTopRow}>
-                  <View
-                    style={[
-                      styles.kpiIconBox,
-                      {
-                        backgroundColor: isDark
-                          ? `${missingAccent}25`
-                          : `${missingAccent}15`,
-                      },
-                    ]}
-                  >
-                    {summary.missing_count > 0 ? (
-                      <AlertTriangle
-                        size={14}
-                        color={missingAccent}
-                        strokeWidth={2.4}
-                      />
-                    ) : (
-                      <CheckCircle2
-                        size={14}
-                        color={missingAccent}
-                        strokeWidth={2.4}
-                      />
-                    )}
-                  </View>
-                  <Text style={[styles.kpiCardLabel, { color: missingAccent }]}>
-                    MISSING
-                  </Text>
-                </View>
-            <Text style={[styles.kpiCountText, { color: missingAccent }]}>
-                  {summary.missing_count}
-                </Text>
-                <Text
-                  style={[styles.kpiSubText, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {summary.missing_count === 0 && summary.call_follow_ups > 0
-                    ? 'All calls uploaded!'
-                    : 'Upload to match calls'}
-                </Text>
-            </View>
-
-            {/* Card 4: Verification */}
-            <View
-              style={[
-                styles.kpiCard,
-                styles.kpiCardWide,
-                {
-                  backgroundColor: isDark ? '#101726' : '#FFFFFF',
-                  borderColor: cardBorder,
-                  borderTopColor: '#D97706',
-                },
-              ]}
-            >
-              <View style={styles.kpiTopRow}>
-                <View
-                  style={[
-                    styles.kpiIconBox,
-                    { backgroundColor: isDark ? '#D9770625' : '#D9770615' },
-                  ]}
-                >
-                  <ShieldCheck size={14} color="#D97706" strokeWidth={2.4} />
-                </View>
-                <Text style={styles.kpiCardLabel}>VERIFICATION</Text>
-              </View>
-                <View style={styles.kpiPillWrap}>
-                  <View
-                    style={[
-                      styles.miniBadge,
-                      {
-                        backgroundColor: isDark
-                      ? 'rgba(16, 185, 129, 0.16)'
-                        : '#ECFDF5',
+            <View style={styles.kpiTopRow}>
+              <View
+                style={[
+                  styles.kpiIconBox,
+                  {
+                    backgroundColor: isDark
+                      ? `${missingAccent}25`
+                      : `${missingAccent}15`,
                   },
                 ]}
               >
-                    <Text style={[styles.miniBadgeText, { color: colors.success }]}>
-                      {summary.verified_count} Verified
-                    </Text>
-                </View>
+                {summary.missing_count > 0 ? (
+                  <AlertTriangle
+                    size={14}
+                    color={missingAccent}
+                    strokeWidth={2.4}
+                  />
+                ) : (
+                  <CheckCircle2
+                    size={14}
+                    color={missingAccent}
+                    strokeWidth={2.4}
+                  />
+                )}
+              </View>
+              <Text style={[styles.kpiCardLabel, { color: missingAccent }]}>
+                MISSING
+              </Text>
+            </View>
+            <Text style={[styles.kpiCountText, { color: missingAccent }]}>
+              {summary.missing_count}
+            </Text>
+            <Text
+              style={[styles.kpiSubText, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {summary.missing_count === 0 && summary.call_follow_ups > 0
+                ? 'All calls uploaded!'
+                : 'Upload to match calls'}
+            </Text>
+          </View>
+
+          {/* Card 4: Verification */}
+          <View
+            style={[
+              styles.kpiCard,
+              styles.kpiCardWide,
+              {
+                backgroundColor: isDark ? '#101726' : '#FFFFFF',
+                borderColor: cardBorder,
+                borderTopColor: '#D97706',
+              },
+            ]}
+          >
+            <View style={styles.kpiTopRow}>
+              <View
+                style={[
+                  styles.kpiIconBox,
+                  { backgroundColor: isDark ? '#D9770625' : '#D9770615' },
+                ]}
+              >
+                <ShieldCheck size={14} color="#D97706" strokeWidth={2.4} />
+              </View>
+              <Text style={styles.kpiCardLabel}>VERIFICATION</Text>
+            </View>
+            <View style={styles.kpiPillWrap}>
+              <View
+                style={[
+                  styles.miniBadge,
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(16, 185, 129, 0.16)'
+                      : '#ECFDF5',
+                  },
+                ]}
+              >
+                <Text style={[styles.miniBadgeText, { color: colors.success }]}>
+                  {summary.verified_count} Verified
+                </Text>
+              </View>
               <View
                 style={[
                   styles.miniBadge,
@@ -553,17 +827,17 @@ export const StaffCallRecordingsView: React.FC<StaffCallRecordingsViewProps> = (
               ) : null}
             </View>
           </View>
-    </ScrollView>
+        </ScrollView>
       </View >
 
-  {/* Bulk Upload Card */ }
-  < View
-style = {
-  [
-  styles.sectionCard,
-  { backgroundColor: cardSurface, borderColor: cardBorder },
-        ]}
-  >
+      {/* Bulk Upload Card */}
+      < View
+        style={
+          [
+            styles.sectionCard,
+            { backgroundColor: cardSurface, borderColor: cardBorder },
+          ]}
+      >
         <View style={styles.sectionHeaderRow}>
           <View style={{ flex: 1 }}>
             <View style={styles.sectionTitleRow}>
@@ -626,178 +900,203 @@ style = {
             Tap to Select Call Recordings
           </Text>
           <Text style={[styles.dropSub, { color: colors.textSecondary }]}>
-            Multi-select audio files (.mp3, .m4a, .wav, .aac, .ogg, .amr, .3gp — max 50MB/file)
+            Multi-select audio files (.mp3, .m4a, .wav, .aac, .ogg, .amr, .3gp — max {MAX_FILE_SIZE_MB}MB/file)
           </Text>
         </TouchableOpacity>
 
-{
-  selectedFiles.length > 0 ? (
-    <View
-      style={[
-        styles.queueBox,
         {
-          backgroundColor: isDark ? '#0D131F' : '#F8FAFC',
-          borderColor: cardBorder,
-        },
-      ]}
-    >
-      <View style={styles.queueTopRow}>
-        <Text style={[styles.queueTitle, { color: colors.textPrimary }]}>
-          Selected: {selectedFiles.length} file
-          {selectedFiles.length > 1 ? 's' : ''} ({formatBytes(totalSelectedSize)})
-        </Text>
-        <TouchableOpacity
-          onPress={handlePickFiles}
-          disabled={isUploading}
-          style={[
-            styles.addMoreBtn,
-            {
-              borderColor: colors.primary,
-              backgroundColor: isDark
-                ? 'rgba(189, 207, 121, 0.12)'
-                : '#F2F5E8',
-            },
-          ]}
-        >
-          <Plus size={13} color={colors.primary} />
-          <Text style={[styles.addMoreText, { color: colors.primary }]}>
-            Add More
-          </Text>
-        </TouchableOpacity>
-      </View>
+          selectedFiles.length > 0 ? (
+            <View
+              style={[
+                styles.queueBox,
+                {
+                  backgroundColor: isDark ? '#0D131F' : '#F8FAFC',
+                  borderColor: cardBorder,
+                },
+              ]}
+            >
+              <View style={styles.queueTopRow}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={[styles.queueTitle, { color: colors.textPrimary }]}>
+                    Selected: {selectedFiles.length} file
+                    {selectedFiles.length > 1 ? 's' : ''} ({formatBytes(totalSelectedSize)})
+                  </Text>
+                  {selectedFiles.some((f) => f.size > MAX_FILE_BYTES) ? (
+                    <Text style={[styles.oversizedCountHint, { color: colors.danger }]}>
+                      {selectedFiles.filter((f) => f.size > MAX_FILE_BYTES).length} file(s) &gt;{' '}
+                      {MAX_FILE_SIZE_MB}MB (will skip)
+                    </Text>
+                  ) : null}
+                </View>
+                <TouchableOpacity
+                  onPress={handlePickFiles}
+                  disabled={isUploading}
+                  style={[
+                    styles.addMoreBtn,
+                    {
+                      borderColor: colors.primary,
+                      backgroundColor: isDark
+                        ? 'rgba(189, 207, 121, 0.12)'
+                        : '#F2F5E8',
+                    },
+                  ]}
+                >
+                  <Plus size={13} color={colors.primary} />
+                  <Text style={[styles.addMoreText, { color: colors.primary }]}>
+                    Add More
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-      <View style={styles.fileChipList}>
-        {selectedFiles.map((file, idx) => (
-          <View
-            key={`${file.name}_${file.size}_${idx}`}
-            style={[
-              styles.fileChip,
-              {
-                backgroundColor: cardSurface,
-                borderColor: cardBorder,
-              },
-            ]}
-          >
-            <FileAudio size={14} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[styles.fileName, { color: colors.textPrimary }]}
-                numberOfLines={1}
-              >
-                {file.name}
+              <View style={styles.fileChipList}>
+                {selectedFiles.map((file, idx) => {
+                  const isTooLarge = file.size > MAX_FILE_BYTES;
+                  return (
+                    <View
+                      key={`${file.name}_${file.size}_${idx}`}
+                      style={[
+                        styles.fileChip,
+                        {
+                          backgroundColor: isTooLarge
+                            ? isDark
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : '#FEF2F2'
+                            : cardSurface,
+                          borderColor: isTooLarge ? colors.danger : cardBorder,
+                        },
+                      ]}
+                    >
+                      {isTooLarge ? (
+                        <AlertTriangle size={14} color={colors.danger} />
+                      ) : (
+                        <FileAudio size={14} color={colors.primary} />
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[styles.fileName, { color: colors.textPrimary }]}
+                          numberOfLines={1}
+                        >
+                          {file.name}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.fileSize,
+                            { color: isTooLarge ? colors.danger : colors.textMuted },
+                          ]}
+                        >
+                          {formatBytes(file.size)}
+                          {isTooLarge ? ` > ${MAX_FILE_SIZE_MB}MB` : ''}
+                        </Text>
+                      </View>
+                      {!isUploading ? (
+                        <TouchableOpacity
+                          onPress={() => handleRemoveFile(idx)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <X size={16} color={colors.danger} />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+
+              <Text style={[styles.noteLabel, { color: colors.textSecondary }]}>
+                Optional Note (applies to this batch)
               </Text>
-              <Text style={[styles.fileSize, { color: colors.textMuted }]}>
-                {formatBytes(file.size)}
-              </Text>
-            </View>
-            {!isUploading ? (
+              <TextInput
+                value={batchNotes}
+                onChangeText={setBatchNotes}
+                editable={!isUploading}
+                placeholder="e.g., Evening follow-up recordings (10 calls)"
+                placeholderTextColor={colors.inputPlaceholder}
+                style={[
+                  styles.noteInput,
+                  {
+                    backgroundColor: colors.inputBg,
+                    borderColor: colors.inputBorder,
+                    color: colors.textPrimary,
+                  },
+                ]}
+              />
+
               <TouchableOpacity
-                onPress={() => handleRemoveFile(idx)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={handleBulkUpload}
+                disabled={isUploading}
+                activeOpacity={0.85}
+                style={[
+                  styles.uploadBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: isUploading ? 0.8 : 1,
+                  },
+                ]}
               >
-                <X size={16} color={colors.danger} />
+                {isUploading ? (
+                  <>
+                    <ActivityIndicator
+                      size="small"
+                      color={isDark ? '#0B111A' : '#FFFFFF'}
+                    />
+                    <Text
+                      style={[
+                        styles.uploadBtnText,
+                        { color: isDark ? '#0B111A' : '#FFFFFF' },
+                      ]}
+                    >
+                      Uploading {uploadProgress.completed}/{uploadProgress.total}...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <CloudUpload
+                      size={16}
+                      color={isDark ? '#0B111A' : '#FFFFFF'}
+                    />
+                    <Text
+                      style={[
+                        styles.uploadBtnText,
+                        { color: isDark ? '#0B111A' : '#FFFFFF' },
+                      ]}
+                    >
+                      Upload All {selectedFiles.length} Recording
+                      {selectedFiles.length > 1 ? 's' : ''}
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
-            ) : null}
-          </View>
-        ))}
-      </View>
 
-      <Text style={[styles.noteLabel, { color: colors.textSecondary }]}>
-        Optional Note (applies to this batch)
-      </Text>
-      <TextInput
-        value={batchNotes}
-        onChangeText={setBatchNotes}
-        editable={!isUploading}
-        placeholder="e.g., Evening follow-up recordings (10 calls)"
-        placeholderTextColor={colors.inputPlaceholder}
-        style={[
-          styles.noteInput,
-          {
-            backgroundColor: colors.inputBg,
-            borderColor: colors.inputBorder,
-            color: colors.textPrimary,
-          },
-        ]}
-      />
-
-      <TouchableOpacity
-        onPress={handleBulkUpload}
-        disabled={isUploading}
-        activeOpacity={0.85}
-        style={[
-          styles.uploadBtn,
-          {
-            backgroundColor: colors.primary,
-            opacity: isUploading ? 0.8 : 1,
-          },
-        ]}
-      >
-        {isUploading ? (
-          <>
-            <ActivityIndicator
-              size="small"
-              color={isDark ? '#0B111A' : '#FFFFFF'}
-            />
-            <Text
-              style={[
-                styles.uploadBtnText,
-                { color: isDark ? '#0B111A' : '#FFFFFF' },
-              ]}
-            >
-              Uploading {uploadProgress.completed}/{uploadProgress.total}...
-            </Text>
-          </>
-        ) : (
-          <>
-            <CloudUpload
-              size={16}
-              color={isDark ? '#0B111A' : '#FFFFFF'}
-            />
-            <Text
-              style={[
-                styles.uploadBtnText,
-                { color: isDark ? '#0B111A' : '#FFFFFF' },
-              ]}
-            >
-              Upload All {selectedFiles.length} Recording
-              {selectedFiles.length > 1 ? 's' : ''}
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-
-      {isUploading ? (
-        <View
-          style={[
-            styles.progressTrack,
-            { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' },
-          ]}
-        >
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${uploadProgress.percent}%`,
-                backgroundColor: colors.primary,
-              },
-            ]}
-          />
-        </View>
-      ) : null}
-    </View>
-  ) : null
-}
+              {isUploading ? (
+                <View
+                  style={[
+                    styles.progressTrack,
+                    { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${uploadProgress.percent}%`,
+                        backgroundColor: colors.primary,
+                      },
+                    ]}
+                  />
+                </View>
+              ) : null}
+            </View>
+          ) : null
+        }
       </View >
 
-  {/* Date Filter Bar */ }
-  < View
-style = {
-  [
-  styles.sectionCard,
-  { backgroundColor: cardSurface, borderColor: cardBorder },
-        ]}
-  >
+      {/* Date Filter Bar */}
+      < View
+        style={
+          [
+            styles.sectionCard,
+            { backgroundColor: cardSurface, borderColor: cardBorder },
+          ]}
+      >
         <View style={styles.dateRow}>
           <TouchableOpacity
             onPress={() => setDatePickerTarget('from')}
@@ -853,7 +1152,6 @@ style = {
               onPress: () => {
                 setFromDate('');
                 setToDate('');
-                setCurrentPage(1);
               },
             },
             {
@@ -863,7 +1161,6 @@ style = {
                 const t = getTodayDate();
                 setFromDate(t);
                 setToDate(t);
-                setCurrentPage(1);
               },
             },
             {
@@ -873,7 +1170,6 @@ style = {
                 const y = getYesterdayDate();
                 setFromDate(y);
                 setToDate(y);
-                setCurrentPage(1);
               },
             },
           ].map((pill) => (
@@ -914,617 +1210,473 @@ style = {
         </View>
       </View >
 
-  {/* Daily Follow-Ups & Call Recordings List */ }
-  < View
-style = {
-  [
-  styles.sectionCard,
-  { backgroundColor: cardSurface, borderColor: cardBorder },
+      {/* Daily Follow-Ups & Call Recordings Header */}
+      <View
+        style={[
+          styles.listTitleCard,
+          { backgroundColor: cardSurface, borderColor: cardBorder },
         ]}
-  >
-  <View style={styles.listHeaderRow}>
-    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-      Daily Follow-Ups & Recordings
-    </Text>
-    <View
-      style={[
-        styles.countBadge,
-        { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
-      ]}
-    >
-      <Text style={[styles.countBadgeText, { color: colors.textSecondary }]}>
-        {pagination.total || 0} Days
-      </Text>
-    </View>
-  </View>
-
-{
-  isLoading ? (
-    <View style={styles.centerBox}>
-      <ActivityIndicator size="large" color={colors.primary} />
-      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-        Loading daily summary...
-      </Text>
-    </View>
-  ) : dailyRows.length === 0 ? (
-    <View style={styles.centerBox}>
-      <Mic size={32} color={colors.textMuted} />
-      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-        No follow-ups or recordings found{' '}
-        {isAllDates ? 'yet' : `for ${dateRangeLabel}`}.
-      </Text>
-    </View>
-  ) : (
-    <View style={styles.cardsStack}>
-      {dailyRows.map((row) => (
-        <View
-          key={row.date}
-          style={[
-            styles.dayCard,
-            {
-              backgroundColor: isDark ? '#0D131F' : '#F8FAFC',
-              borderColor: cardBorder,
-            },
-          ]}
-        >
-          <View style={styles.dayCardTop}>
-            <View style={styles.dayDateRow}>
-              <Calendar size={15} color={colors.primary} />
-              <Text style={[styles.dayDateText, { color: colors.textPrimary }]}>
-                {row.date}
-              </Text>
-            </View>
-            <ComplianceBadge
-              compliance_status={row.compliance_status}
-              recordings_uploaded={row.recordings_uploaded}
-              call_follow_ups={row.call_follow_ups}
-              missing_count={row.missing_count}
-            />
-          </View>
-
-          <View style={styles.dayMetricsRow}>
-            <View
-              style={[
-                styles.metricBox,
-                { backgroundColor: cardSurface, borderColor: cardBorder },
-              ]}
-            >
-              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
-                Call Follow-Ups
-              </Text>
-              <Text style={[styles.metricVal, { color: colors.textPrimary }]}>
-                {row.call_follow_ups}
-                {row.total_follow_ups !== row.call_follow_ups ? (
-                  <Text style={[styles.metricSub, { color: colors.textMuted }]}>
-                    {' '}
-                    ({row.total_follow_ups} total)
-                  </Text>
-                ) : null}
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.metricBox,
-                { backgroundColor: cardSurface, borderColor: cardBorder },
-              ]}
-            >
-              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
-                Uploaded
-              </Text>
-              <Text style={[styles.metricVal, { color: colors.primary }]}>
-                {row.recordings_uploaded}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.dayBottomRow}>
-            <View style={styles.verificationPills}>
-              {row.verified_count > 0 ? (
-                <Text style={[styles.verifPill, { color: colors.success }]}>
-                  {row.verified_count} Verified
-                </Text>
-              ) : null}
-              {row.pending_count > 0 ? (
-                <Text style={[styles.verifPill, { color: colors.warning }]}>
-                  {row.pending_count} Pending
-                </Text>
-              ) : null}
-              {row.flagged_count > 0 ? (
-                <Text style={[styles.verifPill, { color: colors.danger }]}>
-                  {row.flagged_count} Flagged
-                </Text>
-              ) : null}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => handleOpenDayDetail(row)}
-              activeOpacity={0.8}
-              style={[
-                styles.viewListenBtn,
-                { backgroundColor: colors.primary },
-              ]}
-            >
-              <Headphones
-                size={14}
-                color={isDark ? '#0B111A' : '#FFFFFF'}
-              />
-              <Text
-                style={[
-                  styles.viewListenText,
-                  { color: isDark ? '#0B111A' : '#FFFFFF' },
-                ]}
-              >
-                View & Listen ({row.recordings_uploaded})
-              </Text>
-            </TouchableOpacity>
+      >
+        <View style={styles.listHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+            Daily Follow-Ups & Recordings
+          </Text>
+          <View
+            style={[
+              styles.countBadge,
+              { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' },
+            ]}
+          >
+            <Text style={[styles.countBadgeText, { color: colors.textSecondary }]}>
+              {totalDays} Days
+            </Text>
           </View>
         </View>
-      ))}
+      </View>
     </View>
-  )
-}
-
-{/* Pagination */ }
-{
-  pagination.last_page > 1 ? (
-    <View
-      style={[
-        styles.paginationRow,
-        { borderTopColor: cardBorder },
-      ]}
-    >
-      <TouchableOpacity
-        disabled={pagination.current_page <= 1}
-        onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
-        style={[
-          styles.pageBtn,
-          {
-            borderColor: cardBorder,
-            opacity: pagination.current_page <= 1 ? 0.4 : 1,
-          },
-        ]}
-      >
-        <ChevronLeft size={16} color={colors.textPrimary} />
-        <Text style={[styles.pageBtnText, { color: colors.textPrimary }]}>
-          Prev
-        </Text>
-      </TouchableOpacity>
-
-      <Text style={[styles.pageInfo, { color: colors.textSecondary }]}>
-        Page {pagination.current_page} of {pagination.last_page}
-      </Text>
-
-      <TouchableOpacity
-        disabled={pagination.current_page >= pagination.last_page}
-        onPress={() =>
-          setCurrentPage((p) => Math.min(pagination.last_page, p + 1))
         }
-        style={[
-          styles.pageBtn,
-          {
-            borderColor: cardBorder,
-            opacity:
-              pagination.current_page >= pagination.last_page ? 0.4 : 1,
-          },
-        ]}
-      >
-        <Text style={[styles.pageBtnText, { color: colors.textPrimary }]}>
-          Next
-        </Text>
-        <ChevronRight size={16} color={colors.textPrimary} />
-      </TouchableOpacity>
-    </View>
-  ) : null
-}
-      </View >
-
-  {/* Date Picker Modal */ }
-  < DatePickerModal
-visible = { datePickerTarget !== null}
-title = { datePickerTarget === 'from' ? 'Select From Date' : 'Select To Date'}
-initialDate = { datePickerTarget === 'from' ? fromDate : toDate}
-allowFuture = { false}
-allowPast = { true}
-onClose = {() => setDatePickerTarget(null)}
-onSelectDate = {(dateStr) => {
-  if (datePickerTarget === 'from') {
-    setFromDate(dateStr);
-  } else if (datePickerTarget === 'to') {
-    setToDate(dateStr);
-  }
-  setCurrentPage(1);
-}}
+        ListEmptyComponent={
+          isLoading ? (
+            <View
+              style={[
+                styles.sectionCard,
+                styles.centerBox,
+                { backgroundColor: cardSurface, borderColor: cardBorder },
+              ]}
+            >
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Loading daily summary...
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.sectionCard,
+                styles.centerBox,
+                { backgroundColor: cardSurface, borderColor: cardBorder },
+              ]}
+            >
+              <Mic size={32} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No follow-ups or recordings found{' '}
+                {isAllDates ? 'yet' : `for ${dateRangeLabel}`}.
+              </Text>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : undefined
+        }
       />
 
-{/* Day Detail Modal */ }
-<CallRecordingDetailModal
-  visible={detailModalOpen}
-  mode="staff"
-  title={`Follow-Ups & Recordings — ${activeDayDate}`}
-  subtitle={`${currentUser?.name || 'Staff'} (${currentUser?.role || 'Sales Executive'})`}
-  loading={detailLoading}
-  followUps={dayDetail.follow_ups}
-  recordings={dayDetail.recordings}
-  onClose={() => setDetailModalOpen(false)}
-  onDelete={handleDeleteRecording}
-/>
-    </ScrollView >
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        visible={datePickerTarget !== null}
+        title={datePickerTarget === 'from' ? 'Select From Date' : 'Select To Date'}
+        initialDate={datePickerTarget === 'from' ? fromDate : toDate}
+        allowFuture={false}
+        allowPast={true}
+        onClose={() => setDatePickerTarget(null)}
+        onSelectDate={(dateStr) => {
+          if (datePickerTarget === 'from') {
+            setFromDate(dateStr);
+          } else if (datePickerTarget === 'to') {
+            setToDate(dateStr);
+          }
+        }}
+      />
+
+      {/* Day Detail Modal */}
+      <CallRecordingDetailModal
+        visible={detailModalOpen}
+        mode="staff"
+        title={`Follow-Ups & Recordings — ${activeDayDate}`}
+        subtitle={`${currentUser?.name || 'Staff'} (${currentUser?.role || 'Sales Executive'})`}
+        loading={detailLoading}
+        followUps={dayDetail.follow_ups}
+        recordings={dayDetail.recordings}
+        onClose={() => setDetailModalOpen(false)}
+        onDelete={handleDeleteRecording}
+      />
+
+      {/* Sequential Upload Progress & Summary Modal */}
+      <UploadProgressModal
+        state={uploadModal}
+        onClose={() => setUploadModal((prev) => ({ ...prev, open: false }))}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-    content: { padding: 14, paddingTop: 10, gap: 12 },
-    kpiDeckWrapper: {
-      marginHorizontal: -14,
-      paddingVertical: 2,
-    },
-    kpiDeckScroll: {
-      paddingHorizontal: 14,
-      gap: 10,
-    },
-    kpiCard: {
-      width: 154,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderTopWidth: 3,
-      padding: 10,
-      justifyContent: 'space-between',
-      minHeight: 96,
-    },
-      kpiCardWide: {
-        width: 184,
-      },
-        kpiTopRow: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 4,
-        },
-        kpiIconBox: {
-          width: 26,
-          height: 26,
-          borderRadius: 6,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        kpiCardLabel: {
-          fontSize: 9,
-          fontWeight: '800',
-          color: '#64748B',
-          letterSpacing: 0.3,
-        },
-          kpiCountText: {
-            fontSize: 20,
-            fontWeight: '800',
-            letterSpacing: -0.5,
-          },
-          kpiSubText: {
-            fontSize: 9.5,
-            fontWeight: '500',
-            marginTop: 1,
-          },
-          kpiPillWrap: {
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 4,
-            marginTop: 4,
-          },
-          miniBadge: {
-            paddingHorizontal: 6,
-            paddingVertical: 3,
-            borderRadius: 5,
-          },
-          miniBadgeText: {
-            fontSize: 9.5,
-            fontWeight: '700',
-          },
-          sectionCard: {
-            borderRadius: 14,
-            borderWidth: 1,
-            padding: 14,
-            gap: 12,
-          },
-          sectionHeaderRow: {
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 8,
-          },
-          sectionTitleRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 7,
-          },
-          sectionTitle: {
-            fontSize: 15,
-            fontWeight: '800',
-          },
-          sectionHint: {
-            fontSize: 11,
-            marginTop: 3,
-          },
-          clearFilesBtn: {
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            borderRadius: 8,
-            borderWidth: 1,
-          },
-          clearFilesText: {
-            fontSize: 11,
-            fontWeight: '700',
-          },
-          dropZone: {
-            borderWidth: 1.5,
-            borderStyle: 'dashed',
-            borderRadius: 12,
-            paddingVertical: 20,
-            paddingHorizontal: 16,
-            alignItems: 'center',
-            gap: 6,
-          },
-          dropIconCircle: {
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 4,
-          },
-          dropTitle: {
-            fontSize: 14,
-            fontWeight: '700',
-            textAlign: 'center',
-          },
-          dropSub: {
-            fontSize: 11,
-            textAlign: 'center',
-            lineHeight: 16,
-          },
-          queueBox: {
-            borderRadius: 12,
-            borderWidth: 1,
-            padding: 12,
-            gap: 10,
-          },
-          queueTopRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          },
-          queueTitle: {
-            fontSize: 12,
-            fontWeight: '700',
-          },
-          addMoreBtn: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            borderRadius: 8,
-            borderWidth: 1,
-            gap: 4,
-          },
-          addMoreText: {
-            fontSize: 11,
-            fontWeight: '700',
-          },
-          fileChipList: {
-            gap: 7,
-          },
-          fileChip: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 10,
-            paddingVertical: 8,
-            borderRadius: 9,
-            borderWidth: 1,
-            gap: 8,
-          },
-          fileName: {
-            fontSize: 12,
-            fontWeight: '600',
-          },
-          fileSize: {
-            fontSize: 10,
-          },
-          noteLabel: {
-            fontSize: 11,
-            fontWeight: '700',
-          },
-          noteInput: {
-            borderWidth: 1,
-            borderRadius: 9,
-            paddingHorizontal: 12,
-            paddingVertical: 9,
-            fontSize: 13,
-          },
-          uploadBtn: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingVertical: 12,
-            borderRadius: 10,
-            gap: 8,
-          },
-          uploadBtnText: {
-            fontSize: 13,
-            fontWeight: '800',
-          },
-          progressTrack: {
-            height: 6,
-            borderRadius: 3,
-            overflow: 'hidden',
-          },
-          progressFill: {
-            height: '100%',
-            borderRadius: 3,
-          },
-          dateRow: {
-            flexDirection: 'row',
-            gap: 10,
-          },
-          dateInputBtn: {
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            borderWidth: 1,
-            borderRadius: 10,
-            paddingHorizontal: 10,
-            paddingVertical: 8,
-          },
-          dateInputLabel: {
-            fontSize: 10,
-            fontWeight: '600',
-          },
-          dateInputVal: {
-            fontSize: 12,
-            fontWeight: '700',
-          },
-          quickDateRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 6,
-          },
-          quickLabel: {
-            fontSize: 11,
-            fontWeight: '700',
-            marginRight: 2,
-          },
-          quickPill: {
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            borderRadius: 14,
-            borderWidth: 1,
-          },
-          quickPillText: {
-            fontSize: 11,
-            fontWeight: '700',
-          },
-          listHeaderRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          },
-          countBadge: {
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 6,
-          },
-          countBadgeText: {
-            fontSize: 11,
-            fontWeight: '700',
-          },
-          centerBox: {
-            paddingVertical: 32,
-            alignItems: 'center',
-            gap: 8,
-          },
-          emptyText: {
-            fontSize: 13,
-            textAlign: 'center',
-          },
-          cardsStack: {
-            gap: 10,
-          },
-          dayCard: {
-            borderRadius: 12,
-            borderWidth: 1,
-            padding: 12,
-            gap: 10,
-          },
-          dayCardTop: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 8,
-          },
-          dayDateRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-          },
-          dayDateText: {
-            fontSize: 14,
-            fontWeight: '800',
-          },
-          dayMetricsRow: {
-            flexDirection: 'row',
-            gap: 8,
-          },
-          metricBox: {
-            flex: 1,
-            borderRadius: 9,
-            borderWidth: 1,
-            paddingHorizontal: 10,
-            paddingVertical: 8,
-          },
-          metricLabel: {
-            fontSize: 10,
-            fontWeight: '700',
-          },
-          metricVal: {
-            fontSize: 16,
-            fontWeight: '800',
-            marginTop: 2,
-          },
-          metricSub: {
-            fontSize: 11,
-            fontWeight: '500',
-          },
-          dayBottomRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 8,
-          },
-          verificationPills: {
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 8,
-          },
-          verifPill: {
-            fontSize: 11,
-            fontWeight: '700',
-          },
-          viewListenBtn: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 9,
-            gap: 6,
-          },
-          viewListenText: {
-            fontSize: 12,
-            fontWeight: '700',
-          },
-          paginationRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: 12,
-            borderTopWidth: 1,
-          },
-          pageBtn: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 10,
-            paddingVertical: 6,
-            borderRadius: 8,
-            borderWidth: 1,
-            gap: 4,
-          },
-          pageBtnText: {
-            fontSize: 12,
-            fontWeight: '700',
-          },
-          pageInfo: {
-            fontSize: 12,
-            fontWeight: '600',
-          },
-        });
+  content: { padding: 14, paddingTop: 10, gap: 10 },
+  listHeaderStack: { gap: 12, marginBottom: 2 },
+  listTitleCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  kpiDeckWrapper: {
+    marginHorizontal: -14,
+    paddingVertical: 2,
+  },
+  kpiDeckScroll: {
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  kpiCard: {
+    width: 154,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderTopWidth: 3,
+    padding: 10,
+    justifyContent: 'space-between',
+    minHeight: 96,
+  },
+  kpiCardWide: {
+    width: 184,
+  },
+  kpiTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  kpiIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kpiCardLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.3,
+  },
+  kpiCountText: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  kpiSubText: {
+    fontSize: 9.5,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  kpiPillWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 4,
+  },
+  miniBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  miniBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+  },
+  sectionCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  sectionHint: {
+    fontSize: 11,
+    marginTop: 3,
+  },
+  clearFilesBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  clearFilesText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  dropZone: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 6,
+  },
+  dropIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  dropTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  dropSub: {
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  queueBox: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 10,
+  },
+  queueTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  queueTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  oversizedCountHint: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  addMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 4,
+  },
+  addMoreText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  fileChipList: {
+    gap: 7,
+  },
+  fileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 9,
+    borderWidth: 1,
+    gap: 8,
+  },
+  fileName: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fileSize: {
+    fontSize: 10,
+  },
+  noteLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  noteInput: {
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+  },
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  uploadBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dateInputBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  dateInputLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  dateInputVal: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  quickDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  quickLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginRight: 2,
+  },
+  quickPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  quickPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  listHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  centerBox: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  cardsStack: {
+    gap: 10,
+  },
+  dayCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 10,
+  },
+  dayCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dayDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dayDateText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  dayMetricsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metricBox: {
+    flex: 1,
+    borderRadius: 9,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  metricVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  metricSub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  dayBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  verificationPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  verifPill: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  viewListenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 9,
+    gap: 6,
+  },
+  viewListenText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+});
