@@ -25,6 +25,7 @@ import {
   ListFilter,
   LogOut,
   Mail,
+  Mic,
   PhoneForwarded,
   Radio,
   Receipt,
@@ -50,6 +51,7 @@ export type ScreenName =
   | 'lead-dates'
   | 'contact-inquiries'
   | 'follow-ups'
+  | 'call-recordings'
   | 'send-quotation'
   | 'deals'
   | 'generate-invoice'
@@ -140,6 +142,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
               { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
+              { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
               { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
               { id: 'generate-invoice', label: 'Generate Invoice', icon: ReceiptText },
@@ -171,6 +174,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
               { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
+              { id: 'call-recordings', label: 'Call Recordings Audit', icon: Mic },
               { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
               { id: 'generate-invoice', label: 'Generate Invoice', icon: ReceiptText },
@@ -212,6 +216,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             items: [
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
+              { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
             ],
           },
@@ -270,6 +275,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
               { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
+              { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
               { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
               { id: 'generate-invoice', label: 'Generate Invoice', icon: ReceiptText },

@@ -23,6 +23,7 @@ import { LeadStatusScreen } from '../../features/masters/LeadStatusScreen';
 import { LeadSourceScreen } from '../../features/masters/LeadSourceScreen';
 import { UserMasterScreen } from '../../features/masters/UserMasterScreen';
 import { FollowUpScreen } from '../../features/followups/FollowUpScreen';
+import { CallRecordingsScreen } from '../../features/callRecordings';
 import { SendQuotationScreen } from '../../features/quotations/SendQuotationScreen';
 import { CreateLeadScreen } from '../../features/leads/CreateLeadScreen';
 import { DealsScreen } from '../../features/deals/DealsScreen';
@@ -61,6 +62,7 @@ export type DrawerParamList = {
   'lead-dates': undefined;
   'contact-inquiries': undefined;
   'follow-ups': undefined;
+  'call-recordings': undefined;
   'send-quotation': { leadId?: number } | undefined;
   deals: undefined;
   'generate-invoice': undefined;
@@ -100,6 +102,7 @@ const SCREEN_TITLES: Record<string, string> = {
   'lead-dates': 'Lead Dates Manager',
   'contact-inquiries': 'Contact Inquiries',
   'follow-ups': 'Follow-Ups',
+  'call-recordings': 'Call Recordings',
   'send-quotation': 'Send Quotation',
   deals: 'Deals & Bookings',
   'generate-invoice': 'Generate Invoice',
@@ -168,6 +171,8 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
         const title =
           route.name === 'dashboard'
             ? getDashboardTitle()
+            : route.name === 'call-recordings' && userRole === 'Sales Manager'
+            ? 'Call Recordings Audit'
             : SCREEN_TITLES[route.name] || 'CarCRM';
 
         return {
@@ -249,6 +254,10 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
             }}
           />
         )}
+      </Drawer.Screen>
+
+      <Drawer.Screen name="call-recordings">
+        {() => <CallRecordingsScreen userRole={userRole} />}
       </Drawer.Screen>
 
       <Drawer.Screen name="send-quotation">

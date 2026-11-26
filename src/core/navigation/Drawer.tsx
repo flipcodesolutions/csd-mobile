@@ -19,6 +19,7 @@ import {
   ListFilter,
   LogOut,
   Mail,
+  Mic,
   PhoneForwarded,
   Radio,
   UserCheck,
@@ -40,6 +41,7 @@ export type ScreenName =
   | 'lead-dates'
   | 'contact-inquiries'
   | 'follow-ups'
+  | 'call-recordings'
   | 'send-quotation'
   | 'deals'
   | 'generate-invoice'
@@ -80,6 +82,7 @@ const MENU_ICONS: Partial<Record<ScreenName, React.ComponentType<{ size?: number
   'lead-dates': Calendar,
   'contact-inquiries': Mail,
   'follow-ups': PhoneForwarded,
+  'call-recordings': Mic,
   'lead-status': ListFilter,
   'lead-source': Radio,
   brand: Building2,
@@ -95,6 +98,7 @@ const MENU_ITEMS: { id: ScreenName; label: string; badge?: string }[] = [
   { id: 'lead-dates', label: 'Lead Dates Manager', badge: 'Dates' },
   { id: 'contact-inquiries', label: 'Contact Inquiries' },
   { id: 'follow-ups', label: 'Follow-Up Call Desk', badge: 'Live' },
+  { id: 'call-recordings', label: 'Call Recordings' },
   { id: 'lead-status', label: 'Lead Status Master' },
   { id: 'lead-source', label: 'Lead Source Master' },
   { id: 'brand', label: 'Brand Master' },
