@@ -16,7 +16,6 @@ import {
   IndianRupee,
   Kanban,
   LayoutDashboard,
-  ListFilter,
   LogOut,
   Mail,
   Mic,
@@ -64,9 +63,7 @@ export type ScreenName =
   | 'lead-source'
   | 'lead-status'
   | 'activity-logs'
-  | 'settings'
-  | 'profile'
-  | 'help-support';
+  | 'profile';
 
 export interface MenuItem {
   id: ScreenName;
@@ -90,6 +87,43 @@ interface CustomDrawerContentProps extends DrawerContentComponentProps {
   onLogout: () => void;
 }
 
+export type AppRole =
+  | 'Super Admin'
+  | 'Sales Manager'
+  | 'Sales Executive'
+  | 'Receptionist'
+  | 'Accountant';
+
+/**
+ * Normalize raw role strings or role objects to canonical app role names.
+ */
+export function normalizeAppRole(
+  role?: string | { title?: string; name?: string } | null,
+): AppRole {
+  const raw =
+    typeof role === 'object' && role !== null
+      ? role.title || role.name || 'Super Admin'
+      : role || 'Super Admin';
+  const key = String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  if (key === 'sales_executive' || key === 'executive' || key === 'sales') {
+    return 'Sales Executive';
+  }
+  if (key === 'sales_manager' || key === 'manager') {
+    return 'Sales Manager';
+  }
+  if (key === 'receptionist') {
+    return 'Receptionist';
+  }
+  if (key === 'accountant') {
+    return 'Accountant';
+  }
+  return 'Super Admin';
+}
+
 export const CustomDrawerContent: React.FC<
   CustomDrawerContentProps
 > = props => {
@@ -101,13 +135,14 @@ export const CustomDrawerContent: React.FC<
     onLogout,
   } = props;
 
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
+  const normalizedRole = normalizeAppRole(userRole);
 
   const currentRouteName = (state?.routes[state?.index]?.name ||
     'dashboard') as ScreenName;
 
   const getRoleBadge = () => {
-    switch (userRole) {
+    switch (normalizedRole) {
       case 'Sales Manager':
         return { icon: 'SM', color: '#f59e0b', section: 'MANAGER DESK' };
       case 'Sales Executive':
@@ -133,20 +168,17 @@ export const CustomDrawerContent: React.FC<
   const roleMeta = getRoleBadge();
 
   /**
-   * Structure sidebar menu sections matching exact web reference screenshots:
-   * 1. MAIN MENU
-   * 2. MASTER DATA
-   * 3. MANAGEMENT
-   * 4. ACCOUNT
+   * Mirror Web Sidebar.js sections, labels, and panel access
+   * (excluding Help & Support, Blogs, CRM, and Settings).
    */
   const getMenuSections = (): MenuSection[] => {
-    switch (userRole) {
+    switch (normalizedRole) {
       case 'Sales Executive':
         return [
           {
-            title: 'MAIN MENU',
+            title: 'CONVERSION DESK',
             items: [
-              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'dashboard', label: 'Sales Dashboard', icon: LayoutDashboard },
               {
                 id: 'my-leads',
                 label: 'My Assigned Leads',
@@ -154,7 +186,6 @@ export const CustomDrawerContent: React.FC<
                 badge: 'Live',
               },
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
-              { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
               { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
               {
@@ -164,19 +195,28 @@ export const CustomDrawerContent: React.FC<
               },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
               {
-                id: 'generate-invoice',
-                label: 'Generate Invoice',
-                icon: ReceiptText,
+                id: 'pending-insurance',
+                label: 'Pending Insurance',
+                icon: ShieldAlert,
+              },
+              {
+                id: 'insurance-reminders',
+                label: 'Insurance Reminders',
+                icon: ShieldCheck,
+              },
+              {
+                id: 'insurance-records',
+                label: 'Insurance Records',
+                icon: Shield,
               },
             ],
           },
           {
-            title: 'MASTER DATA',
+            title: 'VEHICLE INVENTORY',
             items: [
               { id: 'brand', label: 'Brands', icon: Building2 },
               { id: 'model', label: 'Models', icon: Car },
-              { id: 'variant', label: 'Variants', icon: Zap },
-              { id: 'update-price', label: 'Update Price', icon: IndianRupee },
+              { id: 'variant', label: 'Variants & Prices', icon: Zap },
             ],
           },
           {
@@ -192,11 +232,10 @@ export const CustomDrawerContent: React.FC<
             items: [
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
-              { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
               {
                 id: 'call-recordings',
-                label: 'Call Recordings Audit',
+                label: 'Call Recordings',
                 icon: Mic,
               },
               {
@@ -204,7 +243,6 @@ export const CustomDrawerContent: React.FC<
                 label: 'Send Quotation',
                 icon: FileSpreadsheet,
               },
-              { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
               {
                 id: 'generate-invoice',
                 label: 'Generate Invoice',
@@ -227,9 +265,9 @@ export const CustomDrawerContent: React.FC<
               },
               { id: 'users', label: 'Users & Team', icon: Users },
               {
-                id: 'reports-analytics',
-                label: 'Reports & Analytics',
-                icon: BarChart2,
+                id: 'expense-details',
+                label: 'Expense Details',
+                icon: CreditCard,
               },
             ],
           },
@@ -240,7 +278,62 @@ export const CustomDrawerContent: React.FC<
               { id: 'model', label: 'Models', icon: Car },
               { id: 'variant', label: 'Variants', icon: Zap },
               { id: 'update-price', label: 'Update Price', icon: IndianRupee },
+              {
+                id: 'insurance-companies',
+                label: 'Insurance Companies',
+                icon: Briefcase,
+              },
+              { id: 'expense-master', label: 'Expense', icon: Receipt },
               { id: 'lead-source', label: 'Lead Sources', icon: Radio },
+            ],
+          },
+          {
+            title: 'ACCOUNT',
+            items: [{ id: 'profile', label: 'My Profile', icon: User }],
+          },
+        ];
+
+      case 'Receptionist':
+        return [
+          {
+            title: 'FRONT DESK',
+            items: [
+              {
+                id: 'dashboard',
+                label: 'Reception Concierge',
+                icon: LayoutDashboard,
+              },
+              { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
+              { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
+              { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
+              {
+                id: 'send-quotation',
+                label: 'Send Quotation',
+                icon: FileSpreadsheet,
+              },
+              {
+                id: 'pending-insurance',
+                label: 'Pending Insurance',
+                icon: ShieldAlert,
+              },
+              {
+                id: 'insurance-reminders',
+                label: 'Insurance Reminders',
+                icon: ShieldCheck,
+              },
+              {
+                id: 'insurance-records',
+                label: 'Insurance Records',
+                icon: Shield,
+              },
+            ],
+          },
+          {
+            title: 'VEHICLE INVENTORY',
+            items: [
+              { id: 'brand', label: 'Brands', icon: Building2 },
+              { id: 'model', label: 'Models', icon: Car },
+              { id: 'variant', label: 'Variants & Pricing', icon: Zap },
             ],
           },
           {
@@ -259,62 +352,32 @@ export const CustomDrawerContent: React.FC<
           },
         ];
 
-      case 'Receptionist':
-        return [
-          {
-            title: 'MAIN MENU',
-            items: [
-              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-              { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
-              { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
-              { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
-            ],
-          },
-          {
-            title: 'MASTER DATA',
-            items: [
-              { id: 'brand', label: 'Brands', icon: Building2 },
-              { id: 'model', label: 'Models', icon: Car },
-              { id: 'variant', label: 'Variants', icon: Zap },
-            ],
-          },
-          {
-            title: 'ACCOUNT',
-            items: [{ id: 'profile', label: 'My Profile', icon: User }],
-          },
-        ];
-
       case 'Accountant':
         return [
           {
-            title: 'MAIN MENU',
+            title: 'FINANCE & BILLING',
             items: [
-              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-              { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
+              {
+                id: 'dashboard',
+                label: 'Accounts Dashboard',
+                icon: LayoutDashboard,
+              },
+              {
+                id: 'reports-analytics',
+                label: 'Financial Reports',
+                icon: BarChart2,
+              },
               {
                 id: 'generate-invoice',
                 label: 'Generate Invoice',
                 icon: ReceiptText,
               },
-              {
-                id: 'reports-analytics',
-                label: 'Reports & Analytics',
-                icon: BarChart2,
-              },
+              { id: 'expense-master', label: 'Expense Master', icon: Receipt },
               {
                 id: 'expense-details',
                 label: 'Expense Details',
                 icon: CreditCard,
               },
-            ],
-          },
-          {
-            title: 'MASTER DATA',
-            items: [
-              { id: 'variant', label: 'Variants', icon: Zap },
-              { id: 'model', label: 'Models', icon: Car },
-              { id: 'update-price', label: 'Update Price', icon: IndianRupee },
-              { id: 'expense-master', label: 'Expense Master', icon: Receipt },
             ],
           },
           {
@@ -385,7 +448,7 @@ export const CustomDrawerContent: React.FC<
                 label: 'Insurance Companies',
                 icon: Briefcase,
               },
-              { id: 'expense-master', label: 'Expense Master', icon: Receipt },
+              { id: 'expense-master', label: 'Expense', icon: Receipt },
               { id: 'lead-source', label: 'Lead Sources', icon: Radio },
             ],
           },
@@ -458,7 +521,7 @@ export const CustomDrawerContent: React.FC<
               Defence Autolink
             </Text>
             <Text style={styles.brandTag}>
-              {userRole.toUpperCase()} WORKSPACE
+              {normalizedRole.toUpperCase()} WORKSPACE
             </Text>
           </View>
         </View>

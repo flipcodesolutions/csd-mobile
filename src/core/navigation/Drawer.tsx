@@ -60,9 +60,7 @@ export type ScreenName =
   | 'lead-source'
   | 'lead-status'
   | 'activity-logs'
-  | 'settings'
-  | 'profile'
-  | 'help-support';
+  | 'profile';
 
 interface DrawerProps {
   isOpen: boolean;

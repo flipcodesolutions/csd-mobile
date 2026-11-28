@@ -37,16 +37,10 @@ import { ProfileScreen } from '../../features/auth/ProfileScreen';
 import { PlaceholderScreen } from '../../shared/PlaceholderScreen';
 import {
   BarChart2,
-  Briefcase,
-  Clock,
-  CreditCard,
-  HelpCircle,
-  Settings,
-  User,
 } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
-import { CustomDrawerContent } from './CustomDrawerContent';
+import { CustomDrawerContent, normalizeAppRole } from './CustomDrawerContent';
 import { Header } from './Header';
 
 export type RootStackParamList = {
@@ -81,9 +75,7 @@ export type DrawerParamList = {
   'lead-status': undefined;
   'lead-source': undefined;
   'activity-logs': undefined;
-  settings: undefined;
   profile: undefined;
-  'help-support': undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -98,7 +90,7 @@ interface AppNavigatorProps {
 const SCREEN_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   'my-leads': 'My Assigned Leads',
-  leads: 'Customer Leads',
+  leads: 'Leads Pipeline',
   'lead-dates': 'Lead Dates Manager',
   'contact-inquiries': 'Contact Inquiries',
   'follow-ups': 'Follow-Ups',
@@ -117,43 +109,53 @@ const SCREEN_TITLES: Record<string, string> = {
   variant: 'Variants',
   'update-price': 'Update Price',
   'insurance-companies': 'Insurance Companies',
-  'expense-master': 'Expense Master',
+  'expense-master': 'Expense',
   'lead-status': 'Lead Status Master',
   'lead-source': 'Lead Sources',
   'activity-logs': 'Activity Logs',
-  settings: 'Settings',
   profile: 'My Profile',
-  'help-support': 'Help & Support',
 };
 
 function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
   const { isDark } = useTheme();
+  const normalizedRole = normalizeAppRole(userRole);
+
   // Task 1: When admin (or Super Admin) logs in, default screen MUST be 'dashboard'
-  const isSuperAdminOrAdmin =
-    !userRole ||
-    userRole.toLowerCase().includes('admin') ||
-    userRole === 'Super Admin' ||
-    userRole === 'Admin';
+  const isSuperAdminOrAdmin = normalizedRole === 'Super Admin';
 
   const initialRoute: keyof DrawerParamList = isSuperAdminOrAdmin
     ? 'dashboard'
-    : userRole === 'Sales Executive'
+    : normalizedRole === 'Sales Executive'
     ? 'my-leads'
     : 'dashboard';
 
-  const getDashboardTitle = () => {
-    switch (userRole) {
-      case 'Sales Executive':
-        return 'Sales Executive Desk';
-      case 'Sales Manager':
-        return 'Sales Manager Desk';
-      case 'Receptionist':
-        return 'Reception Desk';
-      case 'Accountant':
-        return 'Finance & Accounts';
-      default:
-        return 'Business Overview';
+  const getScreenTitle = (routeName: string) => {
+    if (routeName === 'dashboard') {
+      switch (normalizedRole) {
+        case 'Sales Executive':
+          return 'Sales Dashboard';
+        case 'Receptionist':
+          return 'Reception Concierge';
+        case 'Accountant':
+          return 'Accounts Dashboard';
+        case 'Sales Manager':
+        case 'Super Admin':
+        default:
+          return 'Dashboard';
+      }
     }
+    if (routeName === 'variant') {
+      if (normalizedRole === 'Sales Executive') return 'Variants & Prices';
+      if (normalizedRole === 'Receptionist') return 'Variants & Pricing';
+      return 'Variants';
+    }
+    if (routeName === 'reports-analytics' && normalizedRole === 'Accountant') {
+      return 'Financial Reports';
+    }
+    if (routeName === 'expense-master' && normalizedRole === 'Accountant') {
+      return 'Expense Master';
+    }
+    return SCREEN_TITLES[routeName] || 'CarCRM';
   };
 
   return (
@@ -162,18 +164,13 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
       drawerContent={(props: DrawerContentComponentProps) => (
         <CustomDrawerContent
           {...props}
-          userRole={userRole}
+          userRole={normalizedRole}
           userEmail={userEmail}
           onLogout={onLogout}
         />
       )}
       screenOptions={({ route, navigation }) => {
-        const title =
-          route.name === 'dashboard'
-            ? getDashboardTitle()
-            : route.name === 'call-recordings' && userRole === 'Sales Manager'
-            ? 'Call Recordings Audit'
-            : SCREEN_TITLES[route.name] || 'CarCRM';
+        const title = getScreenTitle(route.name);
 
         return {
           headerShown: true,
@@ -370,37 +367,11 @@ function DrawerNavigator({ userRole, userEmail, onLogout }: AppNavigatorProps) {
         )}
       </Drawer.Screen>
 
-      <Drawer.Screen name="settings">
-        {({ navigation }) => (
-          <PlaceholderScreen
-            title="Settings"
-            category="SYSTEM CONFIGURATION"
-            icon={Settings}
-            description="Configure portal parameters, notifications, SMS/WhatsApp gateways, and system defaults."
-            onOpenDrawer={() => (navigation as any).openDrawer()}
-            onNavigateHome={() => (navigation as any).navigate('dashboard')}
-          />
-        )}
-      </Drawer.Screen>
-
       <Drawer.Screen name="profile">
         {({ navigation }) => (
           <ProfileScreen
             onOpenDrawer={() => (navigation as any).openDrawer()}
             onLogout={onLogout}
-          />
-        )}
-      </Drawer.Screen>
-
-      <Drawer.Screen name="help-support">
-        {({ navigation }) => (
-          <PlaceholderScreen
-            title="Help & Support"
-            category="HELP DESK"
-            icon={HelpCircle}
-            description="Get assistance, access documentation, or reach out to technical support for portal issues."
-            onOpenDrawer={() => (navigation as any).openDrawer()}
-            onNavigateHome={() => (navigation as any).navigate('dashboard')}
           />
         )}
       </Drawer.Screen>
