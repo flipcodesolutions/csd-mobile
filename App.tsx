@@ -14,6 +14,7 @@ import { SplashScreen } from './src/SplashScreen';
 import { authApi } from './src/features/auth/authService';
 import { setOnUnauthorizedHandler } from './src/core/api/client';
 import { csdToastConfig } from './src/core/ui/toastConfig';
+import { NoConnectionOverlay } from './src/core/network/NoConnectionOverlay';
 
 // App root
 function App() {
@@ -24,6 +25,7 @@ function App() {
           <BottomSheetModalProvider>
             <MainApp />
             <Toast config={csdToastConfig} />
+            <NoConnectionOverlay />
           </BottomSheetModalProvider>
         </ThemeProvider>
       </SafeAreaProvider>

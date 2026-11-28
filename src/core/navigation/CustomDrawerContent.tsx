@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
@@ -77,7 +71,11 @@ export type ScreenName =
 export interface MenuItem {
   id: ScreenName;
   label: string;
-  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  icon: React.ComponentType<{
+    size?: number;
+    color?: string;
+    strokeWidth?: number;
+  }>;
   badge?: string;
 }
 
@@ -92,7 +90,9 @@ interface CustomDrawerContentProps extends DrawerContentComponentProps {
   onLogout: () => void;
 }
 
-export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) => {
+export const CustomDrawerContent: React.FC<
+  CustomDrawerContentProps
+> = props => {
   const {
     navigation,
     state,
@@ -103,7 +103,8 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
 
   const { isDark, toggleTheme } = useTheme();
 
-  const currentRouteName = (state?.routes[state?.index]?.name || 'dashboard') as ScreenName;
+  const currentRouteName = (state?.routes[state?.index]?.name ||
+    'dashboard') as ScreenName;
 
   const getRoleBadge = () => {
     switch (userRole) {
@@ -112,12 +113,20 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
       case 'Sales Executive':
         return { icon: 'SE', color: '#10b981', section: 'SALES DESK' };
       case 'Receptionist':
-        return { icon: 'RC', color: '#8b5cf6', section: 'RECEPTION & WALK-INS' };
+        return {
+          icon: 'RC',
+          color: '#8b5cf6',
+          section: 'RECEPTION & WALK-INS',
+        };
       case 'Accountant':
         return { icon: 'AC', color: '#06b6d4', section: 'FINANCE & BILLING' };
       case 'Super Admin':
       default:
-        return { icon: 'SA', color: colors.primary, section: 'SUPER ADMIN WORKSPACE' };
+        return {
+          icon: 'SA',
+          color: colors.primary,
+          section: 'SUPER ADMIN WORKSPACE',
+        };
     }
   };
 
@@ -138,14 +147,27 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             title: 'MAIN MENU',
             items: [
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-              { id: 'my-leads', label: 'My Assigned Leads', icon: UserCheck, badge: 'Live' },
+              {
+                id: 'my-leads',
+                label: 'My Assigned Leads',
+                icon: UserCheck,
+                badge: 'Live',
+              },
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
               { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
               { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
-              { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
+              {
+                id: 'send-quotation',
+                label: 'Send Quotation',
+                icon: FileSpreadsheet,
+              },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
-              { id: 'generate-invoice', label: 'Generate Invoice', icon: ReceiptText },
+              {
+                id: 'generate-invoice',
+                label: 'Generate Invoice',
+                icon: ReceiptText,
+              },
             ],
           },
           {
@@ -159,9 +181,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           },
           {
             title: 'ACCOUNT',
-            items: [
-              { id: 'profile', label: 'My Profile', icon: User },
-            ],
+            items: [{ id: 'profile', label: 'My Profile', icon: User }],
           },
         ];
 
@@ -174,15 +194,43 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'leads', label: 'Leads Pipeline', icon: Kanban },
               { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
-              { id: 'call-recordings', label: 'Call Recordings Audit', icon: Mic },
-              { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
+              {
+                id: 'call-recordings',
+                label: 'Call Recordings Audit',
+                icon: Mic,
+              },
+              {
+                id: 'send-quotation',
+                label: 'Send Quotation',
+                icon: FileSpreadsheet,
+              },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
-              { id: 'generate-invoice', label: 'Generate Invoice', icon: ReceiptText },
-              { id: 'pending-insurance', label: 'Pending Insurance', icon: ShieldAlert },
-              { id: 'insurance-reminders', label: 'Insurance Reminders', icon: ShieldCheck },
-              { id: 'insurance-records', label: 'Insurance Records', icon: Shield },
+              {
+                id: 'generate-invoice',
+                label: 'Generate Invoice',
+                icon: ReceiptText,
+              },
+              {
+                id: 'pending-insurance',
+                label: 'Pending Insurance',
+                icon: ShieldAlert,
+              },
+              {
+                id: 'insurance-reminders',
+                label: 'Insurance Reminders',
+                icon: ShieldCheck,
+              },
+              {
+                id: 'insurance-records',
+                label: 'Insurance Records',
+                icon: Shield,
+              },
               { id: 'users', label: 'Users & Team', icon: Users },
-              { id: 'reports-analytics', label: 'Reports & Analytics', icon: BarChart2 },
+              {
+                id: 'reports-analytics',
+                label: 'Reports & Analytics',
+                icon: BarChart2,
+              },
             ],
           },
           {
@@ -198,14 +246,16 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           {
             title: 'WEBSITE & CMS',
             items: [
-              { id: 'contact-inquiries', label: 'Contact Inquiries', icon: Mail },
+              {
+                id: 'contact-inquiries',
+                label: 'Contact Inquiries',
+                icon: Mail,
+              },
             ],
           },
           {
             title: 'ACCOUNT',
-            items: [
-              { id: 'profile', label: 'My Profile', icon: User },
-            ],
+            items: [{ id: 'profile', label: 'My Profile', icon: User }],
           },
         ];
 
@@ -230,9 +280,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           },
           {
             title: 'ACCOUNT',
-            items: [
-              { id: 'profile', label: 'My Profile', icon: User },
-            ],
+            items: [{ id: 'profile', label: 'My Profile', icon: User }],
           },
         ];
 
@@ -243,9 +291,21 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
             items: [
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
-              { id: 'generate-invoice', label: 'Generate Invoice', icon: ReceiptText },
-              { id: 'reports-analytics', label: 'Reports & Analytics', icon: BarChart2 },
-              { id: 'expense-details', label: 'Expense Details', icon: CreditCard },
+              {
+                id: 'generate-invoice',
+                label: 'Generate Invoice',
+                icon: ReceiptText,
+              },
+              {
+                id: 'reports-analytics',
+                label: 'Reports & Analytics',
+                icon: BarChart2,
+              },
+              {
+                id: 'expense-details',
+                label: 'Expense Details',
+                icon: CreditCard,
+              },
             ],
           },
           {
@@ -259,9 +319,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           },
           {
             title: 'ACCOUNT',
-            items: [
-              { id: 'profile', label: 'My Profile', icon: User },
-            ],
+            items: [{ id: 'profile', label: 'My Profile', icon: User }],
           },
         ];
 
@@ -276,15 +334,43 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'lead-dates', label: 'Lead Dates Manager', icon: Calendar },
               { id: 'follow-ups', label: 'Follow-Ups', icon: PhoneForwarded },
               { id: 'call-recordings', label: 'Call Recordings', icon: Mic },
-              { id: 'send-quotation', label: 'Send Quotation', icon: FileSpreadsheet },
+              {
+                id: 'send-quotation',
+                label: 'Send Quotation',
+                icon: FileSpreadsheet,
+              },
               { id: 'deals', label: 'Deals & Bookings', icon: Trophy },
-              { id: 'generate-invoice', label: 'Generate Invoice', icon: ReceiptText },
-              { id: 'pending-insurance', label: 'Pending Insurance', icon: ShieldAlert },
-              { id: 'insurance-reminders', label: 'Insurance Reminders', icon: ShieldCheck },
-              { id: 'insurance-records', label: 'Insurance Records', icon: Shield },
+              {
+                id: 'generate-invoice',
+                label: 'Generate Invoice',
+                icon: ReceiptText,
+              },
+              {
+                id: 'pending-insurance',
+                label: 'Pending Insurance',
+                icon: ShieldAlert,
+              },
+              {
+                id: 'insurance-reminders',
+                label: 'Insurance Reminders',
+                icon: ShieldCheck,
+              },
+              {
+                id: 'insurance-records',
+                label: 'Insurance Records',
+                icon: Shield,
+              },
               { id: 'users', label: 'Users & Team', icon: Users },
-              { id: 'reports-analytics', label: 'Reports & Analytics', icon: BarChart2 },
-              { id: 'expense-details', label: 'Expense Details', icon: CreditCard },
+              {
+                id: 'reports-analytics',
+                label: 'Reports & Analytics',
+                icon: BarChart2,
+              },
+              {
+                id: 'expense-details',
+                label: 'Expense Details',
+                icon: CreditCard,
+              },
             ],
           },
           {
@@ -294,7 +380,11 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               { id: 'model', label: 'Models', icon: Car },
               { id: 'variant', label: 'Variants', icon: Zap },
               { id: 'update-price', label: 'Update Price', icon: IndianRupee },
-              { id: 'insurance-companies', label: 'Insurance Companies', icon: Briefcase },
+              {
+                id: 'insurance-companies',
+                label: 'Insurance Companies',
+                icon: Briefcase,
+              },
               { id: 'expense-master', label: 'Expense Master', icon: Receipt },
               { id: 'lead-source', label: 'Lead Sources', icon: Radio },
             ],
@@ -302,21 +392,23 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           {
             title: 'WEBSITE & CMS',
             items: [
-              { id: 'contact-inquiries', label: 'Contact Inquiries', icon: Mail },
+              {
+                id: 'contact-inquiries',
+                label: 'Contact Inquiries',
+                icon: Mail,
+              },
             ],
           },
-          {
-            title: 'MANAGEMENT',
-            items: [
-              { id: 'activity-logs', label: 'Activity Logs', icon: Clock },
-            ],
-          },
-          {
-            title: 'ACCOUNT',
-            items: [
-              { id: 'profile', label: 'My Profile', icon: User },
-            ],
-          },
+          // {
+          //   title: 'MANAGEMENT',
+          //   items: [
+          //     { id: 'activity-logs', label: 'Activity Logs', icon: Clock },
+          //   ],
+          // },
+          // {
+          //   title: 'ACCOUNT',
+          //   items: [{ id: 'profile', label: 'My Profile', icon: User }],
+          // },
         ];
     }
   };
@@ -335,9 +427,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
         style={[
           styles.drawerHeader,
           {
-            borderBottomColor: isDark
-              ? 'rgba(255, 255, 255, 0.08)'
-              : '#E2E8F0',
+            borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
           },
         ]}
       >
@@ -388,7 +478,11 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel="Close Navigation Drawer"
         >
-          <X size={16} color={isDark ? '#94A3B8' : '#64748B'} strokeWidth={2.4} />
+          <X
+            size={16}
+            color={isDark ? '#94A3B8' : '#64748B'}
+            strokeWidth={2.4}
+          />
         </TouchableOpacity>
       </View>
 
@@ -412,7 +506,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
               {section.title}
             </Text>
 
-            {section.items.map((item) => {
+            {section.items.map(item => {
               const isActive = currentRouteName === item.id;
               const IconComp = item.icon || LayoutDashboard;
 
@@ -440,11 +534,7 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
                   <IconComp
                     size={17}
                     color={
-                      isActive
-                        ? '#FFFFFF'
-                        : isDark
-                        ? '#94A3B8'
-                        : '#64748B'
+                      isActive ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B'
                     }
                     strokeWidth={isActive ? 2.4 : 1.9}
                   />
@@ -506,15 +596,15 @@ export const CustomDrawerContent: React.FC<CustomDrawerContentProps> = (props) =
         style={[
           styles.drawerFooter,
           {
-            borderTopColor: isDark
-              ? 'rgba(255, 255, 255, 0.08)'
-              : '#E2E8F0',
+            borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
           },
         ]}
       >
         {/* User Info Tile */}
         <View style={styles.footerUserRow}>
-          <View style={[styles.userAvatar, { backgroundColor: roleMeta.color }]}>
+          <View
+            style={[styles.userAvatar, { backgroundColor: roleMeta.color }]}
+          >
             <Text style={styles.userAvatarText}>{roleMeta.icon}</Text>
           </View>
           <View style={styles.userInfo}>

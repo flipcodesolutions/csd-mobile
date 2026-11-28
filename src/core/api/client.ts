@@ -1,6 +1,12 @@
 import axios from 'axios';
 import { appStorage } from '../storage/storage';
 import { showErrorToast } from '../utils/toast';
+import {
+  getIsNetworkOnline,
+  reportNetworkFailure,
+  reportNetworkSuccess,
+  setNetworkReachabilityUrl,
+} from '../network/networkMonitor';
 
 // Base API & Asset URLs
 export const DEFAULT_API_URL = 'https://api.defenceautolink.com/api';
@@ -41,6 +47,7 @@ export const getAuthToken = () => authToken;
 export const setApiBaseUrl = (url: string) => {
   currentBaseUrl = url;
   api.defaults.baseURL = url;
+  setNetworkReachabilityUrl(url);
 };
 
 export const getApiBaseUrl = () => currentBaseUrl;
@@ -83,9 +90,13 @@ api.interceptors.request.use(
 
 // Response Interceptor: Global Error & Unauthenticated Handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    reportNetworkSuccess();
+    return response;
+  },
   async (error) => {
     if (error.response) {
+      reportNetworkSuccess();
       const { status, data } = error.response;
 
       if (status === 401) {
@@ -105,10 +116,18 @@ api.interceptors.response.use(
         const msg = data?.message || 'You do not have permission to perform this action.';
         showErrorToast('Access Denied', msg);
       }
+    } else if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
+      // Ignore intentionally cancelled requests
     } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-      showErrorToast('Connection Timeout', 'The request timed out. Please check your internet connection.');
+      reportNetworkFailure();
+      if (getIsNetworkOnline()) {
+        showErrorToast('Connection Timeout', 'The request timed out. Please check your internet connection.');
+      }
     } else if (error.message === 'Network Error' || !error.response) {
-      showErrorToast('Network Unavailable', 'Cannot reach Defence Autolink servers. Check your connection.');
+      reportNetworkFailure();
+      if (getIsNetworkOnline()) {
+        showErrorToast('Network Unavailable', 'Cannot reach Defence Autolink servers. Check your connection.');
+      }
     }
 
     return Promise.reject(error);
