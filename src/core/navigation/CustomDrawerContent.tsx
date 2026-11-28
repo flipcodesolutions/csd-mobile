@@ -399,16 +399,16 @@ export const CustomDrawerContent: React.FC<
               },
             ],
           },
-          // {
-          //   title: 'MANAGEMENT',
-          //   items: [
-          //     { id: 'activity-logs', label: 'Activity Logs', icon: Clock },
-          //   ],
-          // },
-          // {
-          //   title: 'ACCOUNT',
-          //   items: [{ id: 'profile', label: 'My Profile', icon: User }],
-          // },
+          {
+            title: 'MANAGEMENT',
+            items: [
+              { id: 'activity-logs', label: 'Activity Logs', icon: Clock },
+            ],
+          },
+          {
+            title: 'ACCOUNT',
+            items: [{ id: 'profile', label: 'My Profile', icon: User }],
+          },
         ];
     }
   };
